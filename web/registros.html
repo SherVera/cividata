@@ -20,7 +20,7 @@
 <body>
 <header>
   <strong>📋 Registros guardados</strong>
-  <span><a href="index.html">➕ Nuevo registro</a> &nbsp;·&nbsp; <a href="estadisticas.html">📊 Estadísticas</a> &nbsp;·&nbsp; <a id="out">Salir</a></span>
+  <span><span id="adminwrap" style="display:none"><a href="admin.html">🛠️ Admin</a> &nbsp;·&nbsp; </span><a href="index.html">➕ Nuevo registro</a> &nbsp;·&nbsp; <a href="estadisticas.html">📊 Estadísticas</a> &nbsp;·&nbsp; <a id="out">Salir</a></span>
 </header>
 <main>
   <p class="count" id="count">Cargando…</p>
@@ -40,6 +40,7 @@
   (async () => {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return location.replace('login.html');
+    if (session.user.app_metadata?.role === 'admin') document.getElementById('adminwrap').style.display = 'inline';
     document.getElementById('out').onclick = async () => { await sb.auth.signOut(); location.replace('login.html'); };
 
     const { data: rows, error } = await sb.from('citizens').select('*').order('id', { ascending: false });
