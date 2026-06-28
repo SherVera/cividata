@@ -71,13 +71,13 @@ drop policy if exists "insert citizens" on public.citizens;
 create policy "insert citizens"
   on public.citizens for insert to authenticated with check (true);
 
--- Read: admin sees all; a registrar sees only what they created.
+-- Read: admin sees all; personal médico sees only what they created.
 drop policy if exists "select citizens" on public.citizens;
 create policy "select citizens"
   on public.citizens for select to authenticated
   using (public.is_admin() or created_by = auth.uid());
 
--- Update / delete: admin ONLY. (Registrars cannot.)
+-- Update / delete: admin ONLY. (Personal médico cannot.)
 drop policy if exists "admin update citizens" on public.citizens;
 create policy "admin update citizens"
   on public.citizens for update to authenticated
@@ -315,3 +315,11 @@ begin
     );
   end loop;
 end $$;
+
+-- =========================================================
+-- Auth roles: rename legacy "registrador" -> "personal_medico"
+-- Run once in Supabase SQL Editor after deploying the app update.
+-- =========================================================
+update auth.users
+set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"personal_medico"}'::jsonb
+where raw_app_meta_data->>'role' = 'registrador';

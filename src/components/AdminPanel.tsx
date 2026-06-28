@@ -17,7 +17,7 @@ import {
 import { AnimatePresence, motion } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 
-type UserRole = 'super_admin' | 'admin' | 'registrador';
+type UserRole = 'super_admin' | 'admin' | 'personal_medico';
 
 type AdminUser = {
   id: string;
@@ -51,7 +51,8 @@ function normalizePhone(value: string) {
 function roleLabel(role: string) {
   if (role === 'super_admin') return 'Super admin';
   if (role === 'admin') return 'Admin';
-  return 'Registrador';
+  if (role === 'personal_medico' || role === 'registrador') return 'Personal médico';
+  return role;
 }
 
 async function requestUsers(token: string, method: 'GET' | 'POST' | 'PATCH', body?: unknown) {
@@ -198,7 +199,7 @@ function CreateUserModal({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState(roles[0] || 'registrador');
+  const [role, setRole] = useState(roles[0] || 'personal_medico');
   const cleanPhone = normalizePhone(phone);
   const canSubmit = password.length >= 6 && (!!email.trim() || !!cleanPhone);
 
@@ -661,8 +662,8 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
           <h2 className="mt-3 text-xl font-bold tracking-tight">Gestión de usuarios</h2>
           <p className="mt-1 text-sm text-slate-300">
             {currentRole === 'super_admin'
-              ? 'Gestiona administradores y registradores. Las cuentas super admin permanecen protegidas.'
-              : 'Gestiona registradores. Las cuentas admin y super admin están protegidas.'}
+              ? 'Gestiona administradores y personal médico. Las cuentas super admin permanecen protegidas.'
+              : 'Gestiona personal médico. Las cuentas admin y super admin están protegidas.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -758,7 +759,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                           className="rounded-xl border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700 outline-none"
                         >
                           <option value="admin">Admin</option>
-                          <option value="registrador">Registrador</option>
+                          <option value="personal_medico">Personal médico</option>
                         </select>
                       ) : (
                         <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
@@ -831,7 +832,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       <AnimatePresence>
         {showCreateUser && (
           <CreateUserModal
-            roles={canCreateRoles.length > 0 ? canCreateRoles : ['registrador']}
+            roles={canCreateRoles.length > 0 ? canCreateRoles : ['personal_medico']}
             isSaving={isSaving}
             onClose={() => setShowCreateUser(false)}
             onSave={handleCreateUser}
