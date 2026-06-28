@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
-  HeartPulse, Plus, Search, SlidersHorizontal, Download, Upload, Lock, 
+  Plus, Search, SlidersHorizontal, Download, Upload, Lock, 
   ShieldCheck, Eye, Settings, Trash2, LogOut, Edit, Filter, Database, 
   Activity, FileSpreadsheet, AlertTriangle, Heart, Sparkles, Menu, X, Check, RefreshCw, Warehouse
 } from 'lucide-react';
@@ -19,6 +19,8 @@ import DashboardStats, { SuperAdminDashboardStats } from './components/Dashboard
 import AdminPanel from './components/AdminPanel';
 import CollectionCentersPanel from './components/CollectionCentersPanel';
 import BottomNav, { BottomNavKey } from './components/BottomNav';
+import AppLogo from './components/AppLogo';
+import PatientPhoto from './components/PatientPhoto';
 import { supabase } from './lib/supabaseClient';
 import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
 import { listCollectionCenters } from './lib/collectionCentersApi';
@@ -438,15 +440,17 @@ export default function App() {
           
           {/* Logo and App Title */}
           <div className="flex items-center gap-3">
-            <div 
+            <button
+              type="button"
               onClick={() => {
                 setCurrentView('list');
                 setActiveTab(defaultHomeTab(userRole));
               }}
-              className="p-2 bg-blue-600 text-white rounded-xl shadow-sm cursor-pointer active:scale-95 transition-transform"
+              className="rounded-xl p-1.5 shadow-sm cursor-pointer active:scale-95 transition-transform hover:bg-slate-50"
+              aria-label="Ir al inicio"
             >
-              <HeartPulse className="w-5 h-5" />
-            </div>
+              <AppLogo className="h-9 w-auto max-w-[140px] md:max-w-[180px]" />
+            </button>
             <div>
               <h1 className="font-sans font-bold text-slate-800 text-sm md:text-base leading-none tracking-tight flex items-center gap-1.5">
                 Censo &amp; Historia Clínica
@@ -789,7 +793,27 @@ export default function App() {
                         >
                           <div className="space-y-2.5">
                             {/* Header: gender and vaccine badge */}
-                            <div className="flex justify-between items-center">
+                            <div className="flex justify-between items-start gap-3">
+                              <div className="flex items-start gap-3 min-w-0 flex-1">
+                                {p.fotoPath && (
+                                  <PatientPhoto
+                                    fotoPath={p.fotoPath}
+                                    alt={`${p.nombres} ${p.apellidos}`}
+                                    className="h-12 w-12 rounded-xl object-cover border border-slate-200 shrink-0"
+                                    fallbackClassName="hidden"
+                                  />
+                                )}
+                                <div className="min-w-0">
+                                  <h3 className="font-sans font-bold text-slate-800 text-sm md:text-base leading-tight group-hover:text-blue-600 transition-colors truncate">
+                                    {p.nombres} {p.apellidos}
+                                  </h3>
+                                  <p className="text-xs text-slate-500 mt-1 font-medium">
+                                    {p.edadAnios} {p.edadAnios === 1 ? 'año' : 'años'} y {p.edadMeses} {p.edadMeses === 1 ? 'mes' : 'meses'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col items-end gap-1 shrink-0">
                               <span className={`text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                                 p.genero === 'Masculino' 
                                   ? 'bg-blue-50 text-blue-700 border border-blue-100' 
@@ -807,16 +831,7 @@ export default function App() {
                               }`}>
                                 Vacunación {p.esquemaVacunacion}
                               </span>
-                            </div>
-
-                            {/* Name & Age */}
-                            <div>
-                              <h3 className="font-sans font-bold text-slate-800 text-sm md:text-base leading-tight group-hover:text-blue-600 transition-colors">
-                                {p.nombres} {p.apellidos}
-                              </h3>
-                              <p className="text-xs text-slate-500 mt-1 font-medium">
-                                {p.edadAnios} {p.edadAnios === 1 ? 'año' : 'años'} y {p.edadMeses} {p.edadMeses === 1 ? 'mes' : 'meses'}
-                              </p>
+                              </div>
                             </div>
 
                             {/* Key credentials indicators */}

@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient';
 import { Paciente, NotaClinica } from '../types';
 import { joinMultiValue, parseMultiValue } from './multiValue';
+import { deletePatientPhoto } from './patientPhotosApi';
 
 function ensureClient() {
   if (!supabase) {
@@ -69,6 +70,7 @@ function rowToPaciente(row: any): Paciente {
     genero: (row.gender as Paciente['genero']) || 'Masculino',
     documentoIdentidad: row.id_document || '',
     nacionalidad: row.nationality?.name || '',
+    fotoPath: row.photo_path || null,
     direccion: row.address || '',
     ciudadMunicipio: row.city?.name || '',
     estadoProvincia: row.state?.name || '',
@@ -252,6 +254,7 @@ export async function savePatient(p: Paciente): Promise<void> {
     birth_date: p.fechaNacimiento || null,
     gender: p.genero || null,
     id_document: (p.documentoIdentidad || '').trim() || null,
+    photo_path: p.fotoPath || null,
     nationality_id: nationalityId,
     address: (p.direccion || '').trim() || null,
     state_id: stateId,
@@ -295,8 +298,10 @@ export async function savePatient(p: Paciente): Promise<void> {
 
 export async function deletePatient(id: string): Promise<void> {
   const client = ensureClient();
+  const existing = await client.from('patients').select('photo_path').eq('id', id).maybeSingle();
   const { error } = await client.from('patients').delete().eq('id', id);
   if (error) throw error;
+  await deletePatientPhoto(existing.data?.photo_path).catch(() => undefined);
 }
 
 export async function bulkUpsertPatients(patients: Paciente[]): Promise<void> {

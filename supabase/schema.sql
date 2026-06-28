@@ -357,6 +357,9 @@ alter table public.patients add column if not exists allergies_detail text;
 alter table public.patients add column if not exists condition_detail text;
 alter table public.patients add column if not exists medication_detail text;
 
+-- Foto opcional del paciente (ruta en Supabase Storage: bucket patient-photos).
+alter table public.patients add column if not exists photo_path text;
+
 alter table public.clinical_notes add column if not exists diagnosis_id uuid references public.diagnoses(id) on delete set null;
 alter table public.clinical_notes add column if not exists treatment_id uuid references public.treatments(id) on delete set null;
 alter table public.clinical_notes drop column if exists diagnosis;
@@ -413,3 +416,40 @@ drop policy if exists "admin read staff audit" on public.staff_audit_log;
 create policy "admin read staff audit"
   on public.staff_audit_log for select to authenticated
   using (public.is_admin());
+
+-- =========================================================
+-- Patient photos (optional) — Supabase Storage
+-- =========================================================
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'patient-photos',
+  'patient-photos',
+  false,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp']
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "patient photos select" on storage.objects;
+create policy "patient photos select"
+  on storage.objects for select to authenticated
+  using (bucket_id = 'patient-photos');
+
+drop policy if exists "patient photos insert" on storage.objects;
+create policy "patient photos insert"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'patient-photos');
+
+drop policy if exists "patient photos update" on storage.objects;
+create policy "patient photos update"
+  on storage.objects for update to authenticated
+  using (bucket_id = 'patient-photos')
+  with check (bucket_id = 'patient-photos');
+
+drop policy if exists "patient photos delete" on storage.objects;
+create policy "patient photos delete"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'patient-photos');

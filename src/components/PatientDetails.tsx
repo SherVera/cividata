@@ -15,6 +15,7 @@ import { fetchCatalogs } from '../lib/catalogsApi';
 import { parseMultiValue } from '../lib/multiValue';
 import GeoMapPicker from './GeoMapPicker';
 import { formatDistance, haversineMeters } from '../lib/geo';
+import PatientPhoto from './PatientPhoto';
 
 interface PatientDetailsProps {
   patient: Paciente;
@@ -171,14 +172,24 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
           <div className="bg-blue-950 rounded-2xl p-6 text-white shadow-md relative overflow-hidden border border-slate-800">
             <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full blur-2xl -translate-y-12 translate-x-12 pointer-events-none"></div>
             
-            <div className="flex justify-between items-start mb-6">
+            <div className="flex justify-between items-start mb-6 gap-4">
               <div>
                 <span className="text-[10px] font-mono font-bold tracking-widest bg-white/20 px-2 py-0.5 rounded-md uppercase">
                   HISTORIA CLÍNICA INFANTIL
                 </span>
                 <p className="text-[10px] text-blue-200 font-mono mt-1">ID: {patient.id.toUpperCase()}</p>
               </div>
-              <Heart className="w-7 h-7 text-rose-400 fill-rose-400/20" />
+              <div className="flex items-start gap-3">
+                {patient.fotoPath && (
+                  <PatientPhoto
+                    fotoPath={patient.fotoPath}
+                    alt={`${patient.nombres} ${patient.apellidos}`}
+                    className="h-16 w-16 rounded-xl object-cover border-2 border-white/20 shadow-md"
+                    fallbackClassName="hidden"
+                  />
+                )}
+                <Heart className="w-7 h-7 text-rose-400 fill-rose-400/20 shrink-0" />
+              </div>
             </div>
 
             <div className="space-y-4">

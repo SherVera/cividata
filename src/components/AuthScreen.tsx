@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
+import AppLogo from './AppLogo';
 
 const publicInfo = [
   {
@@ -100,11 +101,9 @@ export default function AuthScreen() {
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-100/40 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
 
       <header className="w-full max-w-7xl mx-auto flex items-center justify-between z-10">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-blue-600 rounded-lg text-white shadow-sm">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <span className="font-sans font-bold text-slate-800 tracking-tight text-sm">CENSO &amp; REGISTRO</span>
+        <div className="flex items-center gap-3">
+          <AppLogo className="h-9 w-auto max-w-[160px] md:max-w-[200px]" />
+          <span className="font-sans font-bold text-slate-800 tracking-tight text-sm hidden sm:inline">CENSO &amp; REGISTRO</span>
         </div>
         <span className="text-xs bg-blue-50 text-blue-700 border border-blue-100 font-mono px-2.5 py-1 rounded-full flex items-center gap-1 font-medium">
           <Lock className="w-3.5 h-3.5" /> Privacidad primero

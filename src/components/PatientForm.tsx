@@ -7,7 +7,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Paciente } from '../types';
 import { 
   User, MapPin, ShieldAlert, Heart, GraduationCap, 
-  ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles, Warehouse, Plus, Stethoscope
+  ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles, Warehouse, Plus, Stethoscope, Camera, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Catalogs, GuardianOption, fetchCatalogs } from '../lib/catalogsApi';
@@ -19,6 +19,13 @@ import GeoMapPicker from './GeoMapPicker';
 import { requestDeviceLocation } from '../lib/geo';
 import QuickCenterRegister from './QuickCenterRegister';
 import { getRecentCenterIds, recordRecentCenter } from '../lib/recentCenters';
+import PatientPhoto from './PatientPhoto';
+import {
+  compressPatientPhoto,
+  deletePatientPhoto,
+  getPatientPhotoUrl,
+  uploadPatientPhoto,
+} from '../lib/patientPhotosApi';
 
 interface PatientFormProps {
   initialPatient?: Paciente | null;
@@ -35,6 +42,7 @@ const emptyPatient: Omit<Paciente, 'id' | 'fechaRegistro' | 'notasClinicas'> = {
   genero: "Masculino",
   documentoIdentidad: "",
   nacionalidad: "Venezolana",
+  fotoPath: null,
   
   direccion: "",
   ciudadMunicipio: "",
@@ -81,6 +89,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     if (initialPatient) {
       return {
         ...initialPatient,
+        fotoPath: initialPatient.fotoPath ?? null,
         puntoRegistroTipo: initialPatient.puntoRegistroTipo ?? 'centro',
         registroLat: initialPatient.registroLat ?? DEFAULT_MAP_CENTER.lat,
         registroLng: initialPatient.registroLng ?? DEFAULT_MAP_CENTER.lng,
@@ -103,6 +112,11 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
   const [recentCenterIds, setRecentCenterIds] = useState<string[]>(() => getRecentCenterIds());
   const [showNewCenter, setShowNewCenter] = useState(false);
   const [centerNotice, setCenterNotice] = useState<string>("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoRemoved, setPhotoRemoved] = useState(false);
+  const [photoError, setPhotoError] = useState("");
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   // Catálogos reutilizables (sugerencias para no re-tipear datos repetidos).
   const [catalogs, setCatalogs] = useState<Catalogs>({
@@ -127,6 +141,57 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       .then(setCollectionCenters)
       .catch(() => {/* sin centros: el formulario sigue con texto */});
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    if (photoFile || photoRemoved) return undefined;
+
+    if (!formData.fotoPath) {
+      setPhotoPreview(null);
+      return undefined;
+    }
+
+    getPatientPhotoUrl(formData.fotoPath)
+      .then((url) => {
+        if (active) setPhotoPreview(url);
+      })
+      .catch(() => {
+        if (active) setPhotoPreview(null);
+      });
+
+    return () => { active = false; };
+  }, [formData.fotoPath, photoFile, photoRemoved]);
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview?.startsWith('blob:')) URL.revokeObjectURL(photoPreview);
+    };
+  }, [photoPreview]);
+
+  const handlePhotoSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setPhotoError('');
+    try {
+      await compressPatientPhoto(file);
+      if (photoPreview?.startsWith('blob:')) URL.revokeObjectURL(photoPreview);
+      setPhotoFile(file);
+      setPhotoRemoved(false);
+      setPhotoPreview(URL.createObjectURL(file));
+    } catch (err: any) {
+      setPhotoError(err?.message || 'No se pudo cargar la imagen.');
+    }
+  };
+
+  const handlePhotoRemove = () => {
+    if (photoPreview?.startsWith('blob:')) URL.revokeObjectURL(photoPreview);
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setPhotoRemoved(true);
+    setPhotoError('');
+  };
 
   const centersForMap = useMemo(() => {
     const q = centerFilter.trim().toLowerCase();
@@ -481,8 +546,27 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       } catch {
         /* keep last device location if available */
       }
+
+      let fotoPath = formData.fotoPath;
+      setIsUploadingPhoto(true);
+      try {
+        if (photoRemoved && fotoPath) {
+          await deletePatientPhoto(fotoPath);
+          fotoPath = null;
+        } else if (photoFile) {
+          if (fotoPath) await deletePatientPhoto(fotoPath).catch(() => undefined);
+          fotoPath = await uploadPatientPhoto(formData.id, photoFile);
+        }
+      } catch (err: any) {
+        setIsUploadingPhoto(false);
+        setSubmitError('Error al guardar la foto: ' + (err?.message || err));
+        return;
+      }
+      setIsUploadingPhoto(false);
+
       onSave({
         ...formData,
+        fotoPath,
         registrantLat,
         registrantLng,
       });
@@ -587,6 +671,54 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
               <User className="w-5 h-5 text-teal-600" />
               <h3 className="font-sans font-bold text-slate-700 text-base">1. Datos Personales</h3>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                {photoPreview ? (
+                  <img
+                    src={photoPreview}
+                    alt="Vista previa del paciente"
+                    className="h-24 w-24 rounded-2xl object-cover border border-slate-200 bg-white shadow-sm"
+                  />
+                ) : (
+                  <PatientPhoto
+                    fotoPath={photoRemoved ? null : formData.fotoPath}
+                    alt="Paciente"
+                    className="h-24 w-24 rounded-2xl object-cover border border-slate-200 bg-white shadow-sm"
+                    fallbackClassName="h-24 w-24 rounded-2xl border border-slate-200 bg-white text-slate-300 flex items-center justify-center shadow-sm"
+                  />
+                )}
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-slate-600">Foto del paciente <span className="font-normal text-slate-400">(opcional)</span></p>
+                  <p className="text-[11px] leading-relaxed text-slate-500">JPG, PNG o WebP. Máximo 5 MB. Se comprime automáticamente al guardar.</p>
+                  <div className="flex flex-wrap gap-2">
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-teal-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-teal-700">
+                      <Camera className="h-3.5 w-3.5" />
+                      {photoPreview || formData.fotoPath ? 'Cambiar foto' : 'Subir foto'}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        capture="environment"
+                        className="hidden"
+                        onChange={handlePhotoSelect}
+                      />
+                    </label>
+                    {(photoPreview || formData.fotoPath) && !photoRemoved && (
+                      <button
+                        type="button"
+                        onClick={handlePhotoRemove}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-100"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Quitar foto
+                      </button>
+                    )}
+                  </div>
+                  {photoError && <p className="text-xs font-medium text-red-500">{photoError}</p>}
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1603,9 +1735,10 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             ) : (
               <button
                 type="submit"
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-1 px-5 py-2.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all cursor-pointer active:scale-95 shadow-sm"
+                disabled={isUploadingPhoto}
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-1 px-5 py-2.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all cursor-pointer active:scale-95 shadow-sm disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                <Save className="w-4 h-4" /> Guardar Registro
+                <Save className="w-4 h-4" /> {isUploadingPhoto ? 'Guardando foto…' : 'Guardar Registro'}
               </button>
             )}
           </div>

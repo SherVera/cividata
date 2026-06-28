@@ -24,6 +24,8 @@ export interface Paciente {
   genero: 'Masculino' | 'Femenino' | 'Otro';
   documentoIdentidad: string;
   nacionalidad: string;
+  /** Ruta en Supabase Storage (bucket patient-photos). Opcional. */
+  fotoPath: string | null;
 
   // 2. Información de Vivienda
   direccion: string;
