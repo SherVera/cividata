@@ -212,7 +212,7 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                   <span className="font-semibold text-white">{patient.genero}</span>
                 </div>
                 <div>
-                  <span className="text-blue-300 block text-[9px] uppercase tracking-wider">Edad Censo</span>
+                  <span className="text-blue-300 block text-[9px] uppercase tracking-wider">Edad registrada</span>
                   <span className="font-semibold text-white">
                     {edadPacienteTexto(patient)}
                   </span>
@@ -233,7 +233,7 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
             {/* Quick Badge Status bar */}
             <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-xs">
               <span className="flex items-center gap-1 font-medium">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Censo Validado
+                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Registro validado
               </span>
               <span className="font-mono text-[10px] text-blue-200">Reg: {patient.fechaRegistro}</span>
             </div>

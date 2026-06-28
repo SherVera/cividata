@@ -1,6 +1,6 @@
 # Brief para generar logo con IA
 
-Documento de referencia para diseñar el logo de **Censo Infantil & Historia Clínica** con herramientas de IA (Midjourney, DALL·E, Ideogram, Adobe Firefly, Recraft, etc.) o con un diseñador humano.
+Documento de referencia para diseñar el logo de **Kids Alive** con herramientas de IA
 
 ---
 
@@ -8,10 +8,10 @@ Documento de referencia para diseñar el logo de **Censo Infantil & Historia Cl�
 
 | Campo | Valor |
 |-------|-------|
-| **Nombre público** | Censo Infantil & Historia Clínica |
-| **Nombre corto** | Censo Infantil |
-| **Etiqueta en cabecera** | CENSO & REGISTRO |
-| **Nombre del repositorio** | kids-alive (solo técnico; no usar en el logo salvo indicación explícita) |
+| **Nombre público** | Kids Alive |
+| **Nombre corto** | Kids Alive |
+| **Etiqueta en cabecera** | KIDS ALIVE |
+| **Nombre del repositorio** | kids-alive |
 | **Qué es** | App web móvil para censo pediátrico comunitario e historia clínica en campo |
 | **Quién la usa** | Personal médico, administradores y equipos de salud en campañas comunitarias |
 | **Idioma de la marca** | Español (Latinoamérica) |

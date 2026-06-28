@@ -1,3 +1,5 @@
+import { APP_NAME } from '../brand';
+
 interface AppLogoProps {
   className?: string;
   alt?: string;
@@ -6,7 +8,7 @@ interface AppLogoProps {
 /** Logo institucional servido desde /public/logo.svg */
 export default function AppLogo({
   className = 'h-8 w-auto',
-  alt = 'Censo Infantil',
+  alt = APP_NAME,
 }: AppLogoProps) {
   return (
     <img

@@ -16,6 +16,7 @@ import {
 import { motion } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 import AppLogo from './AppLogo';
+import { APP_NAME } from '../brand';
 
 const publicInfo = [
   {
@@ -25,20 +26,20 @@ const publicInfo = [
   },
   {
     title: 'Acceso con cuenta autorizada',
-    description: 'El registro de censo y las fichas clínicas se consultan solo después de iniciar sesión.',
+    description: 'El registro de pacientes y las fichas clínicas se consultan solo después de iniciar sesión.',
     icon: ShieldCheck,
   },
   {
     title: 'Tablero interno protegido',
-    description: 'Las estadísticas del censo pertenecen al área privada del sistema.',
+    description: 'Las estadísticas pertenecen al área privada del sistema.',
     icon: BarChart3,
   },
 ];
 
 const helpItems = [
   {
-    title: 'Registro de censo',
-    description: 'Permite organizar la información del censo pediátrico dentro del sistema protegido.',
+    title: 'Registro de pacientes',
+    description: 'Organiza la información pediátrica dentro del sistema protegido.',
     icon: ClipboardCheck,
   },
   {
@@ -103,7 +104,7 @@ export default function AuthScreen() {
       <header className="w-full max-w-7xl mx-auto flex items-center justify-between z-10">
         <div className="flex items-center gap-3">
           <AppLogo className="h-9 w-auto max-w-[160px] md:max-w-[200px]" />
-          <span className="font-sans font-bold text-slate-800 tracking-tight text-sm hidden sm:inline">CENSO &amp; REGISTRO</span>
+          <span className="font-sans font-bold text-slate-800 tracking-tight text-sm hidden sm:inline uppercase">{APP_NAME}</span>
         </div>
         <span className="text-xs bg-blue-50 text-blue-700 border border-blue-100 font-mono px-2.5 py-1 rounded-full flex items-center gap-1 font-medium">
           <Lock className="w-3.5 h-3.5" /> Privacidad primero
@@ -127,7 +128,7 @@ export default function AuthScreen() {
                 Información útil para cuidar mejor, sin exponer a los niños.
               </h1>
               <p className="max-w-2xl text-sm md:text-base text-slate-500 leading-relaxed">
-                Plataforma para gestionar censo pediátrico e historia clínica. Esta pantalla pública solo explica el propósito del sistema; la información de pacientes permanece dentro del acceso privado.
+                {APP_NAME} gestiona registro pediátrico e historia clínica. Esta pantalla pública solo explica el propósito del sistema; la información de pacientes permanece dentro del acceso privado.
               </p>
             </div>
           </motion.div>
@@ -193,7 +194,7 @@ export default function AuthScreen() {
               Acceso Seguro
             </h2>
             <p className="text-sm text-slate-500 mt-2 max-w-xs">
-              Ingrese sus credenciales para gestionar el censo y la historia clínica.
+              Ingrese sus credenciales para acceder a {APP_NAME}.
             </p>
           </div>
 
@@ -279,7 +280,7 @@ export default function AuthScreen() {
       <footer className="text-center z-10">
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 font-medium">
           <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-          <span>Sistema de Censo &amp; Registro &bull; Acceso seguro &bull; Sin datos críticos en pantalla pública</span>
+          <span>{APP_NAME} &bull; Acceso seguro &bull; Sin datos críticos en pantalla pública</span>
         </div>
       </footer>
     </div>

@@ -1,6 +1,6 @@
-# Censo Infantil & Historia Clínica
+# Kids Alive
 
-Aplicación web para **censo pediátrico comunitario** y **historia clínica**: registrar niños y niñas en campañas de salud, consultar fichas, dar seguimiento médico y visualizar estadísticas del censo. Pensada para equipos de campo con acceso controlado por roles.
+Aplicación web **Kids Alive** para **registro pediátrico comunitario** e **historia clínica**: registrar niños y niñas en campañas de salud, consultar fichas, dar seguimiento médico y visualizar estadísticas del censo. Pensada para equipos de campo con acceso controlado por roles.
 
 La interfaz principal está en `src/` (React + Vite + TypeScript). El frontend desplegado se publica en Vercel desde `dist`. Los archivos antiguos en `web/` y el servidor local en `local/` no forman parte del despliegue actual.
 

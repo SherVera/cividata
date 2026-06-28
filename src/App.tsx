@@ -25,6 +25,7 @@ import { supabase } from './lib/supabaseClient';
 import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
 import { listCollectionCenters } from './lib/collectionCentersApi';
 import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin } from './lib/authRoles';
+import { APP_NAME, APP_TAGLINE } from './brand';
 
 export default function App() {
   // Authentication via Supabase
@@ -253,7 +254,7 @@ export default function App() {
       showNotification('success', `Registro de ${savedPatient.nombres} actualizado correctamente.`);
     } else {
       setPatients(prev => [savedPatient, ...prev]);
-      showNotification('success', `Se ha registrado a ${savedPatient.nombres} en el censo.`);
+      showNotification('success', `Se ha registrado a ${savedPatient.nombres} en ${APP_NAME}.`);
     }
     setSelectedPatient(savedPatient);
     setCurrentView('details');
@@ -295,7 +296,7 @@ export default function App() {
     const dataStr = JSON.stringify(patients, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     
-    const exportFileDefaultName = `censo_backup_${new Date().toISOString().split('T')[0]}.json`;
+    const exportFileDefaultName = `kids_alive_backup_${new Date().toISOString().split('T')[0]}.json`;
     
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
@@ -324,7 +325,7 @@ export default function App() {
           await loadPatients();
           showNotification('success', `Importación completada: ${parsed.length} pacientes sincronizados.`);
         } else {
-          showNotification('error', 'El archivo no tiene el formato de censo válido.');
+          showNotification('error', 'El archivo no tiene el formato de respaldo de Kids Alive.');
         }
       } catch (err: any) {
         showNotification('error', 'Error al importar: ' + (err?.message || 'archivo JSON inválido.'));
@@ -485,12 +486,12 @@ export default function App() {
             </button>
             <div>
               <h1 className="font-sans font-bold text-slate-800 text-sm md:text-base leading-none tracking-tight flex items-center gap-1.5">
-                Censo &amp; Historia Clínica
+                {APP_NAME}
                 <span className="text-[10px] bg-blue-50 text-blue-700 font-bold border border-blue-100 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
                   v1.2
                 </span>
               </h1>
-              <span className="text-[10px] text-slate-400 block mt-1 font-medium">Registro de Pacientes &amp; Censo de Comunidad</span>
+              <span className="text-[10px] text-slate-400 block mt-1 font-medium">{APP_TAGLINE}</span>
             </div>
           </div>
 
@@ -587,7 +588,7 @@ export default function App() {
                     Gestión Integral de Pacientes Pediátricos
                   </h2>
                   <p className="text-xs text-slate-500 max-w-xl leading-relaxed">
-                    Registre censos escolares, controle esquemas de vacunación, realice el seguimiento pondoestatural de peso/talla y acceda rápidamente a la historia de consultas.
+                    Registre pacientes, controle esquemas de vacunación, realice el seguimiento pondoestatural de peso/talla y acceda rápidamente a la historia de consultas.
                   </p>
                 </div>
                 
@@ -1075,7 +1076,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 text-center space-y-2">
           <div className="flex items-center justify-center gap-1 text-[11px] text-slate-400 font-medium">
             <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-            <span>Censo y Archivos Médicos &bull; Registro de Pacientes</span>
+            <span>{APP_NAME} &bull; Registro de pacientes</span>
           </div>
           <p className="text-[10px] text-slate-300">
             Acceso protegido con autenticación segura. Los datos clínicos se gestionan de forma centralizada.
@@ -1166,7 +1167,7 @@ export default function App() {
               </div>
 
               <p className="text-xs text-slate-500 leading-relaxed">
-                Está a punto de eliminar de forma permanente la ficha de censo e historia clínica de:
+                Está a punto de eliminar de forma permanente la ficha de registro de:
                 <br />
                 <strong className="text-slate-800 font-bold block mt-1.5 text-sm">
                   {showDeleteConfirm.nombres} {showDeleteConfirm.apellidos}

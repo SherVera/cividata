@@ -4,13 +4,8 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Paciente } from '../types';
-import {
-  GRUPOS_ETARIOS,
-  grupoEtarioLabel,
-  grupoEtarioFromAge,
-  pacienteTieneEdad,
-} from '../types';
+import { Paciente, GRUPOS_ETARIOS, grupoEtarioLabel, grupoEtarioFromAge, pacienteTieneEdad } from '../types';
+import { APP_NAME } from '../brand';
 import { 
   User, MapPin, ShieldAlert, Heart, GraduationCap, 
   ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles, Warehouse, Plus, Stethoscope, Camera, X
@@ -594,7 +589,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xs bg-white/20 text-white font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full font-medium">
-              Censo / Registro
+              {APP_NAME}
             </span>
             {initialPatient && (
               <span className="text-xs bg-blue-500/20 text-blue-200 font-mono px-2.5 py-0.5 rounded-full font-medium">

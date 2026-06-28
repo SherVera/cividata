@@ -2,7 +2,7 @@
   "name": "kids-alive",
   "version": "1.0.0",
   "private": true,
-  "description": "Censo infantil e historia clínica con React, Vite y almacenamiento local",
+  "description": "Kids Alive: historia clínica y registro pediátrico con React, Vite y Supabase",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
