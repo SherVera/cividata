@@ -1,5 +1,6 @@
 -- Census / Registry — Postgres schema for Supabase.
 -- Paste ALL of this in: Supabase -> SQL Editor -> New query -> Run.
+-- Safe to re-run: uses IF NOT EXISTS / conditional migrations for existing databases.
 
 -- =========================================================
 -- Main table: citizens
@@ -281,29 +282,46 @@ create table if not exists public.patients (
 create index if not exists patients_created_at_idx on public.patients (created_at desc);
 create index if not exists patients_guardian_idx on public.patients (guardian_id);
 
--- Upgrade existing patients tables (create table if not exists skips new columns).
-alter table public.patients add column if not exists collection_center_id uuid references public.collection_centers(id) on delete set null;
-alter table public.patients add column if not exists registration_lat double precision;
-alter table public.patients add column if not exists registration_lng double precision;
-alter table public.patients add column if not exists registrant_lat double precision;
-alter table public.patients add column if not exists registrant_lng double precision;
+-- ---- patients upgrades (existing DBs: "create table if not exists" does NOT add new columns) ----
 
-create index if not exists patients_collection_center_idx on public.patients (collection_center_id);
-
--- Rename legacy column names if already applied
+-- 1) Rename legacy column names before adding registrant_* (avoids duplicate columns).
 do $$
 begin
   if exists (
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'patients' and column_name = 'registrar_lat'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'patients' and column_name = 'registrant_lat'
   ) then
     alter table public.patients rename column registrar_lat to registrant_lat;
   end if;
   if exists (
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'patients' and column_name = 'registrar_lng'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'patients' and column_name = 'registrant_lng'
   ) then
     alter table public.patients rename column registrar_lng to registrant_lng;
+  end if;
+end $$;
+
+-- 2) Add collection-center + geo columns (patient location + registrant device location).
+alter table public.patients add column if not exists collection_center_id uuid references public.collection_centers(id) on delete set null;
+alter table public.patients add column if not exists registration_lat double precision;
+alter table public.patients add column if not exists registration_lng double precision;
+alter table public.patients add column if not exists registrant_lat double precision;
+alter table public.patients add column if not exists registrant_lng double precision;
+
+-- 3) Index only after the column exists (safe when re-running on an old patients table).
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'patients' and column_name = 'collection_center_id'
+  ) then
+    create index if not exists patients_collection_center_idx on public.patients (collection_center_id);
   end if;
 end $$;
 
