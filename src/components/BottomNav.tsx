@@ -7,18 +7,25 @@ interface BottomNavProps {
   active: BottomNavKey;
   onSelect: (key: BottomNavKey) => void;
   showAdmin?: boolean;
+  showStats?: boolean;
 }
 
 const baseItems: { key: BottomNavKey; label: string; icon: typeof Plus }[] = [
   { key: 'listado', label: 'Listado', icon: ClipboardList },
-  { key: 'estadisticas', label: 'Inicio', icon: BarChart3 },
   { key: 'create', label: 'Registrar', icon: Plus },
 ];
 
+const statsItem = { key: 'estadisticas' as const, label: 'Estadísticas', icon: BarChart3 };
+
 const adminItem = { key: 'admin' as const, label: 'Admin', icon: ShieldCheck };
 
-export default function BottomNav({ active, onSelect, showAdmin = false }: BottomNavProps) {
-  const items = showAdmin ? [...baseItems, adminItem] : baseItems;
+export default function BottomNav({ active, onSelect, showAdmin = false, showStats = false }: BottomNavProps) {
+  const items = [
+    baseItems[0],
+    ...(showStats ? [statsItem] : []),
+    baseItems[1],
+    ...(showAdmin ? [adminItem] : []),
+  ];
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 md:hidden print:hidden">

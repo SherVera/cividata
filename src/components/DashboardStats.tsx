@@ -5,17 +5,116 @@
 
 import React from 'react';
 import { Paciente, CensoStats } from '../types';
+import type { AppRole } from '../lib/authRoles';
 import { 
-  Users, ShieldCheck, GraduationCap, Heart, Smile, Warehouse 
+  Users, ShieldCheck, GraduationCap, Heart, Smile, Warehouse,
+  CalendarDays, MapPinOff, Stethoscope, UserCog, UserX, Activity
 } from 'lucide-react';
-import { motion } from 'motion/react';
+
+export type SuperAdminDashboardStats = {
+  totalUsuarios: number;
+  personalMedico: number;
+  admins: number;
+  deshabilitadas: number;
+};
 
 interface DashboardStatsProps {
   patients: Paciente[];
   totalCentrosRegistrados: number;
+  role: AppRole;
+  superAdminStats?: SuperAdminDashboardStats | null;
 }
 
-export default function DashboardStats({ patients, totalCentrosRegistrados }: DashboardStatsProps) {
+function parseRegistroDate(dateStr: string): Date | null {
+  if (!dateStr) return null;
+  const d = new Date(`${dateStr}T12:00:00`);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function isToday(dateStr: string): boolean {
+  const d = parseRegistroDate(dateStr);
+  if (!d) return false;
+  const today = new Date();
+  return (
+    d.getFullYear() === today.getFullYear() &&
+    d.getMonth() === today.getMonth() &&
+    d.getDate() === today.getDate()
+  );
+}
+
+function isWithinDays(dateStr: string, days: number): boolean {
+  const d = parseRegistroDate(dateStr);
+  if (!d) return false;
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - days);
+  return d >= cutoff;
+}
+
+function RoleSection({
+  badge,
+  title,
+  description,
+  badgeClass,
+  children,
+}: {
+  badge: string;
+  title: string;
+  description: string;
+  badgeClass: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${badgeClass}`}>
+            {badge}
+          </span>
+          <h3 className="mt-2 text-sm font-bold text-slate-800">{title}</h3>
+          <p className="text-xs text-slate-500">{description}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  hint,
+  hintClass,
+  icon: Icon,
+  iconClass,
+}: {
+  label: string;
+  value: number;
+  hint: string;
+  hintClass: string;
+  icon: typeof Users;
+  iconClass: string;
+}) {
+  return (
+    <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+      <div className="space-y-1">
+        <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider block">{label}</span>
+        <span className="text-2xl md:text-3xl font-bold font-mono text-slate-800 block">{value}</span>
+        <span className={`text-[10px] font-semibold ${hintClass}`}>{hint}</span>
+      </div>
+      <div className={`p-3 rounded-lg ${iconClass}`}>
+        <Icon className="w-5 h-5 md:w-6 md:h-6" />
+      </div>
+    </div>
+  );
+}
+
+export default function DashboardStats({
+  patients,
+  totalCentrosRegistrados,
+  role,
+  superAdminStats,
+}: DashboardStatsProps) {
   
   // Calculate dynamic stats from patient list
   const computeStats = (list: Paciente[]): CensoStats => {
@@ -76,6 +175,13 @@ export default function DashboardStats({ patients, totalCentrosRegistrados }: Da
   };
 
   const stats = computeStats(patients);
+
+  const adminFieldStats = {
+    registrosHoy: patients.filter((p) => isToday(p.fechaRegistro)).length,
+    registrosUltimos7Dias: patients.filter((p) => isWithinDays(p.fechaRegistro, 7)).length,
+    sinCentro: patients.filter((p) => !p.centroAcopioId).length,
+    conHistoriaClinica: patients.filter((p) => p.notasClinicas.length > 0).length,
+  };
 
   const vaccinePercentage = stats.totalPacientes > 0 
     ? Math.round((stats.esquemaCompleto / stats.totalPacientes) * 100) 
@@ -351,6 +457,94 @@ export default function DashboardStats({ patients, totalCentrosRegistrados }: Da
         </div>
 
       </div>
+
+      {role === 'admin' && (
+        <RoleSection
+          badge="Solo admin"
+          title="Operación de campo"
+          description="Indicadores de captura y seguimiento del personal médico. No visibles para super admin."
+          badgeClass="border-blue-100 bg-blue-50 text-blue-700"
+        >
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              label="Registros hoy"
+              value={adminFieldStats.registrosHoy}
+              hint="Capturas del día"
+              hintClass="text-blue-600"
+              icon={CalendarDays}
+              iconClass="bg-blue-50 text-blue-600"
+            />
+            <MetricCard
+              label="Últimos 7 días"
+              value={adminFieldStats.registrosUltimos7Dias}
+              hint="Actividad reciente"
+              hintClass="text-indigo-600"
+              icon={Activity}
+              iconClass="bg-indigo-50 text-indigo-600"
+            />
+            <MetricCard
+              label="Sin centro"
+              value={adminFieldStats.sinCentro}
+              hint="Pendientes de asignar"
+              hintClass="text-amber-600"
+              icon={MapPinOff}
+              iconClass="bg-amber-50 text-amber-600"
+            />
+            <MetricCard
+              label="Con historia clínica"
+              value={adminFieldStats.conHistoriaClinica}
+              hint="Seguimiento médico iniciado"
+              hintClass="text-teal-600"
+              icon={Stethoscope}
+              iconClass="bg-teal-50 text-teal-600"
+            />
+          </div>
+        </RoleSection>
+      )}
+
+      {role === 'super_admin' && superAdminStats && (
+        <RoleSection
+          badge="Solo super admin"
+          title="Gobernanza del sistema"
+          description="Resumen de cuentas y accesos. No heredado por admin ni personal médico."
+          badgeClass="border-violet-100 bg-violet-50 text-violet-700"
+        >
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              label="Usuarios totales"
+              value={superAdminStats.totalUsuarios}
+              hint="Cuentas visibles"
+              hintClass="text-violet-600"
+              icon={Users}
+              iconClass="bg-violet-50 text-violet-600"
+            />
+            <MetricCard
+              label="Personal médico"
+              value={superAdminStats.personalMedico}
+              hint="Captura en campo"
+              hintClass="text-blue-600"
+              icon={Stethoscope}
+              iconClass="bg-blue-50 text-blue-600"
+            />
+            <MetricCard
+              label="Administradores"
+              value={superAdminStats.admins}
+              hint="Gestión operativa"
+              hintClass="text-indigo-600"
+              icon={UserCog}
+              iconClass="bg-indigo-50 text-indigo-600"
+            />
+            <MetricCard
+              label="Suspendidas"
+              value={superAdminStats.deshabilitadas}
+              hint="Cuentas deshabilitadas"
+              hintClass="text-rose-600"
+              icon={UserX}
+              iconClass="bg-rose-50 text-rose-600"
+            />
+          </div>
+        </RoleSection>
+      )}
 
     </div>
   );

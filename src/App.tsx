@@ -15,14 +15,14 @@ import { Paciente } from './types';
 import AuthScreen from './components/AuthScreen';
 import PatientForm from './components/PatientForm';
 import PatientDetails from './components/PatientDetails';
-import DashboardStats from './components/DashboardStats';
+import DashboardStats, { SuperAdminDashboardStats } from './components/DashboardStats';
 import AdminPanel from './components/AdminPanel';
 import CollectionCentersPanel from './components/CollectionCentersPanel';
 import BottomNav, { BottomNavKey } from './components/BottomNav';
 import { supabase } from './lib/supabaseClient';
 import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
 import { listCollectionCenters } from './lib/collectionCentersApi';
-import { defaultHomeTab, isAppAdmin, resolveAppRole } from './lib/authRoles';
+import { defaultHomeTab, isAppAdmin, resolveAppRole, canViewStatsDashboard, isSuperAdmin } from './lib/authRoles';
 
 export default function App() {
   // Authentication via Supabase
@@ -31,6 +31,7 @@ export default function App() {
   const isAuthenticated = !!session;
   const userRole = resolveAppRole(session?.user);
   const isAppAdministrator = isAppAdmin(userRole);
+  const canViewStats = canViewStatsDashboard(userRole);
   const [homeTabInitialized, setHomeTabInitialized] = useState(false);
 
   // Patient database state (source of truth: Supabase)
@@ -53,6 +54,7 @@ export default function App() {
   const [filterCentro, setFilterCentro] = useState<string>('All');
   const [collectionCenters, setCollectionCenters] = useState<{ id: string; name: string }[]>([]);
   const [totalCentrosRegistrados, setTotalCentrosRegistrados] = useState(0);
+  const [superAdminStats, setSuperAdminStats] = useState<SuperAdminDashboardStats | null>(null);
   const [sortBy, setSortBy] = useState<string>('recent'); // 'recent' | 'alphabetical' | 'age-asc' | 'age-desc'
   const [showFiltersMobile, setShowFiltersMobile] = useState<boolean>(false);
 
@@ -127,9 +129,17 @@ export default function App() {
     if (!isAuthenticated || isAppAdministrator) return;
     if (currentView === 'admin' || currentView === 'centros') {
       setCurrentView('list');
-      setActiveTab('estadisticas');
+      setActiveTab('listado');
     }
   }, [isAuthenticated, isAppAdministrator, currentView]);
+
+  // Tablero de estadísticas solo para admin y super admin
+  useEffect(() => {
+    if (!isAuthenticated || canViewStats) return;
+    if (activeTab === 'estadisticas') {
+      setActiveTab('listado');
+    }
+  }, [isAuthenticated, canViewStats, activeTab]);
 
   const refreshCollectionCenters = async () => {
     try {
@@ -156,6 +166,41 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
+
+  const loadSuperAdminStats = async () => {
+    if (!session?.access_token || !isSuperAdmin(userRole)) {
+      setSuperAdminStats(null);
+      return;
+    }
+    try {
+      const response = await fetch('/api/users', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await response.json();
+      if (!response.ok || !Array.isArray(data.users)) {
+        setSuperAdminStats(null);
+        return;
+      }
+      const users = data.users as { role: string; disabled: boolean }[];
+      setSuperAdminStats({
+        totalUsuarios: users.length,
+        personalMedico: users.filter((u) => u.role === 'personal_medico').length,
+        admins: users.filter((u) => u.role === 'admin').length,
+        deshabilitadas: users.filter((u) => u.disabled).length,
+      });
+    } catch {
+      setSuperAdminStats(null);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && isSuperAdmin(userRole)) {
+      loadSuperAdminStats();
+    } else {
+      setSuperAdminStats(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, userRole, session?.access_token]);
 
   // Sign out via Supabase
   const handleLockSession = async () => {
@@ -341,6 +386,7 @@ export default function App() {
 
   const handleBottomNav = (key: BottomNavKey) => {
     if (key === 'admin' && !isAppAdministrator) return;
+    if (key === 'estadisticas' && !canViewStats) return;
     if (key === 'create') {
       setCurrentView('create');
     } else if (key === 'admin') {
@@ -516,56 +562,30 @@ export default function App() {
                 </button>
               </div>
 
-              {/* View Toggle Bar (Listado vs Estadísticas) */}
+              {/* View Toggle Bar (Listado vs Estadísticas — solo admin / super admin) */}
+              {canViewStats && (
               <div className="flex items-center justify-between border-b border-slate-200 pb-1.5 gap-4">
                 <div className="flex bg-slate-100 p-1 rounded-lg">
-                  {isAppAdministrator ? (
-                    <>
-                      <button
-                        onClick={() => setActiveTab('listado')}
-                        className={`px-4 py-2 rounded-md font-semibold text-xs md:text-sm transition-all cursor-pointer ${
-                          activeTab === 'listado'
-                            ? 'bg-white text-slate-900 shadow-sm'
-                            : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                      >
-                        Listado de Pacientes ({filteredPatients.length})
-                      </button>
-                      <button
-                        onClick={() => setActiveTab('estadisticas')}
-                        className={`px-4 py-2 rounded-md font-semibold text-xs md:text-sm transition-all cursor-pointer ${
-                          activeTab === 'estadisticas'
-                            ? 'bg-white text-slate-900 shadow-sm'
-                            : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                      >
-                        Tablero de Estadísticas
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => setActiveTab('estadisticas')}
-                        className={`px-4 py-2 rounded-md font-semibold text-xs md:text-sm transition-all cursor-pointer ${
-                          activeTab === 'estadisticas'
-                            ? 'bg-white text-slate-900 shadow-sm'
-                            : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                      >
-                        Inicio / Estadísticas
-                      </button>
-                      <button
-                        onClick={() => setActiveTab('listado')}
-                        className={`px-4 py-2 rounded-md font-semibold text-xs md:text-sm transition-all cursor-pointer ${
-                          activeTab === 'listado'
-                            ? 'bg-white text-slate-900 shadow-sm'
-                            : 'text-slate-500 hover:text-slate-800'
-                        }`}
-                      >
-                        Mis registros ({filteredPatients.length})
-                      </button>
-                    </>
-                  )}
+                  <button
+                    onClick={() => setActiveTab('listado')}
+                    className={`px-4 py-2 rounded-md font-semibold text-xs md:text-sm transition-all cursor-pointer ${
+                      activeTab === 'listado'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Listado de Pacientes ({filteredPatients.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('estadisticas')}
+                    className={`px-4 py-2 rounded-md font-semibold text-xs md:text-sm transition-all cursor-pointer ${
+                      activeTab === 'estadisticas'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    Tablero de Estadísticas
+                  </button>
                 </div>
 
                 {/* Database Backup Actions (solo admin) */}
@@ -593,9 +613,10 @@ export default function App() {
                   </div>
                 )}
               </div>
+              )}
 
               {/* LISTADO DE PACIENTES TAB */}
-              {activeTab === 'listado' && (
+              {(activeTab === 'listado' || !canViewStats) && (
                 <div className="space-y-4">
                   
                   {/* Search, Filter, Sort Controls bar */}
@@ -886,8 +907,13 @@ export default function App() {
               )}
 
               {/* TABLERO DE ESTADÍSTICAS TAB */}
-              {activeTab === 'estadisticas' && (
-                <DashboardStats patients={patients} totalCentrosRegistrados={totalCentrosRegistrados} />
+              {activeTab === 'estadisticas' && canViewStats && (
+                <DashboardStats
+                  patients={patients}
+                  totalCentrosRegistrados={totalCentrosRegistrados}
+                  role={userRole}
+                  superAdminStats={superAdminStats}
+                />
               )}
 
             </motion.div>
@@ -1104,7 +1130,12 @@ export default function App() {
       </AnimatePresence>
 
       {/* APP-LIKE BOTTOM NAVIGATION (mobile) */}
-      <BottomNav active={bottomNavActive} onSelect={handleBottomNav} showAdmin={isAppAdministrator} />
+      <BottomNav
+        active={bottomNavActive}
+        onSelect={handleBottomNav}
+        showAdmin={isAppAdministrator}
+        showStats={canViewStats}
+      />
 
     </div>
   );
