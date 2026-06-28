@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    const { id, action, password, role } = req.body || {};
+    const { id, action, password, role, email, phone } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Falta id' });
     if (id === me.id) return res.status(400).json({ error: 'No puedes modificar tu propia cuenta aquí' });
     let attrs;
@@ -65,7 +65,12 @@ module.exports = async function handler(req, res) {
     else if (action === 'enable') attrs = { ban_duration: 'none' };
     else if (action === 'reset' && password) attrs = { password };
     else if (action === 'role' && role) attrs = { app_metadata: { role: rolNormalizado(role) } };
-    else return res.status(400).json({ error: 'Acción inválida' });
+    else if (action === 'contact') {
+      attrs = {};
+      if (email) { attrs.email = email; attrs.email_confirm = true; }
+      if (phone) { attrs.phone = phone; attrs.phone_confirm = true; }
+      if (!email && !phone) return res.status(400).json({ error: 'Falta correo o teléfono' });
+    } else return res.status(400).json({ error: 'Acción inválida' });
     const { error } = await admin.auth.admin.updateUserById(id, attrs);
     if (error) return res.status(400).json({ error: error.message });
     return res.json({ ok: true });

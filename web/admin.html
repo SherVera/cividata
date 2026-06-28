@@ -92,6 +92,19 @@
         `<td>${u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString('es') : '—'}</td>`;
       const td = document.createElement('td');
       td.append(
+        botón('✏️', 'Editar correo/teléfono', async () => {
+          const email = prompt('Nuevo correo (vacío = no cambiar)', u.email || '');
+          if (email === null) return;
+          const phone = prompt('Nuevo teléfono +E.164 (vacío = no cambiar)', u.phone || '');
+          if (phone === null) return;
+          const body = { id: u.id, action: 'contact' };
+          const e = email.trim(), p = phone.trim().replace(/[\s-]/g, '');
+          if (e && e !== u.email) body.email = e;
+          if (p && p !== u.phone) body.phone = p;
+          if (!body.email && !body.phone) return;
+          const r = await api('PATCH', body);
+          if (r.error) flash('Error: ' + r.error); else { flash('Contacto actualizado'); cargarUsuarios(); }
+        }),
         botón('🔑', 'Resetear contraseña', async () => {
           const p = prompt('Nueva contraseña para ' + identidad(u));
           if (p) { await api('PATCH', { id: u.id, action: 'reset', password: p }); flash('Contraseña actualizada'); }
