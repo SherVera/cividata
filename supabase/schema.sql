@@ -280,15 +280,17 @@ create table if not exists public.patients (
 
 create index if not exists patients_created_at_idx on public.patients (created_at desc);
 create index if not exists patients_guardian_idx on public.patients (guardian_id);
-create index if not exists patients_collection_center_idx on public.patients (collection_center_id);
 
+-- Upgrade existing patients tables (create table if not exists skips new columns).
 alter table public.patients add column if not exists collection_center_id uuid references public.collection_centers(id) on delete set null;
 alter table public.patients add column if not exists registration_lat double precision;
 alter table public.patients add column if not exists registration_lng double precision;
 alter table public.patients add column if not exists registrant_lat double precision;
 alter table public.patients add column if not exists registrant_lng double precision;
 
--- Rename legacy Spanish column names if already applied
+create index if not exists patients_collection_center_idx on public.patients (collection_center_id);
+
+-- Rename legacy column names if already applied
 do $$
 begin
   if exists (
