@@ -7,7 +7,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Plus, Search, SlidersHorizontal, Download, Upload, Lock, 
   ShieldCheck, Eye, Settings, Trash2, LogOut, Edit, Filter, Database, 
-  Activity, FileSpreadsheet, AlertTriangle, Heart, Sparkles, Menu, X, Check, RefreshCw, Warehouse
+  Activity, FileSpreadsheet, AlertTriangle, Heart, Sparkles, Menu, X, Check, RefreshCw, Warehouse, Home
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Session } from '@supabase/supabase-js';
@@ -491,6 +491,23 @@ export default function App() {
 
           {/* Quick Actions Header */}
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentView('list');
+                setActiveTab(defaultHomeTab(userRole));
+              }}
+              title="Inicio"
+              className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                currentView === 'list'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+              }`}
+            >
+              <Home className="w-4 h-4" />
+              <span className="text-xs font-semibold hidden md:inline">Home</span>
+            </button>
+
             {isAppAdministrator && (
               <>
                 <button
