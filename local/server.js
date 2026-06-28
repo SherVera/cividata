@@ -12,26 +12,26 @@ const PASSWORD = process.env.ACCESS_PASSWORD || 'kidsalive2026';
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'censo.db');
 
 const db = new DatabaseSync(DB_PATH);
-db.exec(`CREATE TABLE IF NOT EXISTS registros (
+db.exec(`CREATE TABLE IF NOT EXISTS citizens (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  nombres TEXT, apellidos TEXT, fecha_nacimiento TEXT,
-  edad_anios TEXT, edad_meses TEXT, genero TEXT, documento TEXT, nacionalidad TEXT,
-  direccion TEXT, ciudad TEXT, estado_provincia TEXT, punto_referencia TEXT,
-  rep_nombre TEXT, parentesco TEXT, rep_documento TEXT, rep_ocupacion TEXT,
-  tel_principal TEXT, tel_alternativo TEXT, correo TEXT,
-  estatura_cm TEXT, peso_kg TEXT, grupo_sanguineo TEXT,
-  alergia TEXT, alergia_detalle TEXT,
-  condicion_medica TEXT, condicion_detalle TEXT,
-  medicamento TEXT, medicamento_detalle TEXT, vacunacion TEXT,
-  asiste TEXT, nivel_educativo TEXT, grado TEXT, institucion TEXT,
+  first_name TEXT, last_name TEXT, birth_date TEXT,
+  age_years TEXT, age_months TEXT, gender TEXT, id_document TEXT, nationality TEXT,
+  address TEXT, city TEXT, state_province TEXT, landmark TEXT,
+  contact_name TEXT, relationship TEXT, contact_id_document TEXT, contact_occupation TEXT,
+  phone_primary TEXT, phone_alternate TEXT, email TEXT,
+  height_cm TEXT, weight_kg TEXT, blood_type TEXT,
+  allergies TEXT, allergies_detail TEXT,
+  medical_condition TEXT, medical_condition_detail TEXT,
+  medication TEXT, medication_detail TEXT, vaccination TEXT,
+  attends_school TEXT, education_level TEXT, grade TEXT, institution TEXT,
   geo_lat REAL, geo_lng REAL, geo_accuracy REAL,
   created_at TEXT, ip TEXT, user_agent TEXT
 )`);
 
-const CAMPOS = ['nombres','apellidos','fecha_nacimiento','edad_anios','edad_meses','genero','documento','nacionalidad','direccion','ciudad','estado_provincia','punto_referencia','rep_nombre','parentesco','rep_documento','rep_ocupacion','tel_principal','tel_alternativo','correo','estatura_cm','peso_kg','grupo_sanguineo','alergia','alergia_detalle','condicion_medica','condicion_detalle','medicamento','medicamento_detalle','vacunacion','asiste','nivel_educativo','grado','institucion','geo_lat','geo_lng','geo_accuracy'];
+const FIELDS = ['first_name','last_name','birth_date','age_years','age_months','gender','id_document','nationality','address','city','state_province','landmark','contact_name','relationship','contact_id_document','contact_occupation','phone_primary','phone_alternate','email','height_cm','weight_kg','blood_type','allergies','allergies_detail','medical_condition','medical_condition_detail','medication','medication_detail','vaccination','attends_school','education_level','grade','institution','geo_lat','geo_lng','geo_accuracy'];
 
 const insertStmt = db.prepare(
-  `INSERT INTO registros (${CAMPOS.join(',')},created_at,ip,user_agent) VALUES (${CAMPOS.map(()=>'?').join(',')},?,?,?)`
+  `INSERT INTO citizens (${FIELDS.join(',')},created_at,ip,user_agent) VALUES (${FIELDS.map(()=>'?').join(',')},?,?,?)`
 );
 
 // --- sesiones en memoria (un solo proceso). ponytail: Map basta; persistir si escala ---
@@ -106,13 +106,13 @@ const server = http.createServer(async (req, res) => {
   if (p === '/registros' && req.method === 'GET') return servePage(res, 'registros.html');
 
   if (p === '/api/registros' && req.method === 'GET') {
-    const rows = db.prepare('SELECT * FROM registros ORDER BY id DESC').all();
+    const rows = db.prepare('SELECT * FROM citizens ORDER BY id DESC').all();
     return send(res, 200, JSON.stringify(rows), 'application/json');
   }
 
   if (p === '/api/registros' && req.method === 'POST') {
     const data = JSON.parse((await readBody(req)) || '{}');
-    const vals = CAMPOS.map((k) => (data[k] === undefined || data[k] === '' ? null : data[k]));
+    const vals = FIELDS.map((k) => (data[k] === undefined || data[k] === '' ? null : data[k]));
     const ip = req.socket.remoteAddress || '';
     insertStmt.run(...vals, new Date().toISOString(), ip, req.headers['user-agent'] || '');
     return send(res, 200, '{"ok":true}', 'application/json');

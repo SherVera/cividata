@@ -28,11 +28,11 @@
 </main>
 <script>
   const COLS = [
-    ['id','#'],['created_at','Fecha registro'],['nombres','Nombres'],['apellidos','Apellidos'],
-    ['fecha_nacimiento','F. nac.'],['genero','Género'],['documento','Documento'],['nacionalidad','Nacionalidad'],
-    ['ciudad','Ciudad'],['estado_provincia','Estado'],['rep_nombre','Representante'],['parentesco','Parentesco'],
-    ['tel_principal','Teléfono'],['correo','Correo'],['vacunacion','Vacunas'],['nivel_educativo','Nivel'],
-    ['institucion','Institución'],['geo','Ubicación reg.']
+    ['id','#'],['created_at','Fecha registro'],['first_name','Nombres'],['last_name','Apellidos'],
+    ['birth_date','F. nac.'],['gender','Género'],['id_document','Documento'],['nationality','Nacionalidad'],
+    ['city','Ciudad'],['state_province','Estado'],['contact_name','Representante'],['relationship','Parentesco'],
+    ['phone_primary','Teléfono'],['email','Correo'],['vaccination','Vacunas'],['education_level','Nivel'],
+    ['institution','Institución'],['geo','Ubicación reg.']
   ];
   (async () => {
     const rows = await (await fetch('/api/registros')).json();

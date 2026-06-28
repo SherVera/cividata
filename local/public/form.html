@@ -38,63 +38,63 @@
     <fieldset>
       <legend>1. Datos Personales</legend>
       <div class="grid">
-        <div class="full"><label>Nombres completos</label><input name="nombres"></div>
-        <div class="full"><label>Apellidos completos</label><input name="apellidos"></div>
-        <div><label>Fecha de nacimiento</label><input type="date" name="fecha_nacimiento"></div>
-        <div><label>Documento de Identidad (C.I. / Pasaporte)</label><input name="documento"></div>
-        <div><label>Edad (años)</label><input type="number" min="0" name="edad_anios"></div>
-        <div><label>Edad (meses)</label><input type="number" min="0" max="11" name="edad_meses"></div>
-        <div><label>Género</label><select name="genero"><option value="">—</option><option>Masculino</option><option>Femenino</option><option>Otro</option></select></div>
-        <div><label>Nacionalidad</label><input name="nacionalidad"></div>
+        <div class="full"><label>Nombres completos</label><input name="first_name"></div>
+        <div class="full"><label>Apellidos completos</label><input name="last_name"></div>
+        <div><label>Fecha de nacimiento</label><input type="date" name="birth_date"></div>
+        <div><label>Documento de Identidad (C.I. / Pasaporte)</label><input name="id_document"></div>
+        <div><label>Edad (años)</label><input type="number" min="0" name="age_years"></div>
+        <div><label>Edad (meses)</label><input type="number" min="0" max="11" name="age_months"></div>
+        <div><label>Género</label><select name="gender"><option value="">—</option><option>Masculino</option><option>Femenino</option><option>Otro</option></select></div>
+        <div><label>Nacionalidad</label><input name="nationality"></div>
       </div>
     </fieldset>
 
     <fieldset>
       <legend>2. Vivienda y Ubicación</legend>
       <div class="grid">
-        <div class="full"><label>Dirección de residencia actual</label><input name="direccion"></div>
-        <div><label>Ciudad / Municipio</label><input name="ciudad"></div>
-        <div><label>Estado / Provincia</label><input name="estado_provincia"></div>
-        <div class="full"><label>Punto de referencia cercano</label><input name="punto_referencia"></div>
+        <div class="full"><label>Dirección de residencia actual</label><input name="address"></div>
+        <div><label>Ciudad / Municipio</label><input name="city"></div>
+        <div><label>Estado / Provincia</label><input name="state_province"></div>
+        <div class="full"><label>Punto de referencia cercano</label><input name="landmark"></div>
       </div>
     </fieldset>
 
     <fieldset>
       <legend>3. Representante / Contacto</legend>
       <div class="grid">
-        <div class="full"><label>Nombre del representante o contacto</label><input name="rep_nombre"></div>
-        <div><label>Parentesco / Relación</label><select name="parentesco"><option value="">—</option><option>Madre</option><option>Padre</option><option>Abuelo/a</option><option>Cónyuge</option><option>Tutor legal</option><option>Otro</option></select></div>
-        <div><label>Documento de Identidad</label><input name="rep_documento"></div>
-        <div><label>Ocupación / Profesión</label><input name="rep_ocupacion"></div>
-        <div><label>Teléfono principal</label><input name="tel_principal"></div>
-        <div><label>Teléfono alternativo (emergencias)</label><input name="tel_alternativo"></div>
-        <div><label>Correo electrónico</label><input type="email" name="correo"></div>
+        <div class="full"><label>Nombre del representante o contacto</label><input name="contact_name"></div>
+        <div><label>Parentesco / Relación</label><select name="relationship"><option value="">—</option><option>Madre</option><option>Padre</option><option>Abuelo/a</option><option>Cónyuge</option><option>Tutor legal</option><option>Otro</option></select></div>
+        <div><label>Documento de Identidad</label><input name="contact_id_document"></div>
+        <div><label>Ocupación / Profesión</label><input name="contact_occupation"></div>
+        <div><label>Teléfono principal</label><input name="phone_primary"></div>
+        <div><label>Teléfono alternativo (emergencias)</label><input name="phone_alternate"></div>
+        <div><label>Correo electrónico</label><input type="email" name="email"></div>
       </div>
     </fieldset>
 
     <fieldset>
       <legend>4. Salud y Nutrición</legend>
       <div class="grid">
-        <div><label>Estatura (cm)</label><input type="number" step="0.1" name="estatura_cm"></div>
-        <div><label>Peso (kg)</label><input type="number" step="0.1" name="peso_kg"></div>
-        <div><label>Grupo sanguíneo / Factor RH</label><input name="grupo_sanguineo"></div>
-        <div><label>Esquema de vacunación</label><select name="vacunacion"><option value="">—</option><option>Completo</option><option>Incompleto</option></select></div>
-        <div><label>¿Alergias conocidas?</label><div class="radios"><label><input type="radio" name="alergia" value="Sí">Sí</label><label><input type="radio" name="alergia" value="No">No</label></div></div>
-        <div><label>Especifique (medicamentos, alimentos…)</label><input name="alergia_detalle"></div>
-        <div><label>¿Condición médica / enfermedad crónica?</label><div class="radios"><label><input type="radio" name="condicion_medica" value="Sí">Sí</label><label><input type="radio" name="condicion_medica" value="No">No</label></div></div>
-        <div><label>Especifique</label><input name="condicion_detalle"></div>
-        <div><label>¿Toma medicamento regularmente?</label><div class="radios"><label><input type="radio" name="medicamento" value="Sí">Sí</label><label><input type="radio" name="medicamento" value="No">No</label></div></div>
-        <div><label>Especifique</label><input name="medicamento_detalle"></div>
+        <div><label>Estatura (cm)</label><input type="number" step="0.1" name="height_cm"></div>
+        <div><label>Peso (kg)</label><input type="number" step="0.1" name="weight_kg"></div>
+        <div><label>Grupo sanguíneo / Factor RH</label><input name="blood_type"></div>
+        <div><label>Esquema de vacunación</label><select name="vaccination"><option value="">—</option><option>Completo</option><option>Incompleto</option></select></div>
+        <div><label>¿Alergias conocidas?</label><div class="radios"><label><input type="radio" name="allergies" value="Sí">Sí</label><label><input type="radio" name="allergies" value="No">No</label></div></div>
+        <div><label>Especifique (medicamentos, alimentos…)</label><input name="allergies_detail"></div>
+        <div><label>¿Condición médica / enfermedad crónica?</label><div class="radios"><label><input type="radio" name="medical_condition" value="Sí">Sí</label><label><input type="radio" name="medical_condition" value="No">No</label></div></div>
+        <div><label>Especifique</label><input name="medical_condition_detail"></div>
+        <div><label>¿Toma medicamento regularmente?</label><div class="radios"><label><input type="radio" name="medication" value="Sí">Sí</label><label><input type="radio" name="medication" value="No">No</label></div></div>
+        <div><label>Especifique</label><input name="medication_detail"></div>
       </div>
     </fieldset>
 
     <fieldset>
       <legend>5. Datos Educativos</legend>
       <div class="grid">
-        <div><label>¿Asiste a institución educativa?</label><div class="radios"><label><input type="radio" name="asiste" value="Sí">Sí</label><label><input type="radio" name="asiste" value="No">No</label></div></div>
-        <div><label>Nivel educativo actual</label><select name="nivel_educativo"><option value="">—</option><option>Maternal</option><option>Preescolar / Inicial</option><option>Primaria</option><option>Secundaria</option><option>Universitario / Técnico</option><option>Ninguno</option></select></div>
-        <div><label>Grado o año que cursa</label><input name="grado"></div>
-        <div><label>Nombre de la institución</label><input name="institucion"></div>
+        <div><label>¿Asiste a institución educativa?</label><div class="radios"><label><input type="radio" name="attends_school" value="Sí">Sí</label><label><input type="radio" name="attends_school" value="No">No</label></div></div>
+        <div><label>Nivel educativo actual</label><select name="education_level"><option value="">—</option><option>Maternal</option><option>Preescolar / Inicial</option><option>Primaria</option><option>Secundaria</option><option>Universitario / Técnico</option><option>Ninguno</option></select></div>
+        <div><label>Grado o año que cursa</label><input name="grade"></div>
+        <div><label>Nombre de la institución</label><input name="institution"></div>
       </div>
     </fieldset>
 

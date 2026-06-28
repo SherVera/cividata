@@ -134,7 +134,7 @@
 
   async function cargarStats(users) {
     const mapU = Object.fromEntries(users.map((u) => [u.id, u.email || u.phone || u.id.slice(0, 8)]));
-    const { data: regs } = await sb.from('registros').select('created_by,created_at');
+    const { data: regs } = await sb.from('citizens').select('created_by,created_at');
     const total = regs ? regs.length : 0;
     const semana = (regs || []).filter((r) => Date.now() - new Date(r.created_at).getTime() < 7 * 864e5).length;
     document.getElementById('cards').innerHTML =
@@ -159,7 +159,7 @@
     if (error) { t.innerHTML = '<tr><td>Error: ' + esc(error.message) + '</td></tr>'; return; }
     t.innerHTML = '<tr><th>Fecha</th><th>Acción</th><th>Registro #</th><th>Usuario</th></tr>' +
       (data.length ? data.map((a) =>
-        `<tr><td>${new Date(a.created_at).toLocaleString('es')}</td><td>${esc(a.accion)}</td><td>${esc(a.registro_id)}</td><td>${esc(a.actor_email || a.actor)}</td></tr>`
+        `<tr><td>${new Date(a.created_at).toLocaleString('es')}</td><td>${esc(a.action)}</td><td>${esc(a.citizen_id)}</td><td>${esc(a.actor_email || a.actor)}</td></tr>`
       ).join('') : '<tr><td colspan="4">Sin operaciones aún</td></tr>');
   }
 

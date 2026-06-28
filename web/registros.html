@@ -31,18 +31,18 @@
 <script>
   const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
   const COLS = [
-    ['id','#'],['created_at','Fecha registro'],['nombres','Nombres'],['apellidos','Apellidos'],
-    ['fecha_nacimiento','F. nac.'],['genero','Género'],['documento','Documento'],['nacionalidad','Nacionalidad'],
-    ['ciudad','Ciudad'],['estado_provincia','Estado'],['rep_nombre','Representante'],['parentesco','Parentesco'],
-    ['tel_principal','Teléfono'],['correo','Correo'],['vacunacion','Vacunas'],['nivel_educativo','Nivel'],
-    ['institucion','Institución'],['geo','Ubicación reg.']
+    ['id','#'],['created_at','Fecha registro'],['first_name','Nombres'],['last_name','Apellidos'],
+    ['birth_date','F. nac.'],['gender','Género'],['id_document','Documento'],['nationality','Nacionalidad'],
+    ['city','Ciudad'],['state_province','Estado'],['contact_name','Representante'],['relationship','Parentesco'],
+    ['phone_primary','Teléfono'],['email','Correo'],['vaccination','Vacunas'],['education_level','Nivel'],
+    ['institution','Institución'],['geo','Ubicación reg.']
   ];
   (async () => {
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return location.replace('login.html');
     document.getElementById('out').onclick = async () => { await sb.auth.signOut(); location.replace('login.html'); };
 
-    const { data: rows, error } = await sb.from('registros').select('*').order('id', { ascending: false });
+    const { data: rows, error } = await sb.from('citizens').select('*').order('id', { ascending: false });
     if (error) { document.getElementById('count').textContent = 'Error: ' + error.message; return; }
     document.getElementById('count').textContent = rows.length + ' registro(s)';
     const t = document.getElementById('t');
