@@ -1170,145 +1170,8 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
           </motion.div>
         )}
 
-        {/* TAB 3: REPRESENTANTE LEGAL (solo niños/as) */}
-        {activeTab === 3 && requiereRepresentante && (
-          <motion.div
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="space-y-6"
-          >
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-              <ShieldAlert className="w-5 h-5 text-teal-600" />
-              <h3 className="font-sans font-bold text-slate-700 text-base">3. Representante / Contacto</h3>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Nombre Completo del Representante <span className="font-normal normal-case text-slate-400">(opcional)</span>
-                </label>
-                <input
-                  type="text"
-                  name="nombreRepresentante"
-                  list="catalog-guardians"
-                  value={formData.nombreRepresentante}
-                  onChange={handleInputChange}
-                  onBlur={(e) => handleGuardianLookup('nombreRepresentante', e.target.value)}
-                  placeholder="Ej. María Carolina Rodríguez"
-                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
-                    formErrors.nombreRepresentante ? 'border-red-300 ring-2 ring-red-500/10' : 'border-slate-200'
-                  }`}
-                />
-                <datalist id="catalog-guardians">
-                  {catalogs.guardians.map(g => (
-                    <option key={g.id} value={g.full_name}>
-                      {g.id_document ? `${g.full_name} — ${g.id_document}` : g.full_name}
-                    </option>
-                  ))}
-                </datalist>
-                <p className="text-[10px] text-slate-400 mt-1">Si el representante ya existe, selecciónelo para autocompletar sus datos.</p>
-                {formErrors.nombreRepresentante && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.nombreRepresentante}</p>}
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Parentesco / Relación
-                </label>
-                <select
-                  name="parentesco"
-                  value={formData.parentesco}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all cursor-pointer"
-                >
-                  <option value="Madre">Madre</option>
-                  <option value="Padre">Padre</option>
-                  <option value="Abuelo/a">Abuelo/a</option>
-                  <option value="Tutor legal">Tutor legal</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Documento de Identidad <span className="font-normal normal-case text-slate-400">(opcional)</span>
-                </label>
-                <input
-                  type="text"
-                  name="documentoRepresentante"
-                  value={formData.documentoRepresentante}
-                  onChange={handleInputChange}
-                  onBlur={(e) => handleGuardianLookup('documentoRepresentante', e.target.value)}
-                  placeholder="Ej. V-12.345.678"
-                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
-                    formErrors.documentoRepresentante ? 'border-red-300 ring-2 ring-red-500/10' : 'border-slate-200'
-                  }`}
-                />
-                {formErrors.documentoRepresentante && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.documentoRepresentante}</p>}
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Ocupación / Profesión
-                </label>
-                <input
-                  type="text"
-                  name="ocupacion"
-                  value={formData.ocupacion}
-                  onChange={handleInputChange}
-                  placeholder="Ej. Comerciante, Docente, Abogado"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Teléfono de Contacto Principal <span className="font-normal normal-case text-slate-400">(opcional)</span>
-                </label>
-                <input
-                  type="text"
-                  name="telefonoPrincipal"
-                  value={formData.telefonoPrincipal}
-                  onChange={handleInputChange}
-                  placeholder="Ej. +58 412-1234567"
-                  className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
-                    formErrors.telefonoPrincipal ? 'border-red-300 ring-2 ring-red-500/10' : 'border-slate-200'
-                  }`}
-                />
-                {formErrors.telefonoPrincipal && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.telefonoPrincipal}</p>}
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Teléfono Alternativo (Emergencias)
-                </label>
-                <input
-                  type="text"
-                  name="telefonoEmergencias"
-                  value={formData.telefonoEmergencias}
-                  onChange={handleInputChange}
-                  placeholder="Ej. +58 414-9876543"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Correo Electrónico
-                </label>
-                <input
-                  type="email"
-                  name="correo"
-                  value={formData.correo}
-                  onChange={handleInputChange}
-                  placeholder="Ej. representante@correo.com"
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all"
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* TAB 4: DATOS DE SALUD Y NUTRICIÓN */}
-        {activeTab === 4 && (
+        {/* TAB 3: DATOS ADICIONALES (opcionales con switch) */}
+        {activeTab === 3 && (
           <motion.div
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
@@ -1316,266 +1179,566 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
           >
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
               <Heart className="w-5 h-5 text-teal-600" />
-              <h3 className="font-sans font-bold text-slate-700 text-base">4. Datos de Salud y Nutrición</h3>
+              <h3 className="font-sans font-bold text-slate-700 text-base">Datos adicionales</h3>
             </div>
+            <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              <ChevronDown className="h-3 w-3" />
+              Active el switch en cada bloque que aplique al paciente
+            </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Estatura Actual (cm) <span className="font-normal normal-case text-slate-400">(opcional)</span>
-                </label>
-                <div className="relative rounded-xl">
-                  <input
-                    type="number"
-                    name="estatura"
-                    value={formData.estatura || ''}
-                    onChange={handleInputChange}
-                    placeholder="Ej. 110"
-                    min="1"
-                    className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
-                      formErrors.estatura ? 'border-red-300 ring-2 ring-red-500/10' : 'border-slate-200'
-                    }`}
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-xs text-slate-500 font-semibold uppercase">
-                    cm
+            <div className="space-y-3">
+              <OptionalSection
+                title="Foto del paciente"
+                hint="Cámara o galería · JPG, PNG o WebP"
+                enabled={optionalSections.foto}
+                onToggle={(v) => setSection('foto', v)}
+              >
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  {photoPreview ? (
+                    <img
+                      src={photoPreview}
+                      alt="Vista previa del paciente"
+                      className="h-24 w-24 rounded-2xl border border-slate-200 bg-white object-cover shadow-sm"
+                    />
+                  ) : (
+                    <PatientPhoto
+                      fotoPath={photoRemoved ? null : formData.fotoPath}
+                      alt="Paciente"
+                      className="h-24 w-24 rounded-2xl border border-slate-200 bg-white object-cover shadow-sm"
+                      fallbackClassName="flex h-24 w-24 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-300 shadow-sm"
+                    />
+                  )}
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-teal-600 px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-teal-700">
+                        <Camera className="h-3.5 w-3.5" />
+                        {photoPreview || formData.fotoPath ? 'Cambiar foto' : 'Subir foto'}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          capture="environment"
+                          className="hidden"
+                          onChange={handlePhotoSelect}
+                        />
+                      </label>
+                      {(photoPreview || formData.fotoPath) && !photoRemoved && (
+                        <button
+                          type="button"
+                          onClick={handlePhotoRemove}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-100"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          Quitar foto
+                        </button>
+                      )}
+                    </div>
+                    {photoError && <p className="text-xs font-medium text-red-500">{photoError}</p>}
                   </div>
                 </div>
-                {formErrors.estatura && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.estatura}</p>}
-              </div>
+              </OptionalSection>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Peso Actual (kg) <span className="font-normal normal-case text-slate-400">(opcional)</span>
-                </label>
-                <div className="relative rounded-xl">
-                  <input
-                    type="number"
-                    name="peso"
-                    value={formData.peso || ''}
-                    onChange={handleInputChange}
-                    placeholder="Ej. 19.5"
-                    step="0.1"
-                    min="0.1"
-                    className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
-                      formErrors.peso ? 'border-red-300 ring-2 ring-red-500/10' : 'border-slate-200'
-                    }`}
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-xs text-slate-500 font-semibold uppercase">
-                    kg
-                  </div>
-                </div>
-                {formErrors.peso && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.peso}</p>}
-              </div>
-
-              {isChildAgeProfile && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                    Esquema de Vacunación (Según edad)
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(['Completo', 'Incompleto'] as const).map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, esquemaVacunacion: v }))}
-                        className={`py-2 px-3 border rounded-xl font-medium text-xs transition-all text-center cursor-pointer ${
-                          formData.esquemaVacunacion === v 
-                            ? 'border-teal-600 bg-teal-50 text-teal-700 ring-2 ring-teal-500/10' 
-                            : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+              <OptionalSection
+                title="Peso y talla"
+                hint="Antropometría de la jornada"
+                enabled={optionalSections.antropometria}
+                onToggle={(v) => setSection('antropometria', v)}
+              >
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                      Estatura (cm)
+                    </label>
+                    <div className="relative rounded-xl">
+                      <input
+                        type="number"
+                        name="estatura"
+                        value={formData.estatura || ''}
+                        onChange={handleInputChange}
+                        placeholder="Ej. 110"
+                        min="1"
+                        className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 ${
+                          formErrors.estatura ? 'border-red-300' : 'border-slate-200'
                         }`}
-                      >
-                        {v}
-                      </button>
-                    ))}
+                      />
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 text-xs font-semibold uppercase text-slate-500">
+                        cm
+                      </div>
+                    </div>
+                    {formErrors.estatura && <p className="mt-1 text-xs font-medium text-red-500">{formErrors.estatura}</p>}
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                      Peso (kg)
+                    </label>
+                    <div className="relative rounded-xl">
+                      <input
+                        type="number"
+                        name="peso"
+                        value={formData.peso || ''}
+                        onChange={handleInputChange}
+                        placeholder="Ej. 19.5"
+                        step="0.1"
+                        min="0.1"
+                        className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 ${
+                          formErrors.peso ? 'border-red-300' : 'border-slate-200'
+                        }`}
+                      />
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 text-xs font-semibold uppercase text-slate-500">
+                        kg
+                      </div>
+                    </div>
+                    {formErrors.peso && <p className="mt-1 text-xs font-medium text-red-500">{formErrors.peso}</p>}
                   </div>
                 </div>
+              </OptionalSection>
+
+              {requiereRepresentante && (
+                <OptionalSection
+                  title="Representante / contacto"
+                  hint="Madre, padre o tutor"
+                  enabled={optionalSections.representante}
+                  onToggle={(v) => setSection('representante', v)}
+                >
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                        Nombre completo del representante
+                      </label>
+                      <input
+                        type="text"
+                        name="nombreRepresentante"
+                        list="catalog-guardians"
+                        value={formData.nombreRepresentante}
+                        onChange={handleInputChange}
+                        onBlur={(e) => handleGuardianLookup('nombreRepresentante', e.target.value)}
+                        placeholder="Ej. María Carolina Rodríguez"
+                        className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 ${
+                          formErrors.nombreRepresentante ? 'border-red-300' : 'border-slate-200'
+                        }`}
+                      />
+                      <datalist id="catalog-guardians">
+                        {catalogs.guardians.map((g) => (
+                          <option key={g.id} value={g.full_name}>
+                            {g.id_document ? `${g.full_name} — ${g.id_document}` : g.full_name}
+                          </option>
+                        ))}
+                      </datalist>
+                      <p className="mt-1 text-[10px] text-slate-400">
+                        Si el representante ya existe, selecciónelo para autocompletar sus datos.
+                      </p>
+                      {formErrors.nombreRepresentante && (
+                        <p className="mt-1 text-xs font-medium text-red-500">{formErrors.nombreRepresentante}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                        Parentesco / relación
+                      </label>
+                      <select
+                        name="parentesco"
+                        value={formData.parentesco}
+                        onChange={handleInputChange}
+                        className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
+                      >
+                        <option value="Madre">Madre</option>
+                        <option value="Padre">Padre</option>
+                        <option value="Abuelo/a">Abuelo/a</option>
+                        <option value="Tutor legal">Tutor legal</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                        Documento de identidad
+                      </label>
+                      <input
+                        type="text"
+                        name="documentoRepresentante"
+                        value={formData.documentoRepresentante}
+                        onChange={handleInputChange}
+                        onBlur={(e) => handleGuardianLookup('documentoRepresentante', e.target.value)}
+                        placeholder="Ej. V-12.345.678"
+                        className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 ${
+                          formErrors.documentoRepresentante ? 'border-red-300' : 'border-slate-200'
+                        }`}
+                      />
+                      {formErrors.documentoRepresentante && (
+                        <p className="mt-1 text-xs font-medium text-red-500">{formErrors.documentoRepresentante}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                        Ocupación / profesión
+                      </label>
+                      <input
+                        type="text"
+                        name="ocupacion"
+                        value={formData.ocupacion}
+                        onChange={handleInputChange}
+                        placeholder="Ej. Comerciante, Docente"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                        Teléfono principal
+                      </label>
+                      <input
+                        type="text"
+                        name="telefonoPrincipal"
+                        value={formData.telefonoPrincipal}
+                        onChange={handleInputChange}
+                        placeholder="Ej. +58 412-1234567"
+                        className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 ${
+                          formErrors.telefonoPrincipal ? 'border-red-300' : 'border-slate-200'
+                        }`}
+                      />
+                      {formErrors.telefonoPrincipal && (
+                        <p className="mt-1 text-xs font-medium text-red-500">{formErrors.telefonoPrincipal}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                        Teléfono de emergencias
+                      </label>
+                      <input
+                        type="text"
+                        name="telefonoEmergencias"
+                        value={formData.telefonoEmergencias}
+                        onChange={handleInputChange}
+                        placeholder="Ej. +58 414-9876543"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                        Correo electrónico
+                      </label>
+                      <input
+                        type="email"
+                        name="correo"
+                        value={formData.correo}
+                        onChange={handleInputChange}
+                        placeholder="Ej. representante@correo.com"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
+                      />
+                    </div>
+                  </div>
+                </OptionalSection>
               )}
 
-              {/* Toggle Alergias */}
-              <div className="md:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">¿Presenta alguna alergia conocida?</h4>
-                    <p className="text-[11px] text-slate-500">Medicamentos, alimentos, picaduras, polen, etc.</p>
+              <OptionalSection
+                title="Salud"
+                hint="Vacunación, alergias y medicamentos"
+                enabled={optionalSections.salud}
+                onToggle={(v) => setSection('salud', v)}
+              >
+                <div className="space-y-4">
+                  {isChildAgeProfile && (
+                    <div>
+                      <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                        Esquema de vacunación
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(['Completo', 'Incompleto'] as const).map((v) => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, esquemaVacunacion: v }))}
+                            className={`rounded-xl border px-3 py-2 text-xs font-bold transition-all ${
+                              formData.esquemaVacunacion === v
+                                ? 'border-teal-600 bg-teal-50 text-teal-700 ring-2 ring-teal-500/10'
+                                : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                            }`}
+                          >
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wide text-slate-700">
+                          ¿Presenta alguna alergia conocida?
+                        </h4>
+                        <p className="text-[11px] text-slate-500">Medicamentos, alimentos, picaduras, etc.</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, tieneAlergias: true }))}
+                          className={`rounded-lg border px-4 py-1.5 text-xs font-bold transition-colors ${
+                            formData.tieneAlergias
+                              ? 'border-red-500 bg-red-500 text-white'
+                              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          Sí
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFormData((prev) => ({ ...prev, tieneAlergias: false, alergiasEspecificas: '' }))
+                          }
+                          className={`rounded-lg border px-4 py-1.5 text-xs font-bold transition-colors ${
+                            !formData.tieneAlergias
+                              ? 'border-slate-600 bg-slate-600 text-white'
+                              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          No
+                        </button>
+                      </div>
+                    </div>
+                    {formData.tieneAlergias && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3">
+                        <CatalogMultiPicker
+                          id="alergiasEspecificas"
+                          label="Especifique alergias"
+                          placeholder="Buscar o escribir alergia…"
+                          hint="Busque en el catálogo o escriba una nueva y pulse Enter."
+                          options={catalogs.allergies}
+                          value={formData.alergiasEspecificas}
+                          onChange={(v) => {
+                            setFormData((prev) => ({ ...prev, alergiasEspecificas: v }));
+                            if (formErrors.alergiasEspecificas) {
+                              setFormErrors((prev) => {
+                                const copy = { ...prev };
+                                delete copy.alergiasEspecificas;
+                                return copy;
+                              });
+                            }
+                          }}
+                          error={formErrors.alergiasEspecificas}
+                        />
+                      </motion.div>
+                    )}
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, tieneAlergias: true }))}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                        formData.tieneAlergias 
-                          ? 'bg-red-500 border-red-500 text-white' 
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      Sí
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, tieneAlergias: false, alergiasEspecificas: "" }))}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                        !formData.tieneAlergias 
-                          ? 'bg-slate-600 border-slate-600 text-white' 
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      No
-                    </button>
+
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wide text-slate-700">
+                          ¿Sufre de alguna condición médica o enfermedad crónica?
+                        </h4>
+                        <p className="text-[11px] text-slate-500">Asma, diabetes, cardiopatías, etc.</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, tieneCondicionMedica: true }))}
+                          className={`rounded-lg border px-4 py-1.5 text-xs font-bold transition-colors ${
+                            formData.tieneCondicionMedica
+                              ? 'border-red-500 bg-red-500 text-white'
+                              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          Sí
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              tieneCondicionMedica: false,
+                              condicionMedicaEspecifica: '',
+                            }))
+                          }
+                          className={`rounded-lg border px-4 py-1.5 text-xs font-bold transition-colors ${
+                            !formData.tieneCondicionMedica
+                              ? 'border-slate-600 bg-slate-600 text-white'
+                              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          No
+                        </button>
+                      </div>
+                    </div>
+                    {formData.tieneCondicionMedica && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3">
+                        <CatalogMultiPicker
+                          id="condicionMedicaEspecifica"
+                          label="Especifique condición médica"
+                          placeholder="Buscar o escribir condición…"
+                          hint="Busque en el catálogo o escriba una nueva y pulse Enter."
+                          options={catalogs.conditions}
+                          value={formData.condicionMedicaEspecifica}
+                          onChange={(v) => {
+                            setFormData((prev) => ({ ...prev, condicionMedicaEspecifica: v }));
+                            if (formErrors.condicionMedicaEspecifica) {
+                              setFormErrors((prev) => {
+                                const copy = { ...prev };
+                                delete copy.condicionMedicaEspecifica;
+                                return copy;
+                              });
+                            }
+                          }}
+                          error={formErrors.condicionMedicaEspecifica}
+                        />
+                      </motion.div>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wide text-slate-700">
+                          ¿Toma algún medicamento de forma regular?
+                        </h4>
+                        <p className="text-[11px] text-slate-500">Inhaladores, anticonvulsivos, insulina, etc.</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFormData((prev) => ({ ...prev, tomaMedicamentos: true }))}
+                          className={`rounded-lg border px-4 py-1.5 text-xs font-bold transition-colors ${
+                            formData.tomaMedicamentos
+                              ? 'border-red-500 bg-red-500 text-white'
+                              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          Sí
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              tomaMedicamentos: false,
+                              medicamentosEspecificos: '',
+                            }))
+                          }
+                          className={`rounded-lg border px-4 py-1.5 text-xs font-bold transition-colors ${
+                            !formData.tomaMedicamentos
+                              ? 'border-slate-600 bg-slate-600 text-white'
+                              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          No
+                        </button>
+                      </div>
+                    </div>
+                    {formData.tomaMedicamentos && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3">
+                        <CatalogMultiPicker
+                          id="medicamentosEspecificos"
+                          label="Especifique medicamentos"
+                          placeholder="Buscar o escribir medicamento…"
+                          hint="Busque en el catálogo o escriba uno nuevo y pulse Enter."
+                          options={catalogs.medications}
+                          value={formData.medicamentosEspecificos}
+                          onChange={(v) => {
+                            setFormData((prev) => ({ ...prev, medicamentosEspecificos: v }));
+                            if (formErrors.medicamentosEspecificos) {
+                              setFormErrors((prev) => {
+                                const copy = { ...prev };
+                                delete copy.medicamentosEspecificos;
+                                return copy;
+                              });
+                            }
+                          }}
+                          error={formErrors.medicamentosEspecificos}
+                        />
+                      </motion.div>
+                    )}
                   </div>
                 </div>
+              </OptionalSection>
 
-                {formData.tieneAlergias && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-3"
-                  >
-                    <CatalogMultiPicker
-                      id="alergiasEspecificas"
-                      label="Especifique Alergias"
-                      placeholder="Buscar o escribir alergia…"
-                      hint="Busque en el catálogo o escriba una nueva y pulse Enter."
-                      options={catalogs.allergies}
-                      value={formData.alergiasEspecificas}
-                      onChange={(v) => {
-                        setFormData(prev => ({ ...prev, alergiasEspecificas: v }));
-                        if (formErrors.alergiasEspecificas) {
-                          setFormErrors(prev => {
-                            const copy = { ...prev };
-                            delete copy.alergiasEspecificas;
-                            return copy;
-                          });
+              {isChildAgeProfile && (
+                <OptionalSection
+                  title="Educación"
+                  hint="Escuela o guardería"
+                  enabled={optionalSections.educacion}
+                  onToggle={(v) => setSection('educacion', v)}
+                >
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, asisteEscuela: true }))}
+                        className={`rounded-xl border py-2 text-xs font-bold ${
+                          formData.asisteEscuela
+                            ? 'border-teal-600 bg-teal-50 text-teal-700'
+                            : 'border-slate-200 bg-slate-50 text-slate-600'
+                        }`}
+                      >
+                        Asiste a escuela
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            asisteEscuela: false,
+                            nivelEducativo: '',
+                            gradoAnio: '',
+                            nombreInstitucion: '',
+                          }))
                         }
-                      }}
-                      error={formErrors.alergiasEspecificas}
-                    />
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Toggle Condición Médica */}
-              <div className="md:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">¿Sufre de alguna condición médica o enfermedad crónica?</h4>
-                    <p className="text-[11px] text-slate-500">Asma, diabetes, cardiopatías, hipotiroidismo, etc.</p>
+                        className={`rounded-xl border py-2 text-xs font-bold ${
+                          !formData.asisteEscuela
+                            ? 'border-slate-400 bg-slate-100 text-slate-700'
+                            : 'border-slate-200 bg-slate-50 text-slate-600'
+                        }`}
+                      >
+                        No asiste
+                      </button>
+                    </div>
+                    {formData.asisteEscuela && (
+                      <>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                            Nivel educativo
+                          </label>
+                          <select
+                            name="nivelEducativo"
+                            value={formData.nivelEducativo}
+                            onChange={handleInputChange}
+                            className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
+                          >
+                            <option value="">Seleccione...</option>
+                            <option value="Maternal">Maternal</option>
+                            <option value="Preescolar / Inicial">Preescolar / Inicial</option>
+                            <option value="Primaria">Primaria</option>
+                            <option value="Secundaria">Secundaria</option>
+                          </select>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div>
+                            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                              Grado / año
+                            </label>
+                            <input
+                              type="text"
+                              name="gradoAnio"
+                              value={formData.gradoAnio}
+                              onChange={handleInputChange}
+                              placeholder="Ej. 3er grado"
+                              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                              Institución
+                            </label>
+                            <input
+                              type="text"
+                              name="nombreInstitucion"
+                              value={formData.nombreInstitucion}
+                              onChange={handleInputChange}
+                              placeholder="Nombre de la escuela"
+                              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, tieneCondicionMedica: true }))}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                        formData.tieneCondicionMedica 
-                          ? 'bg-red-500 border-red-500 text-white' 
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      Sí
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, tieneCondicionMedica: false, condicionMedicaEspecifica: "" }))}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                        !formData.tieneCondicionMedica 
-                          ? 'bg-slate-600 border-slate-600 text-white' 
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      No
-                    </button>
-                  </div>
-                </div>
-
-                {formData.tieneCondicionMedica && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-3"
-                  >
-                    <CatalogMultiPicker
-                      id="condicionMedicaEspecifica"
-                      label="Especifique Condición Médica"
-                      placeholder="Buscar o escribir condición…"
-                      hint="Busque en el catálogo o escriba una nueva y pulse Enter."
-                      options={catalogs.conditions}
-                      value={formData.condicionMedicaEspecifica}
-                      onChange={(v) => {
-                        setFormData(prev => ({ ...prev, condicionMedicaEspecifica: v }));
-                        if (formErrors.condicionMedicaEspecifica) {
-                          setFormErrors(prev => {
-                            const copy = { ...prev };
-                            delete copy.condicionMedicaEspecifica;
-                            return copy;
-                          });
-                        }
-                      }}
-                      error={formErrors.condicionMedicaEspecifica}
-                    />
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Toggle Medicamentos Regulares */}
-              <div className="md:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">¿Toma algún medicamento de forma regular?</h4>
-                    <p className="text-[11px] text-slate-500">Inhaladores, anticonvulsivos, insulina, etc.</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, tomaMedicamentos: true }))}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                        formData.tomaMedicamentos 
-                          ? 'bg-red-500 border-red-500 text-white' 
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      Sí
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, tomaMedicamentos: false, medicamentosEspecificos: "" }))}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                        !formData.tomaMedicamentos 
-                          ? 'bg-slate-600 border-slate-600 text-white' 
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      No
-                    </button>
-                  </div>
-                </div>
-
-                {formData.tomaMedicamentos && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="mt-3"
-                  >
-                    <CatalogMultiPicker
-                      id="medicamentosEspecificos"
-                      label="Especifique Medicamentos"
-                      placeholder="Buscar o escribir medicamento…"
-                      hint="Busque en el catálogo o escriba uno nuevo y pulse Enter."
-                      options={catalogs.medications}
-                      value={formData.medicamentosEspecificos}
-                      onChange={(v) => {
-                        setFormData(prev => ({ ...prev, medicamentosEspecificos: v }));
-                        if (formErrors.medicamentosEspecificos) {
-                          setFormErrors(prev => {
-                            const copy = { ...prev };
-                            delete copy.medicamentosEspecificos;
-                            return copy;
-                          });
-                        }
-                      }}
-                      error={formErrors.medicamentosEspecificos}
-                    />
-                  </motion.div>
-                )}
-              </div>
+                </OptionalSection>
+              )}
             </div>
           </motion.div>
         )}
