@@ -1,5 +1,5 @@
 {
-  "name": "kids-alive",
+  "name": "cividata",
   "version": "1.0.0",
   "private": true,
   "description": "Cividata: historia clínica y registro pediátrico con React, Vite y Supabase",
