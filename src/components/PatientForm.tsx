@@ -120,16 +120,29 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       .catch(() => {/* sin centros: el formulario sigue con texto */});
   }, []);
 
-  const activeCentersForMap = useMemo(
-    () =>
-      collectionCenters.map((c) => ({
-        id: c.id,
-        name: c.name,
-        lat: c.geo_lat,
-        lng: c.geo_lng,
-      })),
-    [collectionCenters]
-  );
+  const centersForMap = useMemo(() => {
+    const q = centerFilter.trim().toLowerCase();
+    let list = collectionCenters.filter((c) => c.active);
+    if (q) {
+      list = list.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          (c.address || '').toLowerCase().includes(q)
+      );
+    }
+    if (formData.centroAcopioId) {
+      const selected = collectionCenters.find((c) => c.id === formData.centroAcopioId);
+      if (selected && !list.some((c) => c.id === selected.id)) {
+        list = [selected, ...list];
+      }
+    }
+    return list.map((c) => ({
+      id: c.id,
+      name: c.name,
+      lat: c.geo_lat,
+      lng: c.geo_lng,
+    }));
+  }, [collectionCenters, centerFilter, formData.centroAcopioId]);
 
   const filteredCenters = useMemo(() => {
     const q = centerFilter.trim().toLowerCase();
@@ -717,7 +730,8 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
               <GeoMapPicker
                 lat={formData.registroLat}
                 lng={formData.registroLng}
-                centers={activeCentersForMap}
+                centers={centersForMap}
+                fitToCenters={centersForMap.length > 0}
                 onChange={handleRegistrationCoords}
                 height="240px"
               />

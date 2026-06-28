@@ -49,7 +49,7 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
-  const [notice, setNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [notice, setNotice] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
 
   const loadCenters = async () => {
     setLoading(true);
@@ -80,10 +80,8 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
 
   const mapCenters = useMemo(
     () =>
-      centers
-        .filter((c) => c.active)
-        .map((c) => ({ id: c.id, name: c.name, lat: c.geo_lat, lng: c.geo_lng })),
-    [centers]
+      filtered.map((c) => ({ id: c.id, name: c.name, lat: c.geo_lat, lng: c.geo_lng })),
+    [filtered]
   );
 
   const openCreate = () => {
@@ -124,7 +122,7 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
     }
     setSaving(true);
     try {
-      await saveCollectionCenter(
+      const { center, created } = await saveCollectionCenter(
         {
           name: form.name,
           address: form.address,
@@ -136,8 +134,12 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
       );
       setShowForm(false);
       setNotice({
-        type: 'success',
-        message: editingId ? 'Centro actualizado correctamente.' : 'Centro de acopio registrado.',
+        type: created ? 'success' : 'info',
+        message: created
+          ? editingId
+            ? 'Centro actualizado correctamente.'
+            : 'Centro de acopio registrado.'
+          : `Ya existe "${center.name}" en esa ubicación; no se creó un duplicado.`,
       });
       await loadCenters();
     } catch (err: any) {
@@ -202,6 +204,8 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
           className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${
             notice.type === 'success'
               ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+              : notice.type === 'info'
+                ? 'border-blue-100 bg-blue-50 text-blue-700'
               : 'border-rose-100 bg-rose-50 text-rose-700'
           }`}
         >
@@ -230,6 +234,18 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
             Mostrar inactivos
           </label>
         </div>
+
+        {mapCenters.length > 0 && (
+          <GeoMapPicker
+            lat={null}
+            lng={null}
+            readOnly
+            fitToCenters
+            centers={mapCenters}
+            height="200px"
+            className="mb-4"
+          />
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-sm font-semibold text-slate-400">
@@ -377,6 +393,7 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
                 lat={form.lat}
                 lng={form.lng}
                 centers={mapCenters.filter((c) => c.id !== editingId)}
+                fitToCenters={mapCenters.length > 0}
                 onChange={(coords) => setForm((prev) => ({ ...prev, lat: coords.lat, lng: coords.lng }))}
                 height="260px"
               />

@@ -11,6 +11,8 @@ export interface GeoMapPickerProps {
   height?: string;
   readOnly?: boolean;
   className?: string;
+  /** Pan/zoom map to show all centers (and marker when set). */
+  fitToCenters?: boolean;
 }
 
 const PROXIMITY_RADIUS_M = 800;
@@ -23,6 +25,7 @@ export default function GeoMapPicker({
   height = '280px',
   readOnly = false,
   className = '',
+  fitToCenters = false,
 }: GeoMapPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -88,7 +91,16 @@ export default function GeoMapPicker({
         .bindTooltip(center.name, { direction: 'top', offset: [0, -4] })
         .addTo(layerGroup);
     });
-  }, [centers]);
+
+    if (fitToCenters && centers.length > 0) {
+      const map = mapRef.current;
+      if (map) {
+        const bounds = L.latLngBounds(centers.map((c) => [c.lat, c.lng] as [number, number]));
+        if (lat != null && lng != null) bounds.extend([lat, lng]);
+        map.fitBounds(bounds, { padding: [28, 28], maxZoom: 15, animate: true });
+      }
+    }
+  }, [centers, fitToCenters, lat, lng]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -121,8 +133,10 @@ export default function GeoMapPicker({
     });
 
     markerRef.current = marker;
-    map.setView([lat, lng], map.getZoom(), { animate: true });
-  }, [lat, lng, readOnly]);
+    if (!fitToCenters) {
+      map.setView([lat, lng], map.getZoom(), { animate: true });
+    }
+  }, [lat, lng, readOnly, fitToCenters]);
 
   return (
     <div

@@ -20,6 +20,15 @@ export type CollectionCenterInput = {
   active?: boolean;
 };
 
+export type SaveCollectionCenterResult = {
+  center: CollectionCenter;
+  created: boolean;
+};
+
+function normalizeCenterName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 function ensureClient() {
   if (!supabase) {
     throw new Error('No se pudo iniciar la conexión segura.');
@@ -49,10 +58,36 @@ export async function listCollectionCenters(activeOnly = false): Promise<Collect
   return (data || []).map(normalizeRow);
 }
 
+export async function findCollectionCenterDuplicate(
+  input: CollectionCenterInput,
+  excludeId?: string
+): Promise<CollectionCenter | null> {
+  const client = ensureClient();
+  const normalized = normalizeCenterName(input.name);
+  if (!normalized) return null;
+
+  const coords = roundGeo(input.geo_lat, input.geo_lng);
+  const { data, error } = await client.from('collection_centers').select('*');
+  if (error) throw error;
+
+  for (const row of data || []) {
+    const center = normalizeRow(row);
+    if (excludeId && center.id === excludeId) continue;
+    if (normalizeCenterName(center.name) === normalized) return center;
+    if (
+      center.geo_lat === coords.lat &&
+      center.geo_lng === coords.lng
+    ) {
+      return center;
+    }
+  }
+  return null;
+}
+
 export async function saveCollectionCenter(
   input: CollectionCenterInput,
   id?: string
-): Promise<CollectionCenter> {
+): Promise<SaveCollectionCenterResult> {
   const client = ensureClient();
   const coords = roundGeo(input.geo_lat, input.geo_lng);
   const row = {
@@ -65,6 +100,10 @@ export async function saveCollectionCenter(
   };
 
   if (id) {
+    const duplicate = await findCollectionCenterDuplicate(input, id);
+    if (duplicate) {
+      throw new Error(`Ya existe un centro similar: "${duplicate.name}".`);
+    }
     const { data, error } = await client
       .from('collection_centers')
       .update(row)
@@ -72,12 +111,17 @@ export async function saveCollectionCenter(
       .select('*')
       .single();
     if (error) throw error;
-    return normalizeRow(data);
+    return { center: normalizeRow(data), created: false };
+  }
+
+  const duplicate = await findCollectionCenterDuplicate(input);
+  if (duplicate) {
+    return { center: duplicate, created: false };
   }
 
   const { data, error } = await client.from('collection_centers').insert(row).select('*').single();
   if (error) throw error;
-  return normalizeRow(data);
+  return { center: normalizeRow(data), created: true };
 }
 
 export async function setCollectionCenterActive(id: string, active: boolean): Promise<void> {
