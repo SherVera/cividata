@@ -10,48 +10,39 @@ import {
   Activity,
   BarChart3,
   ClipboardCheck,
-  HeartPulse,
   HelpCircle,
   Stethoscope,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 
-const publicStats = [
+const publicInfo = [
   {
-    label: 'Datos públicos de pacientes',
-    value: '0',
-    detail: 'La landing no muestra nombres, diagnósticos, teléfonos, direcciones ni documentos.',
+    title: 'Sin datos de pacientes',
+    description: 'Esta landing no muestra nombres, diagnósticos, teléfonos, direcciones ni documentos.',
     icon: Lock,
   },
   {
-    label: 'Acceso a expedientes',
-    value: '100%',
-    detail: 'La información sensible queda detrás de autenticación segura.',
+    title: 'Acceso con cuenta autorizada',
+    description: 'El registro de censo y las fichas clínicas se consultan solo después de iniciar sesión.',
     icon: ShieldCheck,
   },
   {
-    label: 'Indicadores permitidos',
-    value: 'Agregados',
-    detail: 'Las estadísticas clínicas reales se revisan solo dentro del sistema.',
+    title: 'Tablero interno protegido',
+    description: 'Las estadísticas del censo pertenecen al área privada del sistema.',
     icon: BarChart3,
   },
 ];
 
 const helpItems = [
   {
-    title: 'Censo comunitario organizado',
-    description: 'Centraliza registros pediátricos para seguimiento operativo sin publicar información personal.',
+    title: 'Registro de censo',
+    description: 'Permite organizar la información del censo pediátrico dentro del sistema protegido.',
     icon: ClipboardCheck,
   },
   {
-    title: 'Apoyo a jornadas de salud',
-    description: 'Ayuda a priorizar vacunación, escolaridad y controles de crecimiento desde el área protegida.',
-    icon: HeartPulse,
-  },
-  {
-    title: 'Historia clínica bajo resguardo',
-    description: 'Las notas, condiciones, alergias y datos familiares se consultan únicamente con sesión autorizada.',
+    title: 'Historia clínica',
+    description: 'Guarda datos médicos y notas de consulta para revisión interna autorizada.',
     icon: Stethoscope,
   },
 ];
@@ -137,15 +128,15 @@ export default function AuthScreen() {
                 Información útil para cuidar mejor, sin exponer a los niños.
               </h1>
               <p className="max-w-2xl text-sm md:text-base text-slate-500 leading-relaxed">
-                Plataforma para apoyar censos, jornadas médicas y seguimiento pediátrico. Esta pantalla pública solo muestra información general: los datos críticos de pacientes permanecen resguardados dentro del sistema.
+                Plataforma para gestionar censo pediátrico e historia clínica. Esta pantalla pública solo explica el propósito del sistema; la información de pacientes permanece dentro del acceso privado.
               </p>
             </div>
           </motion.div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {publicStats.map(({ label, value, detail, icon: Icon }, index) => (
+            {publicInfo.map(({ title, description, icon: Icon }, index) => (
               <motion.div
-                key={label}
+                key={title}
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 + index * 0.06, duration: 0.35 }}
@@ -153,19 +144,18 @@ export default function AuthScreen() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
-                    <strong className="mt-1 block font-mono text-2xl font-bold text-slate-900">{value}</strong>
+                    <h2 className="text-sm font-bold text-slate-800">{title}</h2>
                   </div>
                   <div className="rounded-xl bg-blue-50 p-2 text-blue-600">
                     <Icon className="w-4 h-4" />
                   </div>
                 </div>
-                <p className="mt-3 text-[11px] leading-relaxed text-slate-500">{detail}</p>
+                <p className="mt-3 text-[11px] leading-relaxed text-slate-500">{description}</p>
               </motion.div>
             ))}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {helpItems.map(({ title, description, icon: Icon }) => (
               <div key={title} className="rounded-2xl border border-slate-200 bg-white/70 p-4">
                 <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white">
