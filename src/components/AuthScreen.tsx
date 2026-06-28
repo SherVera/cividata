@@ -19,7 +19,14 @@ import {
 import { motion } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 import AppLogo from './AppLogo';
-import { APP_NAME, CONTACT_EMAIL, CONTACT_PHONE, contactEmailUrl, contactWhatsAppUrl } from '../brand';
+import {
+  APP_NAME,
+  CONTACT_EMAIL,
+  CONTACT_EMAIL_FORM_ENABLED,
+  CONTACT_PHONE,
+  contactWhatsAppUrl,
+} from '../brand';
+import { sendContactEmail } from '../lib/contactApi';
 
 const publicInfo = [
   {
@@ -61,11 +68,15 @@ export default function AuthScreen() {
   const [contactName, setContactName] = useState('');
   const [contactMessage, setContactMessage] = useState('');
   const [contactHoneypot, setContactHoneypot] = useState('');
+  const [contactSending, setContactSending] = useState(false);
+  const [contactFeedback, setContactFeedback] = useState('');
+  const [contactError, setContactError] = useState('');
 
   const whatsAppHref = contactWhatsAppUrl();
   const hasEmailContact = Boolean(CONTACT_EMAIL);
+  const showContactEmailForm = hasEmailContact && CONTACT_EMAIL_FORM_ENABLED;
   const hasWhatsAppContact = Boolean(whatsAppHref);
-  const hasContactForm = hasEmailContact || hasWhatsAppContact;
+  const hasContactForm = showContactEmailForm || hasWhatsAppContact;
   const canSendContact = contactMessage.trim().length >= 10;
 
   const buildContactLines = () =>
@@ -83,24 +94,41 @@ export default function AuthScreen() {
 
   const handleContactWhatsApp = (e: React.FormEvent) => {
     e.preventDefault();
-    if (contactHoneypot || !canSendContact || !hasWhatsAppContact) return;
+    if (contactHoneypot || !canSendContact || !hasWhatsAppContact || contactSending) return;
+
+    setContactError('');
+    setContactFeedback('');
 
     const url = contactWhatsAppUrl(buildContactLines().join('\n'));
     if (!url) return;
 
     window.open(url, '_blank', 'noopener,noreferrer');
     resetContactForm();
+    setContactFeedback('Se abrió WhatsApp con su mensaje.');
   };
 
-  const handleContactEmail = (e: React.FormEvent) => {
+  const handleContactEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (contactHoneypot || !canSendContact || !hasEmailContact) return;
+    if (contactHoneypot || !canSendContact || !showContactEmailForm || contactSending) return;
 
-    const url = contactEmailUrl({ name: contactName, message: contactMessage });
-    if (!url) return;
+    setContactSending(true);
+    setContactError('');
+    setContactFeedback('');
 
-    window.location.href = url;
-    resetContactForm();
+    try {
+      await sendContactEmail({
+        name: contactName,
+        message: contactMessage,
+        website: contactHoneypot,
+      });
+      resetContactForm();
+      setContactFeedback('Correo enviado. Le responderemos pronto.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'No se pudo enviar el correo.';
+      setContactError(message);
+    } finally {
+      setContactSending(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -233,7 +261,11 @@ export default function AuthScreen() {
                 <div className="min-w-0 flex-1">
                   <h2 className="text-sm font-bold text-slate-800">Consultas generales</h2>
                   <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                    Use este formulario para dudas sobre acceso o el sistema. Elija correo o WhatsApp. No envíe datos clínicos, contraseñas ni información de pacientes por estos canales.
+                    {showContactEmailForm && hasWhatsAppContact
+                      ? 'Use este formulario para dudas sobre acceso o el sistema. Elija correo o WhatsApp. No envíe datos clínicos, contraseñas ni información de pacientes por estos canales.'
+                      : hasWhatsAppContact
+                        ? 'Use este formulario para dudas sobre acceso o el sistema por WhatsApp. No envíe datos clínicos, contraseñas ni información de pacientes por este canal.'
+                        : 'Use este formulario para dudas sobre acceso o el sistema. No envíe datos clínicos, contraseñas ni información de pacientes por este canal.'}
                   </p>
                 </div>
               </div>
@@ -276,29 +308,29 @@ export default function AuthScreen() {
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all resize-none"
                   />
                 </div>
-                <div className={`grid gap-2 ${hasEmailContact && hasWhatsAppContact ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
-                  {hasEmailContact && (
+                <div className={`grid gap-2 ${showContactEmailForm && hasWhatsAppContact ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+                  {showContactEmailForm && (
                     <button
                       type="button"
                       onClick={handleContactEmail}
-                      disabled={!canSendContact}
+                      disabled={!canSendContact || contactSending}
                       className={`w-full py-2.5 px-4 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
-                        canSendContact
+                        canSendContact && !contactSending
                           ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
                           : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                       }`}
                     >
-                      <Mail className="w-4 h-4" />
-                      Enviar por correo
+                      {contactSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                      {contactSending ? 'Enviando…' : 'Enviar por correo'}
                     </button>
                   )}
                   {hasWhatsAppContact && (
                     <button
                       type="button"
                       onClick={handleContactWhatsApp}
-                      disabled={!canSendContact}
+                      disabled={!canSendContact || contactSending}
                       className={`w-full py-2.5 px-4 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
-                        canSendContact
+                        canSendContact && !contactSending
                           ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
                           : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                       }`}
@@ -308,6 +340,12 @@ export default function AuthScreen() {
                     </button>
                   )}
                 </div>
+                {contactFeedback && (
+                  <p className="text-xs font-medium text-emerald-700">{contactFeedback}</p>
+                )}
+                {contactError && (
+                  <p className="text-xs font-medium text-red-600">{contactError}</p>
+                )}
               </form>
             </div>
           ) : null}

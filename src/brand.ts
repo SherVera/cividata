@@ -9,26 +9,14 @@ export const APP_DESCRIPTION =
 export const CONTACT_EMAIL =
   (import.meta.env.VITE_CONTACT_EMAIL as string | undefined)?.trim() || '';
 
+/** Actívalo con VITE_ENABLE_CONTACT_EMAIL=true y SMTP en el servidor (opcional). */
+export const CONTACT_EMAIL_FORM_ENABLED =
+  import.meta.env.VITE_ENABLE_CONTACT_EMAIL === 'true' && Boolean(CONTACT_EMAIL);
+
 /** Formato E.164 o legible; vacío oculta WhatsApp en la landing. */
 export const CONTACT_PHONE: string = '+58 412-2027769';
 
 const contactPhoneDigits = () => CONTACT_PHONE.replace(/\D/g, '');
-
-/** Enlace mailto con asunto y cuerpo prellenados para el formulario de contacto. */
-export function contactEmailUrl(opts: { name?: string; message: string }): string {
-  if (!CONTACT_EMAIL) return '';
-  const subject = `Consulta sobre ${APP_NAME}`;
-  const bodyLines = [
-    opts.name?.trim() ? `Nombre: ${opts.name.trim()}` : null,
-    '',
-    opts.message.trim(),
-  ].filter((line): line is string => line !== null);
-  const params = new URLSearchParams({
-    subject,
-    body: bodyLines.join('\n'),
-  });
-  return `mailto:${CONTACT_EMAIL}?${params.toString()}`;
-}
 
 /** Enlace wa.me; con texto opcional prellenado para el formulario de contacto. */
 export function contactWhatsAppUrl(text?: string): string {
