@@ -97,6 +97,8 @@ export interface CensoStats {
     escolar: number; // 6-12 años
     adolescentes: number; // 13+ años
   };
+  /** Pacientes sin fecha ni edad tentativa. */
+  sinEdad: number;
 }
 
 export function puntoRegistroEtiqueta(

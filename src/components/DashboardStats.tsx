@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Paciente, CensoStats, grupoEtarioLabel, pacienteTieneEdad } from '../types';
 import type { AppRole } from '../lib/authRoles';
 import { 
@@ -134,6 +134,7 @@ export default function DashboardStats({
     let ninos = 0;
     let adultos = 0;
     let terceraEdad = 0;
+    let sinEdad = 0;
 
     list.forEach(p => {
       // Vaccine scheme
@@ -160,6 +161,8 @@ export default function DashboardStats({
         else if (age <= 5) preescolar++;
         else if (age <= 12) escolar++;
         else adolescentes++;
+      } else {
+        sinEdad++;
       }
     });
 
@@ -184,11 +187,33 @@ export default function DashboardStats({
         preescolar,
         escolar,
         adolescentes
-      }
+      },
+      sinEdad,
     };
   };
 
+  const [demographicsView, setDemographicsView] = useState<'edad' | 'clasificacion'>('clasificacion');
+
   const stats = computeStats(patients);
+
+  const conEdad =
+    stats.rangosEdad.bebes +
+    stats.rangosEdad.preescolar +
+    stats.rangosEdad.escolar +
+    stats.rangosEdad.adolescentes;
+
+  const ageBuckets = [
+    { val: stats.rangosEdad.bebes, label: '0-2 años', desc: 'Lactantes / bebés', color: 'bg-blue-600', ring: 'ring-blue-100' },
+    { val: stats.rangosEdad.preescolar, label: '3-5 años', desc: 'Preescolar', color: 'bg-blue-400', ring: 'ring-blue-50' },
+    { val: stats.rangosEdad.escolar, label: '6-12 años', desc: 'Escolares', color: 'bg-indigo-400', ring: 'ring-indigo-50' },
+    { val: stats.rangosEdad.adolescentes, label: '13+ años', desc: 'Adolescentes y mayores', color: 'bg-slate-500', ring: 'ring-slate-100' },
+  ] as const;
+
+  const classBuckets = [
+    { key: 'nino' as const, color: 'bg-teal-500', ring: 'ring-teal-100', text: 'text-teal-700' },
+    { key: 'adulto' as const, color: 'bg-blue-500', ring: 'ring-blue-100', text: 'text-blue-700' },
+    { key: 'tercera_edad' as const, color: 'bg-violet-500', ring: 'ring-violet-100', text: 'text-violet-700' },
+  ] as const;
 
   const adminFieldStats = {
     registrosHoy: patients.filter((p) => isToday(p.fechaRegistro)).length,
@@ -223,7 +248,7 @@ export default function DashboardStats({
             <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Censo</span>
             <span className="text-2xl md:text-3xl font-bold font-mono text-slate-800 block">{stats.totalPacientes}</span>
             <span className="text-[10px] text-blue-600 font-semibold flex items-center gap-0.5">
-              <Smile className="w-3.5 h-3.5" /> Niños registrados
+              <Smile className="w-3.5 h-3.5" /> Pacientes registrados
             </span>
           </div>
           <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
@@ -291,6 +316,106 @@ export default function DashboardStats({
 
       </div>
 
+      {/* Demografía: por edad o por clasificación */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-slate-800">Pacientes por edad o clasificación</h3>
+            <p className="text-xs text-slate-500">
+              Cantidad registrada según rangos de edad (exacta o tentativa) o según clasificación etaria asignada.
+            </p>
+          </div>
+          <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+            <button
+              type="button"
+              onClick={() => setDemographicsView('edad')}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                demographicsView === 'edad'
+                  ? 'bg-white text-blue-700 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Por edad
+            </button>
+            <button
+              type="button"
+              onClick={() => setDemographicsView('clasificacion')}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                demographicsView === 'clasificacion'
+                  ? 'bg-white text-blue-700 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Por clasificación
+            </button>
+          </div>
+        </div>
+
+        {demographicsView === 'edad' ? (
+          <>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {ageBuckets.map((bucket) => (
+                <div
+                  key={bucket.label}
+                  className={`rounded-2xl border border-slate-200 p-4 ring-4 ${bucket.ring}`}
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{bucket.label}</span>
+                  <div className="mt-1 font-mono text-3xl font-bold text-slate-800">{bucket.val}</div>
+                  <p className="mt-1 text-[11px] text-slate-500">{bucket.desc}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-4 text-xs text-slate-500">
+              <span>
+                <strong className="font-mono text-slate-700">{conEdad}</strong> con edad registrada
+              </span>
+              {stats.sinEdad > 0 && (
+                <span>
+                  <strong className="font-mono text-amber-700">{stats.sinEdad}</strong> sin edad ni fecha
+                </span>
+              )}
+              <span>
+                <strong className="font-mono text-slate-700">{stats.totalPacientes}</strong> total censo
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {classBuckets.map(({ key, color, ring, text }) => {
+                const val = stats.gruposEtarios[key];
+                const pct = stats.totalPacientes > 0 ? Math.round((val / stats.totalPacientes) * 100) : 0;
+                return (
+                  <div
+                    key={key}
+                    className={`rounded-2xl border border-slate-200 p-5 ring-4 ${ring}`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${text}`}>
+                          {grupoEtarioLabel(key)}
+                        </span>
+                        <div className="mt-1 font-mono text-3xl font-bold text-slate-800">{val}</div>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          {pct}% del censo · {val} paciente{val === 1 ? '' : 's'}
+                        </p>
+                      </div>
+                      <div className={`h-3 w-3 rounded-full ${color}`} />
+                    </div>
+                    <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
+                      <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-slate-500">
+              Incluye pacientes sin fecha exacta, clasificados manualmente como niño/a, adulto o tercera edad.
+            </p>
+          </>
+        )}
+      </div>
+
       {/* Visual Analytics Charts Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         
@@ -344,8 +469,8 @@ export default function DashboardStats({
         {/* Chart Card 2: Age Demographics Histogram */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
           <div>
-            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Distribución por Edades</h4>
-            <p className="text-[10px] text-slate-400">Segmentación por hitos de crecimiento.</p>
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Distribución por edad</h4>
+            <p className="text-[10px] text-slate-400">Rangos pediátricos según años registrados.</p>
           </div>
 
           {/* Custom SVG histogram */}
@@ -356,14 +481,8 @@ export default function DashboardStats({
             <div className="absolute inset-x-0 bottom-2/3 border-b border-dashed border-slate-100/50"></div>
 
             {/* Bars */}
-            {[
-              { val: stats.rangosEdad.bebes, label: "0-2a", desc: "Lactantes/Bebés", color: "bg-blue-600" },
-              { val: stats.rangosEdad.preescolar, label: "3-5a", desc: "Preescolar", color: "bg-blue-400" },
-              { val: stats.rangosEdad.escolar, label: "6-12a", desc: "Escolares", color: "bg-indigo-400" },
-              { val: stats.rangosEdad.adolescentes, label: "13a+", desc: "Adolescentes", color: "bg-slate-400" }
-            ].map((bar, idx) => {
-              // Find max val to get height ratio
-              const maxVal = Math.max(stats.rangosEdad.bebes, stats.rangosEdad.preescolar, stats.rangosEdad.escolar, stats.rangosEdad.adolescentes, 1);
+            {ageBuckets.map((bar, idx) => {
+              const maxVal = Math.max(...ageBuckets.map((b) => b.val), 1);
               const heightPct = (bar.val / maxVal) * 85; // cap at 85% for styling space
               
               return (
@@ -381,7 +500,7 @@ export default function DashboardStats({
                   
                   {/* Label */}
                   <span className="text-[9px] font-bold text-slate-500 font-mono mt-1.5">
-                    {bar.label}
+                    {bar.label.replace(' años', 'a')}
                   </span>
                 </div>
               );
@@ -389,30 +508,26 @@ export default function DashboardStats({
           </div>
 
           <div className="text-[9px] text-slate-400 text-center font-medium">
-            Solo pacientes con fecha exacta o edad tentativa registrada.
+            {conEdad} con edad · {stats.sinEdad > 0 ? `${stats.sinEdad} sin edad` : 'todos con edad'}
           </div>
         </div>
 
         {/* Chart Card 3: Clasificación etaria */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
           <div>
-            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Clasificación etaria</h4>
-            <p className="text-[10px] text-slate-400">Niño/a, adulto y tercera edad (incluye sin fecha exacta).</p>
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Por clasificación</h4>
+            <p className="text-[10px] text-slate-400">Niño/a, adulto y tercera edad.</p>
           </div>
 
           <div className="space-y-3">
-            {([
-              { key: 'nino' as const, color: 'bg-teal-500' },
-              { key: 'adulto' as const, color: 'bg-blue-500' },
-              { key: 'tercera_edad' as const, color: 'bg-violet-500' },
-            ]).map(({ key, color }) => {
+            {classBuckets.map(({ key, color }) => {
               const val = stats.gruposEtarios[key];
               const pct = stats.totalPacientes > 0 ? (val / stats.totalPacientes) * 100 : 0;
               return (
                 <div key={key} className="space-y-1">
                   <div className="flex justify-between text-[10px] font-bold text-slate-600">
                     <span>{grupoEtarioLabel(key)}</span>
-                    <span className="font-mono">{val}</span>
+                    <span className="font-mono">{val} pac.</span>
                   </div>
                   <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
                     <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
@@ -420,6 +535,9 @@ export default function DashboardStats({
                 </div>
               );
             })}
+          </div>
+          <div className="text-[9px] text-slate-400 text-center font-medium">
+            {stats.gruposEtarios.nino + stats.gruposEtarios.adulto + stats.gruposEtarios.tercera_edad} clasificados
           </div>
         </div>
 
