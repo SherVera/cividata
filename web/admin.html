@@ -4,32 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Panel Admin — Censo / Registro</title>
-<style>
-  *{box-sizing:border-box}
-  body{font-family:system-ui,sans-serif;background:#eef2f7;margin:0;color:#1e293b}
-  header{background:#0f172a;color:#fff;padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
-  header a{color:#fff;text-decoration:none;font-size:.9rem;cursor:pointer}
-  main{max-width:1000px;margin:1.2rem auto;padding:0 1rem}
-  h2{font-size:1.05rem;margin:1.4rem 0 .6rem}
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.8rem}
-  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1rem}
-  .card .n{font-size:1.8rem;font-weight:800;color:#2563eb}
-  .card .l{font-size:.8rem;color:#64748b}
-  table{border-collapse:collapse;width:100%;background:#fff;font-size:.85rem;border-radius:10px;overflow:hidden}
-  th,td{border:1px solid #e2e8f0;padding:.45rem .6rem;text-align:left}
-  th{background:#f1f5f9}
-  .wrap{overflow:auto;max-height:45vh}
-  form.new{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;align-items:end}
-  label{font-size:.78rem;font-weight:600;display:block;margin-bottom:.2rem}
-  input,select{width:100%;padding:.45rem;border:1px solid #cbd5e1;border-radius:8px;font-size:.9rem}
-  button{padding:.5rem .9rem;background:#2563eb;color:#fff;border:0;border-radius:8px;cursor:pointer;font-size:.85rem}
-  button.s{background:#475569;padding:.3rem .55rem;font-size:.78rem}
-  button.d{background:#dc2626}
-  .badge{font-size:.7rem;padding:.1rem .4rem;border-radius:6px;background:#e2e8f0}
-  .badge.admin{background:#fde68a}
-  .badge.off{background:#fecaca}
-  .msg{margin:.5rem 0;font-size:.85rem;min-height:1rem}
-</style>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2563eb">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -38,20 +12,55 @@
 <link rel="apple-touch-icon" href="/icon.svg">
 <link rel="icon" href="/icon.svg">
 <link rel="stylesheet" href="/app.css">
+<style>
+  /* La barra del admin usa el tono oscuro para diferenciarlo del resto. */
+  .appbar.admin { background: var(--slate-900); border-bottom-color: var(--slate-900); }
+  .appbar.admin .brand .title { color: #fff; }
+  .appbar.admin .brand .subtitle { color: #94a3b8; }
+  .appbar.admin .brand .logo { background: rgba(255,255,255,.12); }
+  .appbar.admin .appbar-actions a { color: #cbd5e1; }
+  .appbar.admin .appbar-actions a:hover { background: rgba(255,255,255,.1); color: #fff; }
+
+  h2.sec { font-size: 1rem; font-weight: 700; color: var(--slate-700); margin: 1.6rem 0 .7rem; display: flex; align-items: center; gap: .45rem; }
+  .table-wrap.compact { max-height: 46vh; }
+  form.new {
+    background: #fff; border: 1px solid var(--slate-200); border-radius: 16px;
+    box-shadow: var(--shadow-sm); padding: 1.1rem 1.2rem;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .8rem; align-items: end;
+  }
+  form.new > div { display: flex; flex-direction: column; }
+  form.new label {
+    font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--slate-500); margin-bottom: .35rem; display: block;
+  }
+</style>
 </head>
 <body>
-<header>
-  <strong>🛠️ Panel de Administración</strong>
-  <span><a href="index.html">➕ Registrar</a> &nbsp;·&nbsp; <a href="registros.html">📋 Registros</a> &nbsp;·&nbsp; <a id="out">Salir</a></span>
+<header class="appbar admin">
+  <div class="appbar-inner">
+    <div class="brand">
+      <span class="logo">🛠️</span>
+      <div>
+        <span class="title">Panel de Administración</span>
+        <span class="subtitle">Gestión del sistema</span>
+      </div>
+    </div>
+    <div class="appbar-actions">
+      <a href="index.html">➕ Registrar</a>
+      <a href="registros.html">📋 Registros</a>
+      <a id="out">↩ Salir</a>
+    </div>
+  </div>
 </header>
-<main>
-  <h2>Estadísticas</h2>
-  <div class="cards" id="cards"></div>
 
-  <h2>Registros por usuario</h2>
-  <div class="wrap"><table id="porUsuario"></table></div>
+<main class="container">
+  <h2 class="sec">📊 Estadísticas</h2>
+  <div class="metrics" id="cards"></div>
 
-  <h2>Gestión de usuarios</h2>
+  <h2 class="sec">👥 Registros por usuario</h2>
+  <div class="table-wrap compact"><table id="porUsuario"></table></div>
+
+  <h2 class="sec">🔐 Gestión de usuarios</h2>
   <p class="msg" id="msg"></p>
   <form class="new" id="newUser">
     <div><label>Correo (opcional)</label><input id="nEmail" type="email" placeholder="correo@ej.com"></div>
@@ -60,10 +69,10 @@
     <div><label>Rol</label><select id="nRole"><option value="registrador">Registrador</option><option value="admin">Admin</option></select></div>
     <div><button type="submit">＋ Crear usuario</button></div>
   </form>
-  <div class="wrap" style="margin-top:.8rem"><table id="usuarios"></table></div>
+  <div class="table-wrap compact" style="margin-top:.9rem"><table id="usuarios"></table></div>
 
-  <h2>Auditoría reciente (últimas 50 operaciones)</h2>
-  <div class="wrap"><table id="audit"></table></div>
+  <h2 class="sec">🧾 Auditoría reciente (últimas 50 operaciones)</h2>
+  <div class="table-wrap compact"><table id="audit"></table></div>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -172,7 +181,7 @@
       (filas.length ? filas.map(([id, n]) => `<tr><td>${esc(mapU[id] || id)}</td><td>${n}</td></tr>`).join('')
                     : '<tr><td colspan="2">Sin registros aún</td></tr>');
   }
-  const tarjeta = (n, l) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+  const tarjeta = (n, l) => `<div class="card metric"><div class="l">${l}</div><div class="n">${n}</div></div>`;
 
   async function cargarAudit() {
     const { data, error } = await sb.from('audit_log').select('*').order('id', { ascending: false }).limit(50);

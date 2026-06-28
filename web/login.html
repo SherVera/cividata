@@ -4,14 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Acceso — Censo / Registro</title>
-<style>
-  body{font-family:system-ui,sans-serif;background:#eef2f7;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0}
-  form{background:#fff;padding:2rem;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.08);width:300px}
-  h1{font-size:1.2rem;margin:0 0 1rem}
-  input{width:100%;padding:.6rem;margin:.4rem 0;border:1px solid #cbd5e1;border-radius:8px;box-sizing:border-box}
-  button{width:100%;padding:.6rem;background:#2563eb;color:#fff;border:0;border-radius:8px;font-size:1rem;cursor:pointer}
-  .err{color:#dc2626;font-size:.85rem;min-height:1rem}
-</style>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2563eb">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -20,15 +12,85 @@
 <link rel="apple-touch-icon" href="/icon.svg">
 <link rel="icon" href="/icon.svg">
 <link rel="stylesheet" href="/app.css">
+<style>
+  .lock-wrap {
+    min-height: 100vh; display: flex; flex-direction: column;
+    justify-content: space-between; align-items: center;
+    padding: 1.25rem; position: relative; overflow: hidden;
+  }
+  .blob { position: absolute; width: 24rem; height: 24rem; border-radius: 50%; filter: blur(80px); pointer-events: none; z-index: 0; }
+  .blob.a { top: 0; left: 0; background: rgba(37,99,235,.16); transform: translate(-50%,-50%); }
+  .blob.b { bottom: 0; right: 0; background: rgba(99,102,241,.16); transform: translate(50%,50%); }
+
+  .lock-top {
+    width: 100%; max-width: 28rem; display: flex; align-items: center; justify-content: space-between;
+    margin-top: .5rem; z-index: 1;
+  }
+  .lock-top .b { display: flex; align-items: center; gap: .55rem; }
+  .lock-top .b .logo { width: 34px; height: 34px; display: grid; place-items: center; background: var(--blue); color: #fff; border-radius: 10px; font-size: 1rem; }
+  .lock-top .b span { font-weight: 700; font-size: .82rem; letter-spacing: -.01em; }
+  .lock-top .secure {
+    display: inline-flex; align-items: center; gap: .35rem; font-family: var(--font-mono);
+    font-size: .68rem; font-weight: 600; background: var(--blue-50); color: var(--blue-700);
+    border: 1px solid var(--blue-100); border-radius: 999px; padding: .25rem .65rem;
+  }
+
+  .lock-card {
+    width: 100%; max-width: 28rem; z-index: 1;
+    background: #fff; border: 1px solid var(--slate-200); border-radius: 22px;
+    box-shadow: var(--shadow-xl); padding: 2rem 1.75rem;
+  }
+  .lock-icon {
+    width: 64px; height: 64px; margin: 0 auto 1.1rem; position: relative;
+    background: var(--blue); color: #fff; border-radius: 18px; display: grid; place-items: center;
+    font-size: 1.7rem; box-shadow: 0 12px 28px rgba(37,99,235,.18);
+  }
+  .lock-icon .dot { position: absolute; top: -4px; right: -4px; width: 15px; height: 15px; background: #fbbf24; border: 2px solid #fff; border-radius: 50%; }
+  .lock-card h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -.02em; text-align: center; margin: 0; color: var(--slate-800); }
+  .lock-card .lead { text-align: center; font-size: .85rem; color: var(--slate-500); margin: .55rem auto 0; max-width: 22rem; line-height: 1.5; }
+
+  #f { display: flex; flex-direction: column; gap: .9rem; margin-top: 1.5rem; }
+  .err { color: var(--rose-600); font-size: .8rem; font-weight: 500; min-height: 1rem; text-align: center; }
+  .err:not(:empty) { background: var(--rose-50); border: 1px solid #fecaca; border-radius: 11px; padding: .6rem; }
+
+  .lock-foot { text-align: center; z-index: 1; margin: 1rem 0 .25rem; }
+  .lock-foot span { font-size: .68rem; color: var(--slate-400); font-weight: 500; }
+</style>
 </head>
 <body>
-<form id="f">
-  <h1>📋 Censo / Registro — Acceso</h1>
-  <input type="text" id="identidad" placeholder="Correo o teléfono" autocomplete="username" autofocus required>
-  <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password" required>
-  <button type="submit">Entrar</button>
-  <p class="err" id="e"></p>
-</form>
+<div class="lock-wrap">
+  <div class="blob a"></div>
+  <div class="blob b"></div>
+
+  <div class="lock-top">
+    <div class="b"><span class="logo">🩺</span><span>CENSO PEDIÁTRICO</span></div>
+    <span class="secure">🔒 Enlace Seguro</span>
+  </div>
+
+  <div class="lock-card">
+    <div class="lock-icon">🔐<span class="dot"></span></div>
+    <h1>Control Clínico &amp; Censo Infantil</h1>
+    <p class="lead">Ingrese sus credenciales para gestionar las historias clínicas y el censo de pacientes.</p>
+
+    <form id="f">
+      <div class="field">
+        <label class="fld" for="identidad">Correo o teléfono</label>
+        <input type="text" id="identidad" placeholder="correo@ejemplo.com o +58…" autocomplete="username" autofocus required>
+      </div>
+      <div class="field">
+        <label class="fld" for="password">Contraseña</label>
+        <input type="password" id="password" placeholder="Ingrese su clave…" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn-block">🛡️ Acceder al Sistema</button>
+      <p class="err" id="e"></p>
+    </form>
+  </div>
+
+  <div class="lock-foot">
+    <span>🩺 Sistema de Censo Infantil &bull; Diseñado para Móviles &amp; Escritorio</span>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script>

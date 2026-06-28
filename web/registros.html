@@ -4,18 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Registros — Censo / Registro</title>
-<style>
-  body{font-family:system-ui,sans-serif;background:#eef2f7;margin:0;color:#1e293b}
-  header{background:#2563eb;color:#fff;padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
-  header a{color:#fff;text-decoration:none;font-size:.9rem;cursor:pointer}
-  main{padding:1rem}
-  table{border-collapse:collapse;width:100%;background:#fff;font-size:.82rem}
-  th,td{border:1px solid #e2e8f0;padding:.4rem .6rem;text-align:left;white-space:nowrap}
-  th{background:#f1f5f9;position:sticky;top:0}
-  .wrap{overflow:auto;max-height:80vh;border-radius:10px}
-  a.map{color:#2563eb}
-  .count{color:#475569;margin:.5rem 0}
-</style>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2563eb">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -26,14 +14,32 @@
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
-<header>
-  <strong>📋 Registros guardados</strong>
-  <span><span id="adminwrap" style="display:none"><a href="admin.html">🛠️ Admin</a> &nbsp;·&nbsp; </span><a href="index.html">➕ Nuevo registro</a> &nbsp;·&nbsp; <a href="estadisticas.html">📊 Estadísticas</a> &nbsp;·&nbsp; <a id="out">Salir</a></span>
+<header class="appbar">
+  <div class="appbar-inner">
+    <div class="brand">
+      <span class="logo">📋</span>
+      <div>
+        <span class="title">Registros guardados</span>
+        <span class="subtitle">Listado del censo</span>
+      </div>
+    </div>
+    <div class="appbar-actions">
+      <span id="adminwrap" style="display:none"><a href="admin.html">🛠️ Admin</a></span>
+      <a href="index.html">➕ Nuevo</a>
+      <a href="estadisticas.html">📊 Estadísticas</a>
+      <a id="out">↩ Salir</a>
+    </div>
+  </div>
 </header>
-<main>
-  <p class="count" id="count">Cargando…</p>
-  <div class="wrap"><table id="t"></table></div>
+
+<main class="container">
+  <div class="page-head">
+    <h2>Registros guardados</h2>
+    <p class="count" id="count">Cargando…</p>
+  </div>
+  <div class="table-wrap"><table id="t"></table></div>
 </main>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script>

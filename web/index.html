@@ -4,30 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Ficha de Registro / Censo</title>
-<style>
-  :root{--blue:#2563eb}
-  *{box-sizing:border-box}
-  body{font-family:system-ui,sans-serif;background:#eef2f7;margin:0;color:#1e293b}
-  header{background:var(--blue);color:#fff;padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
-  header a{color:#fff;text-decoration:none;font-size:.9rem;opacity:.9;cursor:pointer}
-  main{max-width:780px;margin:1.5rem auto;padding:0 1rem}
-  fieldset{background:#fff;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:1.2rem;padding:1.2rem}
-  legend{font-weight:700;color:var(--blue);padding:0 .4rem}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
-  label{display:block;font-size:.82rem;font-weight:600;margin-bottom:.2rem}
-  input,select{width:100%;padding:.5rem;border:1px solid #cbd5e1;border-radius:8px;font-size:.95rem}
-  .full{grid-column:1/-1}
-  .radios{display:flex;gap:1rem;flex-wrap:wrap;padding-top:.3rem}
-  .radios label{font-weight:400;display:flex;gap:.3rem;align-items:center;margin:0}
-  button{padding:.7rem 1.4rem;background:var(--blue);color:#fff;border:0;border-radius:8px;font-size:1rem;cursor:pointer}
-  .geo{font-size:.8rem;color:#64748b;margin:.5rem 0}
-  .ok{background:#dcfce7;color:#166534;padding:.8rem;border-radius:8px;margin-bottom:1rem;display:none}
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.6rem;margin-bottom:1.2rem}
-  .stat{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:.7rem;text-align:center}
-  .stat .n{font-size:1.5rem;font-weight:800;color:var(--blue)}
-  .stat .l{font-size:.72rem;color:#64748b}
-  @media(max-width:560px){.grid{grid-template-columns:1fr}}
-</style>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2563eb">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -38,83 +14,112 @@
 <link rel="stylesheet" href="/app.css">
 </head>
 <body>
-<header>
-  <strong>📋 Ficha de Registro / Censo</strong>
-  <span><span id="adminwrap" style="display:none"><a href="admin.html">🛠️ Admin</a> &nbsp;·&nbsp; </span><a href="estadisticas.html">📊 Estadísticas</a> &nbsp;·&nbsp; <a href="registros.html">📋 Ver registros</a> &nbsp;·&nbsp; <a id="out">Salir</a></span>
+<header class="appbar">
+  <div class="appbar-inner">
+    <div class="brand">
+      <span class="logo">📋</span>
+      <div>
+        <span class="title">Censo Infantil &amp; Historia Clínica <span class="tag">v1.2</span></span>
+        <span class="subtitle">Ficha de Registro / Censo</span>
+      </div>
+    </div>
+    <div class="appbar-actions">
+      <span id="adminwrap" style="display:none"><a href="admin.html">🛠️ Admin</a></span>
+      <a href="estadisticas.html">📊 Estadísticas</a>
+      <a href="registros.html">📋 Registros</a>
+      <a id="out">↩ Salir</a>
+    </div>
+  </div>
 </header>
-<main>
-  <div class="ok" id="ok">✅ Registro guardado correctamente.</div>
+
+<main class="container narrow">
+
+  <div class="hero">
+    <div>
+      <span class="eyebrow">Registro de Salud Comunitaria</span>
+      <h2>Gestión Integral de Pacientes Pediátricos</h2>
+      <p>Registre censos escolares, controle esquemas de vacunación y realice el seguimiento de peso/talla de cada niño o niña.</p>
+    </div>
+  </div>
+
+  <div class="alert" id="ok">✅ Registro guardado correctamente.</div>
   <div class="stats" id="stats"></div>
   <p class="geo" id="geo">📍 Ubicación: solicitando…</p>
+
   <form id="f">
 
-    <fieldset>
-      <legend>1. Datos Personales</legend>
+    <div class="section">
+      <div class="section-title"><span class="ico">👤</span> 1. Datos Personales</div>
       <div class="grid">
-        <div class="full"><label>Nombres completos</label><input name="first_name"></div>
-        <div class="full"><label>Apellidos completos</label><input name="last_name"></div>
-        <div><label>Fecha de nacimiento</label><input type="date" name="birth_date"></div>
-        <div><label>Documento de Identidad (C.I. / Pasaporte)</label><input name="id_document"></div>
-        <div><label>Edad (años)</label><input type="number" min="0" name="age_years"></div>
-        <div><label>Edad (meses)</label><input type="number" min="0" max="11" name="age_months"></div>
-        <div><label>Género</label><select name="gender"><option value="">—</option><option>Masculino</option><option>Femenino</option><option>Otro</option></select></div>
-        <div><label>Nacionalidad</label><input name="nationality"></div>
+        <div class="field full"><label>Nombres completos</label><input name="first_name"></div>
+        <div class="field full"><label>Apellidos completos</label><input name="last_name"></div>
+        <div class="field"><label>Fecha de nacimiento</label><input type="date" name="birth_date"></div>
+        <div class="field"><label>Documento de Identidad (C.I. / Pasaporte)</label><input name="id_document"></div>
+        <div class="field"><label>Edad (años)</label><input type="number" min="0" name="age_years"></div>
+        <div class="field"><label>Edad (meses)</label><input type="number" min="0" max="11" name="age_months"></div>
+        <div class="field"><label>Género</label><select name="gender"><option value="">—</option><option>Masculino</option><option>Femenino</option><option>Otro</option></select></div>
+        <div class="field"><label>Nacionalidad</label><input name="nationality"></div>
       </div>
-    </fieldset>
+    </div>
 
-    <fieldset>
-      <legend>2. Vivienda y Ubicación</legend>
+    <div class="section">
+      <div class="section-title"><span class="ico">🏠</span> 2. Vivienda y Ubicación</div>
       <div class="grid">
-        <div class="full"><label>Dirección de residencia actual</label><input name="address"></div>
-        <div><label>Ciudad / Municipio</label><input name="city"></div>
-        <div><label>Estado / Provincia</label><input name="state_province"></div>
-        <div class="full"><label>Punto de referencia cercano</label><input name="landmark"></div>
+        <div class="field full"><label>Dirección de residencia actual</label><input name="address"></div>
+        <div class="field"><label>Ciudad / Municipio</label><input name="city"></div>
+        <div class="field"><label>Estado / Provincia</label><input name="state_province"></div>
+        <div class="field full"><label>Punto de referencia cercano</label><input name="landmark"></div>
       </div>
-    </fieldset>
+    </div>
 
-    <fieldset>
-      <legend>3. Representante / Contacto</legend>
+    <div class="section">
+      <div class="section-title"><span class="ico">👪</span> 3. Representante / Contacto</div>
       <div class="grid">
-        <div class="full"><label>Nombre del representante o contacto</label><input name="contact_name"></div>
-        <div><label>Parentesco / Relación</label><select name="relationship"><option value="">—</option><option>Madre</option><option>Padre</option><option>Abuelo/a</option><option>Cónyuge</option><option>Tutor legal</option><option>Otro</option></select></div>
-        <div><label>Documento de Identidad</label><input name="contact_id_document"></div>
-        <div><label>Ocupación / Profesión</label><input name="contact_occupation"></div>
-        <div><label>Teléfono principal</label><input name="phone_primary"></div>
-        <div><label>Teléfono alternativo (emergencias)</label><input name="phone_alternate"></div>
-        <div><label>Correo electrónico</label><input type="email" name="email"></div>
+        <div class="field full"><label>Nombre del representante o contacto</label><input name="contact_name"></div>
+        <div class="field"><label>Parentesco / Relación</label><select name="relationship"><option value="">—</option><option>Madre</option><option>Padre</option><option>Abuelo/a</option><option>Cónyuge</option><option>Tutor legal</option><option>Otro</option></select></div>
+        <div class="field"><label>Documento de Identidad</label><input name="contact_id_document"></div>
+        <div class="field"><label>Ocupación / Profesión</label><input name="contact_occupation"></div>
+        <div class="field"><label>Teléfono principal</label><input name="phone_primary"></div>
+        <div class="field"><label>Teléfono alternativo (emergencias)</label><input name="phone_alternate"></div>
+        <div class="field"><label>Correo electrónico</label><input type="email" name="email"></div>
       </div>
-    </fieldset>
+    </div>
 
-    <fieldset>
-      <legend>4. Salud y Nutrición</legend>
+    <div class="section">
+      <div class="section-title"><span class="ico">🩺</span> 4. Salud y Nutrición</div>
       <div class="grid">
-        <div><label>Estatura (cm)</label><input type="number" step="0.1" name="height_cm"></div>
-        <div><label>Peso (kg)</label><input type="number" step="0.1" name="weight_kg"></div>
-        <div><label>Grupo sanguíneo / Factor RH</label><input name="blood_type"></div>
-        <div><label>Esquema de vacunación</label><select name="vaccination"><option value="">—</option><option>Completo</option><option>Incompleto</option></select></div>
-        <div><label>¿Alergias conocidas?</label><div class="radios"><label><input type="radio" name="allergies" value="Sí">Sí</label><label><input type="radio" name="allergies" value="No">No</label></div></div>
-        <div><label>Especifique (medicamentos, alimentos…)</label><input name="allergies_detail"></div>
-        <div><label>¿Condición médica / enfermedad crónica?</label><div class="radios"><label><input type="radio" name="medical_condition" value="Sí">Sí</label><label><input type="radio" name="medical_condition" value="No">No</label></div></div>
-        <div><label>Especifique</label><input name="medical_condition_detail"></div>
-        <div><label>¿Toma medicamento regularmente?</label><div class="radios"><label><input type="radio" name="medication" value="Sí">Sí</label><label><input type="radio" name="medication" value="No">No</label></div></div>
-        <div><label>Especifique</label><input name="medication_detail"></div>
+        <div class="field"><label>Estatura (cm)</label><input type="number" step="0.1" name="height_cm"></div>
+        <div class="field"><label>Peso (kg)</label><input type="number" step="0.1" name="weight_kg"></div>
+        <div class="field"><label>Grupo sanguíneo / Factor RH</label><input name="blood_type"></div>
+        <div class="field"><label>Esquema de vacunación</label><select name="vaccination"><option value="">—</option><option>Completo</option><option>Incompleto</option></select></div>
+        <div class="field"><label>¿Alergias conocidas?</label><div class="radios"><label><input type="radio" name="allergies" value="Sí">Sí</label><label><input type="radio" name="allergies" value="No">No</label></div></div>
+        <div class="field"><label>Especifique (medicamentos, alimentos…)</label><input name="allergies_detail"></div>
+        <div class="field"><label>¿Condición médica / enfermedad crónica?</label><div class="radios"><label><input type="radio" name="medical_condition" value="Sí">Sí</label><label><input type="radio" name="medical_condition" value="No">No</label></div></div>
+        <div class="field"><label>Especifique</label><input name="medical_condition_detail"></div>
+        <div class="field"><label>¿Toma medicamento regularmente?</label><div class="radios"><label><input type="radio" name="medication" value="Sí">Sí</label><label><input type="radio" name="medication" value="No">No</label></div></div>
+        <div class="field"><label>Especifique</label><input name="medication_detail"></div>
       </div>
-    </fieldset>
+    </div>
 
-    <fieldset>
-      <legend>5. Datos Educativos</legend>
+    <div class="section">
+      <div class="section-title"><span class="ico">🎓</span> 5. Datos Educativos</div>
       <div class="grid">
-        <div><label>¿Asiste a institución educativa?</label><div class="radios"><label><input type="radio" name="attends_school" value="Sí">Sí</label><label><input type="radio" name="attends_school" value="No">No</label></div></div>
-        <div><label>Nivel educativo actual</label><select name="education_level"><option value="">—</option><option>Maternal</option><option>Preescolar / Inicial</option><option>Primaria</option><option>Secundaria</option><option>Universitario / Técnico</option><option>Ninguno</option></select></div>
-        <div><label>Grado o año que cursa</label><input name="grade"></div>
-        <div><label>Nombre de la institución</label><input name="institution"></div>
+        <div class="field"><label>¿Asiste a institución educativa?</label><div class="radios"><label><input type="radio" name="attends_school" value="Sí">Sí</label><label><input type="radio" name="attends_school" value="No">No</label></div></div>
+        <div class="field"><label>Nivel educativo actual</label><select name="education_level"><option value="">—</option><option>Maternal</option><option>Preescolar / Inicial</option><option>Primaria</option><option>Secundaria</option><option>Universitario / Técnico</option><option>Ninguno</option></select></div>
+        <div class="field"><label>Grado o año que cursa</label><input name="grade"></div>
+        <div class="field"><label>Nombre de la institución</label><input name="institution"></div>
       </div>
-    </fieldset>
+    </div>
 
     <input type="hidden" name="geo_lat"><input type="hidden" name="geo_lng"><input type="hidden" name="geo_accuracy">
-    <button type="submit">💾 Guardar registro</button>
+    <button type="submit" class="btn-block">💾 Guardar registro</button>
   </form>
 </main>
+
+<footer class="appfoot">
+  <div class="line">🛡️ Censo de Inmunización y Archivos Médicos • Hospitalización Pediátrica</div>
+  <div class="sub">Los datos se almacenan de forma segura para máxima privacidad.</div>
+</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
@@ -160,7 +165,7 @@
     for (const [k, v] of Object.entries(raw)) row[k] = v === '' ? null : v;
     const { error } = await sb.from('citizens').insert(row);
     if (error) { alert('Error al guardar: ' + error.message); return; }
-    document.getElementById('ok').style.display = 'block';
+    document.getElementById('ok').style.display = 'flex';
     f.reset();
     window.scrollTo(0, 0);
   });

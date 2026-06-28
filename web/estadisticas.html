@@ -4,17 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Estadísticas — Censo / Registro</title>
-<style>
-  body{font-family:system-ui,sans-serif;background:#eef2f7;margin:0;color:#1e293b}
-  header{background:#2563eb;color:#fff;padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
-  header a{color:#fff;text-decoration:none;font-size:.9rem;cursor:pointer}
-  main{max-width:780px;margin:1.5rem auto;padding:0 1rem}
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem}
-  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1.2rem}
-  .card .n{font-size:2.2rem;font-weight:800;color:#2563eb}
-  .card .l{font-size:.85rem;color:#64748b;margin-top:.2rem}
-  .msg{color:#475569;margin:.5rem 0}
-</style>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#2563eb">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,21 +12,53 @@
 <link rel="apple-touch-icon" href="/icon.svg">
 <link rel="icon" href="/icon.svg">
 <link rel="stylesheet" href="/app.css">
+<style>
+  .metric { flex-direction: row; align-items: center; justify-content: space-between; }
+  .metric .ico { width: 48px; height: 48px; flex: none; display: grid; place-items: center; border-radius: 12px; font-size: 1.4rem; }
+  .metric .ico.blue { background: var(--blue-50); }
+  .metric .ico.green { background: var(--green-50); }
+  .metric .ico.indigo { background: #eef2ff; }
+  .metric .ico.rose { background: var(--rose-50); }
+</style>
 </head>
 <body>
-<header>
-  <strong>📊 Estadísticas generales</strong>
-  <span><span id="adminwrap" style="display:none"><a href="admin.html">🛠️ Admin</a> &nbsp;·&nbsp; </span><a href="index.html">➕ Registrar</a> &nbsp;·&nbsp; <a id="out">Salir</a></span>
+<header class="appbar">
+  <div class="appbar-inner">
+    <div class="brand">
+      <span class="logo">📊</span>
+      <div>
+        <span class="title">Estadísticas generales</span>
+        <span class="subtitle">Tablero del censo</span>
+      </div>
+    </div>
+    <div class="appbar-actions">
+      <span id="adminwrap" style="display:none"><a href="admin.html">🛠️ Admin</a></span>
+      <a href="index.html">➕ Registrar</a>
+      <a href="registros.html">📋 Registros</a>
+      <a id="out">↩ Salir</a>
+    </div>
+  </div>
 </header>
-<main>
+
+<main class="container narrow">
+  <div class="page-head">
+    <h2>Tablero de Estadísticas</h2>
+    <p>Resumen general de los registros del censo.</p>
+  </div>
   <p class="msg" id="msg">Cargando…</p>
-  <div class="cards" id="cards"></div>
+  <div class="metrics" id="cards"></div>
 </main>
+
+<footer class="appfoot">
+  <div class="line">🛡️ Censo de Inmunización y Archivos Médicos • Hospitalización Pediátrica</div>
+</footer>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script>
   const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
-  const card = (n, l) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+  const card = (n, l, icon = '📈', color = 'blue') =>
+    `<div class="metric"><div><div class="l">${l}</div><div class="n">${n}</div></div><div class="ico ${color}">${icon}</div></div>`;
   document.getElementById('out').onclick = async () => { await sb.auth.signOut(); location.replace('login.html'); };
 
   (async () => {
@@ -48,10 +69,10 @@
     if (error) { document.getElementById('msg').textContent = 'Error: ' + error.message; return; }
     document.getElementById('msg').textContent = '';
     document.getElementById('cards').innerHTML =
-      card(data.total, 'Registros totales') +
-      card(data.today, 'Hoy') +
-      card(data.last7, 'Últimos 7 días') +
-      card(data.mine, 'Mis registros');
+      card(data.total, 'Registros totales', '👥', 'blue') +
+      card(data.today, 'Hoy', '📅', 'green') +
+      card(data.last7, 'Últimos 7 días', '📈', 'indigo') +
+      card(data.mine, 'Mis registros', '🩺', 'rose');
   })();
 </script>
 <script src="/nav.js"></script>
