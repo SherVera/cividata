@@ -10,37 +10,27 @@ import {
   Activity, FileSpreadsheet, AlertTriangle, Heart, Sparkles, Menu, X, Check, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import type { Session } from '@supabase/supabase-js';
 import { Paciente } from './types';
 import { INITIAL_PACIENTES } from './mockData';
-import LockScreen from './components/LockScreen';
+import AuthScreen from './components/AuthScreen';
 import PatientForm from './components/PatientForm';
 import PatientDetails from './components/PatientDetails';
 import DashboardStats from './components/DashboardStats';
 import AdminPanel from './components/AdminPanel';
+import BottomNav, { BottomNavKey } from './components/BottomNav';
+import { supabase } from './lib/supabaseClient';
+import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
 
 export default function App() {
-  // Authentication states
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('censo_is_authenticated') === 'true';
-  });
-  
-  const [adminPassword, setAdminPassword] = useState<string>(() => {
-    const saved = localStorage.getItem('censo_admin_password_v1');
-    return saved || 'admin123';
-  });
+  // Authentication via Supabase
+  const [session, setSession] = useState<Session | null>(null);
+  const [authReady, setAuthReady] = useState<boolean>(false);
+  const isAuthenticated = !!session;
 
-  // Patient database state
-  const [patients, setPatients] = useState<Paciente[]>(() => {
-    const saved = localStorage.getItem('censo_pacientes_v1');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error("Error reading saved patients, loading mock data instead.", e);
-      }
-    }
-    return INITIAL_PACIENTES;
-  });
+  // Patient database state (source of truth: Supabase)
+  const [patients, setPatients] = useState<Paciente[]>([]);
+  const [patientsLoading, setPatientsLoading] = useState<boolean>(false);
 
   // Views state: 'list' | 'create' | 'edit' | 'details' | 'admin'
   const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'details' | 'admin'>('list');
@@ -68,15 +58,21 @@ export default function App() {
   // Hidden file input ref for JSON restore
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Save patients to localstorage automatically
+  // Sync Supabase auth session (login state managed by Supabase, no local password)
   useEffect(() => {
-    localStorage.setItem('censo_pacientes_v1', JSON.stringify(patients));
-  }, [patients]);
-
-  // Save password to localstorage automatically
-  useEffect(() => {
-    localStorage.setItem('censo_admin_password_v1', adminPassword);
-  }, [adminPassword]);
+    if (!supabase) {
+      setAuthReady(true);
+      return;
+    }
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthReady(true);
+    });
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+    });
+    return () => authListener.subscription.unsubscribe();
+  }, []);
 
   // Alert/Notification auto-clear
   useEffect(() => {
@@ -92,28 +88,48 @@ export default function App() {
     setNotification({ type, message });
   };
 
-  // Lock session helper
-  const handleLockSession = () => {
-    sessionStorage.removeItem('censo_is_authenticated');
-    setIsAuthenticated(false);
-    showNotification('info', 'Sesión cerrada de forma segura.');
+  // Load patients from Supabase
+  const loadPatients = async () => {
+    if (!supabase) return;
+    setPatientsLoading(true);
+    try {
+      setPatients(await listPatients());
+    } catch (err: any) {
+      showNotification('error', 'No se pudieron cargar los pacientes: ' + (err?.message || err));
+    } finally {
+      setPatientsLoading(false);
+    }
   };
 
-  const handleUnlock = () => {
-    sessionStorage.setItem('censo_is_authenticated', 'true');
-    setIsAuthenticated(true);
-    showNotification('success', 'Acceso concedido al sistema de censo.');
+  // Reload patients whenever the user becomes authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadPatients();
+    } else {
+      setPatients([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  // Sign out via Supabase
+  const handleLockSession = async () => {
+    await supabase?.auth.signOut();
   };
 
-  // Change Password logic
-  const handleSavePassword = (e: React.FormEvent) => {
+  // Change the signed-in user's password via Supabase
+  const handleSavePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPasswordInput.trim() || newPasswordInput.length < 4) {
-      setSettingsSuccess('La clave debe tener al menos 4 caracteres.');
+    if (!supabase) return;
+    if (!newPasswordInput.trim() || newPasswordInput.length < 6) {
+      setSettingsSuccess('La contraseña debe tener al menos 6 caracteres.');
       return;
     }
-    setAdminPassword(newPasswordInput);
-    setSettingsSuccess('¡Clave de seguridad actualizada con éxito!');
+    const { error } = await supabase.auth.updateUser({ password: newPasswordInput });
+    if (error) {
+      setSettingsSuccess('Error: ' + error.message);
+      return;
+    }
+    setSettingsSuccess('¡Contraseña actualizada con éxito!');
     setNewPasswordInput('');
     setTimeout(() => {
       setSettingsSuccess('');
@@ -121,14 +137,19 @@ export default function App() {
     }, 2000);
   };
 
-  // Patient CRUD operations
-  const handleSavePatient = (savedPatient: Paciente) => {
-    // If we were editing
-    if (currentView === 'edit') {
+  // Patient CRUD operations (persisted in Supabase)
+  const handleSavePatient = async (savedPatient: Paciente) => {
+    const wasEditing = currentView === 'edit';
+    try {
+      await savePatient(savedPatient);
+    } catch (err: any) {
+      showNotification('error', 'Error al guardar el registro: ' + (err?.message || err));
+      return;
+    }
+    if (wasEditing) {
       setPatients(prev => prev.map(p => p.id === savedPatient.id ? savedPatient : p));
       showNotification('success', `Registro de ${savedPatient.nombres} actualizado correctamente.`);
     } else {
-      // Creating new
       setPatients(prev => [savedPatient, ...prev]);
       showNotification('success', `Se ha registrado a ${savedPatient.nombres} en el censo.`);
     }
@@ -136,14 +157,27 @@ export default function App() {
     setCurrentView('details');
   };
 
-  const handleUpdatePatientDetails = (updatedPatient: Paciente) => {
+  const handleUpdatePatientDetails = async (updatedPatient: Paciente) => {
+    try {
+      await savePatient(updatedPatient);
+    } catch (err: any) {
+      showNotification('error', 'Error al guardar la evolución: ' + (err?.message || err));
+      return;
+    }
     setPatients(prev => prev.map(p => p.id === updatedPatient.id ? updatedPatient : p));
     setSelectedPatient(updatedPatient);
     showNotification('success', 'Evolución clínica y nota de consulta registradas con éxito.');
   };
 
-  const handleDeletePatient = (id: string) => {
+  const handleDeletePatient = async (id: string) => {
     const p = patients.find(patient => patient.id === id);
+    try {
+      await deletePatient(id);
+    } catch (err: any) {
+      showNotification('error', 'Error al eliminar el registro: ' + (err?.message || err));
+      setShowDeleteConfirm(null);
+      return;
+    }
     if (p) {
       setPatients(prev => prev.filter(patient => patient.id !== id));
       showNotification('error', `Se eliminó el registro de ${p.nombres} ${p.apellidos}.`);
@@ -159,7 +193,7 @@ export default function App() {
     const dataStr = JSON.stringify(patients, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     
-    const exportFileDefaultName = `censo_infantil_backup_${new Date().toISOString().split('T')[0]}.json`;
+    const exportFileDefaultName = `censo_backup_${new Date().toISOString().split('T')[0]}.json`;
     
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
@@ -168,35 +202,41 @@ export default function App() {
     showNotification('success', 'Copia de seguridad (JSON) descargada con éxito.');
   };
 
-  // Import / Restore database from JSON
+  // Import patients from JSON into Supabase (merge / upsert by id)
   const handleImportDatabase = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileReader = new FileReader();
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     fileReader.readAsText(files[0], "UTF-8");
-    fileReader.onload = (event) => {
+    fileReader.onload = async (event) => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
         if (Array.isArray(parsed) && parsed.length > 0 && 'nombres' in parsed[0]) {
-          setPatients(parsed);
-          showNotification('success', `Base de datos restaurada: ${parsed.length} pacientes cargados.`);
+          await bulkUpsertPatients(parsed as Paciente[]);
+          await loadPatients();
+          showNotification('success', `Importación completada: ${parsed.length} pacientes sincronizados.`);
         } else {
-          showNotification('error', 'El archivo no tiene el formato de censo infantil válido.');
+          showNotification('error', 'El archivo no tiene el formato de censo válido.');
         }
-      } catch (err) {
-        showNotification('error', 'Error al leer el archivo. Asegúrese de que es un archivo JSON válido.');
+      } catch (err: any) {
+        showNotification('error', 'Error al importar: ' + (err?.message || 'archivo JSON inválido.'));
       }
     };
     // reset input
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Reset database to initial mock data
-  const handleResetDatabase = () => {
-    if (window.confirm('¿Está seguro de que desea restaurar la base de datos a los datos de prueba iniciales? Se perderán los cambios actuales.')) {
-      setPatients(INITIAL_PACIENTES);
-      showNotification('info', 'Base de datos restaurada a los perfiles de prueba.');
+  // Load demo records into Supabase (upsert, does not delete existing data)
+  const handleResetDatabase = async () => {
+    if (window.confirm('¿Desea cargar los pacientes de demostración? Se agregarán/actualizarán en la base de datos compartida.')) {
+      try {
+        await bulkUpsertPatients(INITIAL_PACIENTES);
+        await loadPatients();
+        showNotification('info', 'Pacientes de demostración cargados en la base de datos.');
+      } catch (err: any) {
+        showNotification('error', 'Error al cargar demos: ' + (err?.message || err));
+      }
     }
   };
 
@@ -251,9 +291,39 @@ export default function App() {
     });
   }, [patients, searchQuery, filterGender, filterVacuna, filterEscuela, filterAgeRange, sortBy]);
 
-  // Unlock block
+  // Bottom navigation active state (app-like mobile tab bar)
+  const bottomNavActive: BottomNavKey =
+    currentView === 'admin'
+      ? 'admin'
+      : currentView === 'create' || currentView === 'edit'
+        ? 'create'
+        : currentView === 'list' && activeTab === 'estadisticas'
+          ? 'estadisticas'
+          : 'listado';
+
+  const handleBottomNav = (key: BottomNavKey) => {
+    if (key === 'create') {
+      setCurrentView('create');
+    } else if (key === 'admin') {
+      setCurrentView('admin');
+    } else {
+      setCurrentView('list');
+      setActiveTab(key === 'estadisticas' ? 'estadisticas' : 'listado');
+    }
+  };
+
+  // Wait for Supabase to resolve the current session before deciding what to show
+  if (!authReady) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <RefreshCw className="w-6 h-6 text-blue-600 animate-spin" />
+      </div>
+    );
+  }
+
+  // Not authenticated: show Supabase login (email/phone + password)
   if (!isAuthenticated) {
-    return <LockScreen onUnlock={handleUnlock} savedPasswordHash={adminPassword} />;
+    return <AuthScreen />;
   }
 
   return (
@@ -287,7 +357,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* SYSTEM HEADER (Hidden during printing for clean paper health record formats) */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm print:hidden">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm print:hidden pt-safe">
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
           
           {/* Logo and App Title */}
@@ -300,12 +370,12 @@ export default function App() {
             </div>
             <div>
               <h1 className="font-sans font-bold text-slate-800 text-sm md:text-base leading-none tracking-tight flex items-center gap-1.5">
-                Censo Infantil &amp; Historia Clínica
+                Censo &amp; Historia Clínica
                 <span className="text-[10px] bg-blue-50 text-blue-700 font-bold border border-blue-100 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
                   v1.2
                 </span>
               </h1>
-              <span className="text-[10px] text-slate-400 block mt-1 font-medium">Hospitalización Pediátrica &amp; Censo de Comunidad</span>
+              <span className="text-[10px] text-slate-400 block mt-1 font-medium">Registro de Pacientes &amp; Censo de Comunidad</span>
             </div>
           </div>
 
@@ -346,7 +416,7 @@ export default function App() {
       </header>
 
       {/* MASTER CONTAINER */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 pb-28 md:pb-6 space-y-6">
         
         {/* VIEW ROUTER */}
         <AnimatePresence mode="wait">
@@ -592,7 +662,11 @@ export default function App() {
                   </div>
 
                   {/* Patients List Output (Cards for mobile, sleek grid/table) */}
-                  {filteredPatients.length > 0 ? (
+                  {patientsLoading ? (
+                    <div className="flex items-center justify-center gap-2 py-16 text-sm font-semibold text-slate-400 bg-white rounded-xl border border-slate-100 shadow-sm">
+                      <RefreshCw className="w-5 h-5 animate-spin text-blue-600" /> Cargando pacientes...
+                    </div>
+                  ) : filteredPatients.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {filteredPatients.map((p, idx) => (
                         <motion.div
@@ -778,10 +852,10 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 text-center space-y-2">
           <div className="flex items-center justify-center gap-1 text-[11px] text-slate-400 font-medium">
             <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-            <span>Censo de Inmunización y Archivos Médicos &bull; Hospitalización Pediátrica</span>
+            <span>Censo y Archivos Médicos &bull; Registro de Pacientes</span>
           </div>
           <p className="text-[10px] text-slate-300">
-            Todos los datos clínicos se almacenan localmente en su dispositivo para máxima privacidad y seguridad (Offline-First).
+            Acceso protegido con autenticación de Supabase. Los datos clínicos se gestionan de forma segura.
           </p>
         </div>
       </footer>
@@ -811,17 +885,18 @@ export default function App() {
               <form onSubmit={handleSavePassword} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">
-                    Nueva Clave de Acceso
+                    Nueva contraseña
                   </label>
                   <input
-                    type="text"
+                    type="password"
                     value={newPasswordInput}
                     onChange={(e) => { setNewPasswordInput(e.target.value); setSettingsSuccess(''); }}
-                    placeholder="Mínimo 4 caracteres"
+                    placeholder="Mínimo 6 caracteres"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-slate-700 focus:outline-none"
+                    autoComplete="new-password"
                     autoFocus
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">Esta clave protegerá el acceso al sistema en este navegador.</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Actualiza la contraseña de tu cuenta en Supabase.</p>
                 </div>
 
                 {settingsSuccess && (
@@ -894,6 +969,9 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* APP-LIKE BOTTOM NAVIGATION (mobile) */}
+      <BottomNav active={bottomNavActive} onSelect={handleBottomNav} />
 
     </div>
   );

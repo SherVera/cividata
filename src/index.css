@@ -7,8 +7,19 @@
 }
 
 @layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
   body {
     @apply font-sans bg-slate-50 text-slate-800 antialiased;
+    /* Sensación de app: sin rebote de scroll ni resaltado de toque. */
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 }
 
@@ -19,6 +30,17 @@
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Safe areas para notch / barra inferior del teléfono */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.bottom-safe {
+  bottom: env(safe-area-inset-bottom);
 }
 
 /* Print Specific Rules for Clinical History Credentials */

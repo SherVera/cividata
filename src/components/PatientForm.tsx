@@ -73,6 +73,10 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
   const [activeTab, setActiveTab] = useState<number>(1);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  // Las secciones pediátricas (vacunación, edad en meses, educación) solo
+  // aplican a menores de edad. Para adultos se ocultan automáticamente.
+  const isMinor = !!formData.fechaNacimiento && formData.edadAnios < 18;
+
   // Calculate age automatically when birthdate changes
   useEffect(() => {
     if (formData.fechaNacimiento) {
@@ -160,7 +164,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
         errors.medicamentosEspecificos = "Por favor especifique los medicamentos";
       }
     } else if (sectionNum === 5) {
-      if (formData.asisteEscuela) {
+      if (isMinor && formData.asisteEscuela) {
         if (!formData.nivelEducativo) errors.nivelEducativo = "Seleccione el nivel educativo";
         if (!formData.gradoAnio.trim()) errors.gradoAnio = "Escriba el grado o año";
         if (!formData.nombreInstitucion.trim()) errors.nombreInstitucion = "Escriba el nombre del colegio";
@@ -214,7 +218,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xs bg-white/20 text-white font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full font-medium">
-              Censo Infantil
+              Censo / Registro
             </span>
             {initialPatient && (
               <span className="text-xs bg-blue-500/20 text-blue-200 font-mono px-2.5 py-0.5 rounded-full font-medium">
@@ -223,10 +227,10 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             )}
           </div>
           <h2 className="font-sans font-bold text-xl md:text-2xl tracking-tight mt-1">
-            {initialPatient ? "Modificar Ficha de Registro" : "Nueva Ficha de Registro / Censo Infantil"}
+            {initialPatient ? "Modificar Ficha de Registro" : "Nueva Ficha de Registro"}
           </h2>
           <p className="text-xs text-slate-300 mt-1 max-w-xl">
-            Complete detalladamente los datos médicos, personales y educativos del niño o niña. Los campos marcados con (*) son obligatorios.
+            Complete los datos personales y médicos del paciente. Las secciones pediátricas aparecen solo para menores de edad. Los campos marcados con (*) son obligatorios.
           </p>
         </div>
         <button
@@ -296,7 +300,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
           >
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
               <User className="w-5 h-5 text-teal-600" />
-              <h3 className="font-sans font-bold text-slate-700 text-base">1. Datos Personales del Niño o Niña</h3>
+              <h3 className="font-sans font-bold text-slate-700 text-base">1. Datos Personales</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -354,15 +358,17 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
                   Edad Calculada
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className={`grid gap-2 ${isMinor ? 'grid-cols-2' : 'grid-cols-1'}`}>
                   <div className="relative bg-slate-100 rounded-xl px-4 py-2.5 border border-slate-200 flex items-center justify-between text-sm text-slate-700">
                     <span className="font-mono font-bold text-slate-800">{formData.edadAnios}</span>
                     <span className="text-xs text-slate-500">años</span>
                   </div>
-                  <div className="relative bg-slate-100 rounded-xl px-4 py-2.5 border border-slate-200 flex items-center justify-between text-sm text-slate-700">
-                    <span className="font-mono font-bold text-slate-800">{formData.edadMeses}</span>
-                    <span className="text-xs text-slate-500">meses</span>
-                  </div>
+                  {isMinor && (
+                    <div className="relative bg-slate-100 rounded-xl px-4 py-2.5 border border-slate-200 flex items-center justify-between text-sm text-slate-700">
+                      <span className="font-mono font-bold text-slate-800">{formData.edadMeses}</span>
+                      <span className="text-xs text-slate-500">meses</span>
+                    </div>
+                  )}
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">La edad se actualiza de manera automática de acuerdo a la fecha de nacimiento ingresada.</p>
               </div>
@@ -513,7 +519,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
           >
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
               <ShieldAlert className="w-5 h-5 text-teal-600" />
-              <h3 className="font-sans font-bold text-slate-700 text-base">3. Datos del Representante Legal (Padre, Madre o Tutor)</h3>
+              <h3 className="font-sans font-bold text-slate-700 text-base">3. Representante / Contacto</h3>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -536,7 +542,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Parentesco con el niño/a
+                  Parentesco / Relación
                 </label>
                 <select
                   name="parentesco"
@@ -712,27 +718,29 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Esquema de Vacunación (Según edad)
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(['Completo', 'Incompleto'] as const).map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, esquemaVacunacion: v }))}
-                      className={`py-2 px-3 border rounded-xl font-medium text-xs transition-all text-center cursor-pointer ${
-                        formData.esquemaVacunacion === v 
-                          ? 'border-teal-600 bg-teal-50 text-teal-700 ring-2 ring-teal-500/10' 
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      {v}
-                    </button>
-                  ))}
+              {isMinor && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
+                    Esquema de Vacunación (Según edad)
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['Completo', 'Incompleto'] as const).map((v) => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, esquemaVacunacion: v }))}
+                        className={`py-2 px-3 border rounded-xl font-medium text-xs transition-all text-center cursor-pointer ${
+                          formData.esquemaVacunacion === v 
+                            ? 'border-teal-600 bg-teal-50 text-teal-700 ring-2 ring-teal-500/10' 
+                            : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                        }`}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Toggle Alergias */}
               <div className="md:col-span-2 p-4 bg-slate-50 rounded-xl border border-slate-100">
@@ -921,6 +929,12 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             </div>
 
             <div className="space-y-4">
+              {!isMinor && (
+                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 text-xs text-blue-800 leading-relaxed">
+                  La sección educativa aplica únicamente a menores de edad. Indique la fecha de nacimiento del paciente; si es menor de 18 años, este apartado se habilitará automáticamente.
+                </div>
+              )}
+              {isMinor && (
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1022,6 +1036,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                   </motion.div>
                 )}
               </div>
+              )}
             </div>
           </motion.div>
         )}

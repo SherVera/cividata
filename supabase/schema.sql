@@ -141,3 +141,38 @@ returns json language sql security definer set search_path = public stable as $$
 $$;
 
 grant execute on function public.general_stats() to authenticated;
+
+-- =========================================================
+-- App React: tabla de pacientes (censo general + historia clínica)
+-- Cada registro se guarda como JSONB para soportar campos
+-- opcionales/condicionales (p. ej. la sección pediátrica solo
+-- aplica a menores) sin migraciones de columnas.
+-- =========================================================
+create table if not exists public.pacientes (
+  id          text primary key,            -- id generado por la app (pac-xxxx)
+  data        jsonb not null,              -- objeto Paciente completo
+  created_by  uuid default auth.uid(),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+create index if not exists pacientes_created_at_idx on public.pacientes (created_at desc);
+
+alter table public.pacientes enable row level security;
+
+-- Registros compartidos entre usuarios autenticados (multi-dispositivo).
+drop policy if exists "pacientes select" on public.pacientes;
+create policy "pacientes select"
+  on public.pacientes for select to authenticated using (true);
+
+drop policy if exists "pacientes insert" on public.pacientes;
+create policy "pacientes insert"
+  on public.pacientes for insert to authenticated with check (true);
+
+drop policy if exists "pacientes update" on public.pacientes;
+create policy "pacientes update"
+  on public.pacientes for update to authenticated using (true) with check (true);
+
+drop policy if exists "pacientes delete" on public.pacientes;
+create policy "pacientes delete"
+  on public.pacientes for delete to authenticated using (true);
