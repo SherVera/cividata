@@ -21,7 +21,7 @@ export interface Paciente {
   nacionalidad: string;
   /** Ruta en Supabase Storage (bucket patient-photos). Opcional. */
   fotoPath: string | null;
-  /** Clasificación etaria; útil cuando no hay fecha de nacimiento. */
+  /** Clasificación etaria asignada manualmente (niño / adulto / tercera edad). */
   grupoEtario: GrupoEtario;
 
   // 2. Información de Vivienda
@@ -118,7 +118,7 @@ export function grupoEtarioLabel(grupo: GrupoEtario): string {
   return 'Tercera edad';
 }
 
-/** Deriva la clasificación a partir de la edad en años (con fecha de nacimiento). */
+/** Referencia de umbrales; la app no asigna clasificación automáticamente. */
 export function grupoEtarioFromAge(years: number): GrupoEtario {
   if (years < 18) return 'nino';
   if (years < 60) return 'adulto';

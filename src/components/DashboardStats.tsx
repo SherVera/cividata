@@ -322,7 +322,7 @@ export default function DashboardStats({
           <div>
             <h3 className="text-sm font-bold text-slate-800">Pacientes por edad o clasificación</h3>
             <p className="text-xs text-slate-500">
-              Cantidad registrada según rangos de edad (exacta o tentativa) o según clasificación etaria asignada.
+              Cantidad registrada por rangos de edad (fecha o tentativa) o por clasificación etaria asignada manualmente.
             </p>
           </div>
           <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
@@ -410,7 +410,7 @@ export default function DashboardStats({
               })}
             </div>
             <p className="text-xs text-slate-500">
-              Incluye pacientes sin fecha exacta, clasificados manualmente como niño/a, adulto o tercera edad.
+              Clasificación asignada manualmente en cada ficha (niño/a, adulto, tercera edad).
             </p>
           </>
         )}
@@ -537,7 +537,7 @@ export default function DashboardStats({
             })}
           </div>
           <div className="text-[9px] text-slate-400 text-center font-medium">
-            {stats.gruposEtarios.nino + stats.gruposEtarios.adulto + stats.gruposEtarios.tercera_edad} clasificados
+            Clasificación manual en ficha
           </div>
         </div>
 

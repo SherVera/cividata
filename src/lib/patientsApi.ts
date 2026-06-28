@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { Paciente, NotaClinica, normalizeGrupoEtario, grupoEtarioFromAge } from '../types';
+import { Paciente, NotaClinica, normalizeGrupoEtario } from '../types';
 import { joinMultiValue, parseMultiValue } from './multiValue';
 import { deletePatientPhoto } from './patientPhotosApi';
 
@@ -51,9 +51,7 @@ function rowToPaciente(row: any): Paciente {
   const computed = hasBirth ? computeAge(birth) : { years: 0, months: 0 };
   const years = hasBirth ? computed.years : (row.approx_age_years ?? 0);
   const months = hasBirth ? computed.months : (row.approx_age_months ?? 0);
-  const grupoEtario = hasBirth
-    ? grupoEtarioFromAge(computed.years)
-    : normalizeGrupoEtario(row.age_group);
+  const grupoEtario = normalizeGrupoEtario(row.age_group);
   const notes: NotaClinica[] = (row.clinical_notes || [])
     .map((n: any) => ({
       id: n.id,
@@ -254,10 +252,7 @@ export async function savePatient(p: Paciente): Promise<void> {
     : { firstId: null, detail: null };
   const guardianId = await getOrCreateGuardian(p);
   const hasBirthDate = !!(p.fechaNacimiento || '').trim();
-  const computedAge = hasBirthDate ? computeAge(p.fechaNacimiento) : null;
-  const grupoEtario = hasBirthDate
-    ? grupoEtarioFromAge(computedAge!.years)
-    : (p.grupoEtario || 'nino');
+  const grupoEtario = p.grupoEtario || 'nino';
 
   const row = {
     id: p.id,

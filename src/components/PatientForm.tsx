@@ -7,7 +7,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Paciente } from '../types';
 import {
   GRUPOS_ETARIOS,
-  grupoEtarioFromAge,
   grupoEtarioLabel,
 } from '../types';
 import { 
@@ -425,7 +424,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     if (match) applyGuardian(match);
   };
 
-  // Calculate age and classification when exact birth date is known.
+  // Calcular edad solo cuando hay fecha de nacimiento exacta (la clasificación es manual).
   useEffect(() => {
     if (!formData.fechaNacimiento) return;
 
@@ -450,7 +449,6 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       ...prev,
       edadAnios: years,
       edadMeses: months,
-      grupoEtario: grupoEtarioFromAge(years),
     }));
   }, [formData.fechaNacimiento]);
 
@@ -492,9 +490,6 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
         formData.documentoIdentidad.trim();
       if (!hasIdentity) {
         errors.nombres = 'Indique al menos nombre, apellido o documento del paciente';
-      }
-      if (!formData.fechaNacimiento && formData.edadAnios <= 0 && formData.edadMeses <= 0) {
-        errors.edadAnios = 'Sin fecha exacta, indique una edad tentativa (años o meses)';
       }
     }
 
@@ -595,7 +590,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             {initialPatient ? "Modificar Ficha de Registro" : "Nueva Ficha de Registro"}
           </h2>
           <p className="text-xs text-slate-300 mt-1 max-w-xl">
-            Complete los datos que tenga disponibles. Solo se exige un dato mínimo de identificación; sin fecha exacta, indique edad tentativa y clasificación etaria.
+            Complete los datos que tenga disponibles. Fecha, edad tentativa y clasificación etaria son opcionales; la clasificación siempre se asigna manualmente.
           </p>
         </div>
         <button
@@ -816,16 +811,15 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
               <div className="md:col-span-2">
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
-                  Clasificación etaria {hasExactBirthDate ? '' : <span className="font-normal normal-case text-slate-400">(asignar manualmente)</span>}
+                  Clasificación etaria <span className="font-normal normal-case text-slate-400">(manual)</span>
                 </label>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   {GRUPOS_ETARIOS.map((grupo) => (
                     <button
                       key={grupo}
                       type="button"
-                      disabled={hasExactBirthDate}
                       onClick={() => setFormData((prev) => ({ ...prev, grupoEtario: grupo }))}
-                      className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
+                      className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-all ${
                         formData.grupoEtario === grupo
                           ? 'border-teal-600 bg-teal-50 text-teal-700 ring-2 ring-teal-500/10'
                           : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
@@ -836,9 +830,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                   ))}
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1.5">
-                  {hasExactBirthDate
-                    ? 'Se calcula automáticamente según la fecha de nacimiento.'
-                    : 'Seleccione niño/a, adulto o tercera edad según su criterio clínico.'}
+                  Asigne niño/a, adulto o tercera edad según su criterio. No se calcula sola desde la fecha ni la edad tentativa.
                 </p>
               </div>
 
