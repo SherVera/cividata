@@ -8,7 +8,7 @@ import { Paciente, CensoStats, grupoEtarioLabel, pacienteTieneEdad, resolveGrupo
 import { APP_NAME } from '../brand';
 import type { AppRole } from '../lib/authRoles';
 import { 
-  Users, ShieldCheck, GraduationCap, Heart, Smile, Warehouse,
+  Users, ShieldCheck, Heart, Smile, Warehouse,
   CalendarDays, MapPinOff, Stethoscope, UserCog, UserX, Activity
 } from 'lucide-react';
 
@@ -227,21 +227,16 @@ export default function DashboardStats({
     ? Math.round((stats.esquemaCompleto / stats.totalPacientes) * 100) 
     : 0;
 
-  const schoolPercentage = stats.totalPacientes > 0 
-    ? Math.round((stats.asisteEscuelaCount / stats.totalPacientes) * 100) 
-    : 0;
-
   // Circular progress SVG values
   const radius = 36;
   const circumference = 2 * Math.PI * radius;
   const vaccineStrokeDashoffset = circumference - (vaccinePercentage / 100) * circumference;
-  const schoolStrokeDashoffset = circumference - (schoolPercentage / 100) * circumference;
 
   return (
     <div className="space-y-6">
       
       {/* Metrics Row (Large Bento Numbers) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Metric 1: Total Pacientes */}
         <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200 shadow-sm flex items-center justify-between">
@@ -271,21 +266,7 @@ export default function DashboardStats({
           </div>
         </div>
 
-        {/* Metric 3: Escolaridad */}
-        <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200 shadow-sm flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider block">Escolarizados</span>
-            <span className="text-2xl md:text-3xl font-bold font-mono text-slate-800 block">{stats.asisteEscuelaCount}</span>
-            <span className="text-[10px] text-indigo-600 font-semibold">
-              {schoolPercentage}% Asistencia
-            </span>
-          </div>
-          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
-            <GraduationCap className="w-5 h-5 md:w-6 md:h-6" />
-          </div>
-        </div>
-
-        {/* Metric 4: Alert / Alergias crónicas */}
+        {/* Metric 3: Alert / Alergias crónicas */}
         <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200 shadow-sm flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider block">Alergias / Crónicos</span>
@@ -301,7 +282,7 @@ export default function DashboardStats({
           </div>
         </div>
 
-        {/* Metric 5: Centros de acopio */}
+        {/* Metric 4: Centros de acopio */}
         <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200 shadow-sm flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider block">Centros</span>
@@ -542,11 +523,11 @@ export default function DashboardStats({
           </div>
         </div>
 
-        {/* Chart Card 4: School Attendance & Gender Proportion */}
+        {/* Chart Card 4: Gender proportion */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
           <div>
-            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Género &amp; Educación</h4>
-            <p className="text-[10px] text-slate-400">Demografía e inserción escolar.</p>
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Género</h4>
+            <p className="text-[10px] text-slate-400">Distribución demográfica del censo.</p>
           </div>
 
           <div className="space-y-4">
@@ -592,30 +573,11 @@ export default function DashboardStats({
               </div>
             </div>
 
-            {/* School Enrollment Gauge bar */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 uppercase">
-                <span>Matrícula Escolar</span>
-                <span className="font-mono text-slate-700">
-                  {stats.asisteEscuelaCount} de {stats.totalPacientes} asistiendo
-                </span>
-              </div>
-              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div 
-                  style={{ width: `${schoolPercentage}%` }}
-                  className="bg-blue-600 h-full rounded-full transition-all duration-500"
-                ></div>
-              </div>
-              <div className="flex justify-between items-center text-[9px] text-slate-400 font-medium">
-                <span>{schoolPercentage}% de matrícula activa</span>
-                <span>{stats.noAsisteEscuelaCount} sin escolaridad</span>
-              </div>
-            </div>
           </div>
 
           <div className="text-[10px] bg-slate-50 border border-slate-200 text-slate-500 rounded-lg p-2.5 flex items-center gap-1.5">
             <Smile className="w-3.5 h-3.5 text-blue-600 animate-bounce" />
-            <span>Útil para proyectar requerimientos de vacunas y escuelas.</span>
+            <span>Útil para proyectar requerimientos de vacunas y seguimiento clínico.</span>
           </div>
         </div>
 

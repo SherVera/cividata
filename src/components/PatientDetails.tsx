@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { Paciente, NotaClinica, puntoRegistroEtiqueta, grupoEtarioLabel, edadPacienteTexto, resolveGrupoEtario } from '../types';
 import { 
-  User, MapPin, ShieldAlert, Heart, GraduationCap, 
+  User, MapPin, ShieldAlert, Heart, 
   ArrowLeft, Edit3, Printer, Plus, Calendar, Activity, 
   ShieldCheck, FileText, ChevronRight, Phone, Mail, FileClock, ClipboardList, Warehouse, Stethoscope
 } from 'lucide-react';
@@ -283,10 +283,6 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
 
             <div className="pt-2">
               <div className="flex justify-between items-center text-xs py-2 border-b border-slate-200">
-                <span className="text-slate-500 font-medium">Grupo Sanguíneo:</span>
-                <span className="font-bold text-slate-700 font-mono">{patient.grupoSanguineo}</span>
-              </div>
-              <div className="flex justify-between items-center text-xs py-2 border-b border-slate-200">
                 <span className="text-slate-500 font-medium">Vacunación:</span>
                 <span className={`px-2 py-0.5 rounded-full font-mono font-bold text-[10px] ${
                   patient.esquemaVacunacion === "Completo" 
@@ -553,37 +549,6 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                     </div>
                   </div>
                 </div>
-              </div>
-
-              {/* Seccion 5: Datos Educativos */}
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5 pb-1.5 border-b border-slate-200">
-                  <GraduationCap className="w-3.5 h-3.5" /> 5. Información Educativa
-                </h4>
-                {patient.asisteEscuela ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-3 gap-x-4 text-xs">
-                    <div>
-                      <span className="text-slate-400 block mb-0.5">Asiste a Escuela</span>
-                      <span className="font-bold text-green-600">Sí asiste actualmente</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block mb-0.5">Nivel Educativo</span>
-                      <span className="font-semibold text-slate-700">{patient.nivelEducativo}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block mb-0.5">Grado / Año</span>
-                      <span className="font-semibold text-slate-700">{patient.gradoAnio}</span>
-                    </div>
-                    <div className="sm:col-span-3">
-                      <span className="text-slate-400 block mb-0.5">Nombre de la Institución Educativa</span>
-                      <span className="font-bold text-slate-700">{patient.nombreInstitucion}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-center text-xs text-slate-500">
-                    El niño o la niña no asiste actualmente a una institución educativa.
-                  </div>
-                )}
               </div>
 
             </div>

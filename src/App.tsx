@@ -52,7 +52,6 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterGender, setFilterGender] = useState<string>('All');
   const [filterVacuna, setFilterVacuna] = useState<string>('All');
-  const [filterEscuela, setFilterEscuela] = useState<string>('All');
   const [filterAgeRange, setFilterAgeRange] = useState<string>('All');
   const [filterGrupoEtario, setFilterGrupoEtario] = useState<string>('All');
   const [filterCentro, setFilterCentro] = useState<string>('All');
@@ -354,12 +353,7 @@ export default function App() {
       // 3. Vaccination
       const matchVacuna = filterVacuna === 'All' || p.esquemaVacunacion === filterVacuna;
 
-      // 4. School
-      const matchEscuela = filterEscuela === 'All' || 
-        (filterEscuela === 'Asiste' && p.asisteEscuela) ||
-        (filterEscuela === 'NoAsiste' && !p.asisteEscuela);
-
-      // 5. Age Range
+      // 4. Age Range
       let matchAge = true;
       if (filterAgeRange !== 'All') {
         if (!pacienteTieneEdad(p)) {
@@ -382,7 +376,7 @@ export default function App() {
       const matchGrupo =
         filterGrupoEtario === 'All' || resolveGrupoEtario(p) === filterGrupoEtario;
 
-      return matchQuery && matchGender && matchVacuna && matchEscuela && matchAge && matchCentro && matchGrupo;
+      return matchQuery && matchGender && matchVacuna && matchAge && matchCentro && matchGrupo;
     }).sort((a, b) => {
       // Sorting
       if (sortBy === 'alphabetical') {
@@ -399,7 +393,7 @@ export default function App() {
       // default: recent (by registration date/id reverse order)
       return b.fechaRegistro.localeCompare(a.fechaRegistro) || b.id.localeCompare(a.id);
     });
-  }, [patients, searchQuery, filterGender, filterVacuna, filterEscuela, filterAgeRange, filterGrupoEtario, filterCentro, sortBy]);
+  }, [patients, searchQuery, filterGender, filterVacuna, filterAgeRange, filterGrupoEtario, filterCentro, sortBy]);
 
   // Bottom navigation active state (app-like mobile tab bar)
   const bottomNavActive: BottomNavKey =
@@ -746,20 +740,6 @@ export default function App() {
                           </select>
                         </div>
 
-                        {/* School filter */}
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Escolaridad</span>
-                          <select
-                            value={filterEscuela}
-                            onChange={(e) => setFilterEscuela(e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 font-semibold focus:outline-none cursor-pointer"
-                          >
-                            <option value="All">Todas</option>
-                            <option value="Asiste">Sí asiste a escuela</option>
-                            <option value="NoAsiste">No asiste a escuela</option>
-                          </select>
-                        </div>
-
                         {/* Collection center filter */}
                         <div className="space-y-1">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Centro de acopio</span>
@@ -958,7 +938,6 @@ export default function App() {
                           setSearchQuery('');
                           setFilterGender('All');
                           setFilterVacuna('All');
-                          setFilterEscuela('All');
                           setFilterAgeRange('All');
                         }}
                         className="text-xs text-teal-700 font-bold hover:underline cursor-pointer"

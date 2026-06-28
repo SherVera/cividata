@@ -8,7 +8,7 @@ import { Paciente, GRUPOS_ETARIOS, grupoEtarioLabel, grupoEtarioFromAge, pacient
 import { parseFormNumber, validatePatientSection1 } from '../lib/patientValidation';
 import { APP_NAME } from '../brand';
 import { 
-  User, MapPin, ShieldAlert, Heart, GraduationCap, 
+  User, MapPin, ShieldAlert, Heart, 
   ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles, Warehouse, Plus, Stethoscope, Camera, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -34,6 +34,8 @@ interface PatientFormProps {
   onSave: (paciente: Paciente) => void;
   onCancel: () => void;
 }
+
+const FORM_TAB_COUNT = 4;
 
 const emptyPatient: Omit<Paciente, 'id' | 'fechaRegistro' | 'notasClinicas'> = {
   nombres: "",
@@ -62,7 +64,7 @@ const emptyPatient: Omit<Paciente, 'id' | 'fechaRegistro' | 'notasClinicas'> = {
   
   estatura: 0,
   peso: 0,
-  grupoSanguineo: "O Rh Positivo (O+)",
+  grupoSanguineo: "",
   tieneAlergias: false,
   alergiasEspecificas: "",
   tieneCondicionMedica: false,
@@ -497,7 +499,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
   const handleNext = () => {
     // Navegación libre entre paneles; los requeridos se validan al guardar.
-    setActiveTab(prev => Math.min(prev + 1, 5));
+    setActiveTab(prev => Math.min(prev + 1, FORM_TAB_COUNT));
   };
 
   const handlePrev = () => {
@@ -509,7 +511,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
     // Solo al guardar: validar todos los paneles y avisar de los faltantes.
     let firstInvalid = 0;
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= FORM_TAB_COUNT; i++) {
       if (!validateSection(i)) {
         firstInvalid = i;
         break;
@@ -566,7 +568,6 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     { id: 2, label: "2. Ubicación", icon: MapPin },
     { id: 3, label: "3. Representante", icon: ShieldAlert },
     { id: 4, label: "4. Salud y Nutrición", icon: Heart },
-    { id: 5, label: "5. Educación", icon: GraduationCap }
   ];
 
   return (
@@ -1379,28 +1380,6 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 {formErrors.peso && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.peso}</p>}
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Grupo Sanguíneo / Factor RH
-                </label>
-                <select
-                  name="grupoSanguineo"
-                  value={formData.grupoSanguineo}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all cursor-pointer"
-                >
-                  <option value="O Rh Positivo (O+)">O Rh Positivo (O+)</option>
-                  <option value="O Rh Negativo (O-)">O Rh Negativo (O-)</option>
-                  <option value="A Rh Positivo (A+)">A Rh Positivo (A+)</option>
-                  <option value="A Rh Negativo (A-)">A Rh Negativo (A-)</option>
-                  <option value="B Rh Positivo (B+)">B Rh Positivo (B+)</option>
-                  <option value="B Rh Negativo (B-)">B Rh Negativo (B-)</option>
-                  <option value="AB Rh Positivo (AB+)">AB Rh Positivo (AB+)</option>
-                  <option value="AB Rh Negativo (AB-)">AB Rh Negativo (AB-)</option>
-                  <option value="Desconocido / No Evaluado">Desconocido / No Evaluado</option>
-                </select>
-              </div>
-
               {isPediatricProfile && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
@@ -1614,135 +1593,6 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
           </motion.div>
         )}
 
-        {/* TAB 5: DATOS EDUCATIVOS */}
-        {activeTab === 5 && (
-          <motion.div
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="space-y-6"
-          >
-            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-              <GraduationCap className="w-5 h-5 text-teal-600" />
-              <h3 className="font-sans font-bold text-slate-700 text-base">5. Datos Educativos</h3>
-            </div>
-
-            <div className="space-y-4">
-              {!isPediatricProfile && (
-                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 text-xs text-blue-800 leading-relaxed">
-                  La sección educativa aplica únicamente a niños y niñas. Para adultos y tercera edad este apartado no aplica.
-                </div>
-              )}
-              {isPediatricProfile && (
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">¿Asiste actualmente a una institución educativa?</h4>
-                    <p className="text-[11px] text-slate-500">Guardería, preescolar, colegio o liceo.</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, asisteEscuela: true }))}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                        formData.asisteEscuela 
-                          ? 'bg-teal-600 border-teal-600 text-white' 
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      Sí
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => ({ 
-                        ...prev, 
-                        asisteEscuela: false,
-                        nivelEducativo: "",
-                        gradoAnio: "",
-                        nombreInstitucion: ""
-                      }))}
-                      className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer ${
-                        !formData.asisteEscuela 
-                          ? 'bg-slate-600 border-slate-600 text-white' 
-                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      No
-                    </button>
-                  </div>
-                </div>
-
-                {formData.asisteEscuela && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-200/60"
-                  >
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                        Nivel Educativo Actual
-                      </label>
-                      <select
-                        name="nivelEducativo"
-                        value={formData.nivelEducativo}
-                        onChange={handleInputChange}
-                        className={`w-full px-4 py-2.5 bg-white border rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all cursor-pointer ${
-                          formErrors.nivelEducativo ? 'border-red-300' : 'border-slate-200'
-                        }`}
-                      >
-                        <option value="">Seleccione...</option>
-                        <option value="Maternal">Maternal</option>
-                        <option value="Preescolar / Inicial">Preescolar / Inicial</option>
-                        <option value="Primaria">Primaria</option>
-                        <option value="Secundaria">Secundaria</option>
-                      </select>
-                      {formErrors.nivelEducativo && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.nivelEducativo}</p>}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                        Grado o Año que Cursa
-                      </label>
-                      <input
-                        type="text"
-                        name="gradoAnio"
-                        value={formData.gradoAnio}
-                        onChange={handleInputChange}
-                        placeholder="Ej. 1er Grado, Sección B"
-                        className={`w-full px-4 py-2.5 bg-white border rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
-                          formErrors.gradoAnio ? 'border-red-300' : 'border-slate-200'
-                        }`}
-                      />
-                      {formErrors.gradoAnio && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.gradoAnio}</p>}
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                        Nombre de la Institución Educativa
-                      </label>
-                      <input
-                        type="text"
-                        name="nombreInstitucion"
-                        list="catalog-institutions"
-                        value={formData.nombreInstitucion}
-                        onChange={handleInputChange}
-                        placeholder="Ej. U.E. Nacional Simón Bolívar"
-                        className={`w-full px-4 py-2.5 bg-white border rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
-                          formErrors.nombreInstitucion ? 'border-red-300' : 'border-slate-200'
-                        }`}
-                      />
-                      <datalist id="catalog-institutions">
-                        {catalogs.institutions.map(i => <option key={i} value={i} />)}
-                      </datalist>
-                      {formErrors.nombreInstitucion && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.nombreInstitucion}</p>}
-                    </div>
-                  </motion.div>
-                )}
-              </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-
         {/* Aviso de campos requeridos (solo al intentar guardar) */}
         {submitError && (
           <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-medium">
@@ -1766,7 +1616,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             >
               <ArrowLeft className="w-3.5 h-3.5" /> Anterior
             </button>
-            <span className="text-xs text-slate-400 font-mono font-medium block sm:hidden">Paso {activeTab} de 5</span>
+            <span className="text-xs text-slate-400 font-mono font-medium block sm:hidden">Paso {activeTab} de {FORM_TAB_COUNT}</span>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -1778,7 +1628,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
               Cancelar
             </button>
 
-            {activeTab < 5 ? (
+            {activeTab < FORM_TAB_COUNT ? (
               <button
                 type="button"
                 onClick={handleNext}

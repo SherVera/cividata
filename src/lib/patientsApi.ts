@@ -244,7 +244,9 @@ export async function savePatient(p: Paciente): Promise<void> {
     p.asisteEscuela && (p.nombreInstitucion || '').trim()
       ? await getOrCreateNamed('institutions', p.nombreInstitucion)
       : null;
-  const bloodTypeId = await getOrCreateNamed('blood_types', p.grupoSanguineo);
+  const bloodTypeId = (p.grupoSanguineo || '').trim()
+    ? await getOrCreateNamed('blood_types', p.grupoSanguineo)
+    : null;
   const allergy = p.tieneAlergias
     ? await resolveCatalogSelection('allergies', p.alergiasEspecificas)
     : { firstId: null, detail: null };

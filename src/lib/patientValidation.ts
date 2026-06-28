@@ -40,13 +40,15 @@ export function validatePatientSection1(data: PatientIdentityInput): PatientForm
   return errors;
 }
 
+export const FORM_SECTION_COUNT = 4;
+
 /** Valida todas las secciones antes de guardar (solo la sección 1 tiene reglas hoy). */
 export function validatePatientForm(data: PatientIdentityInput): {
   ok: boolean;
   errors: PatientFormErrors;
   firstInvalidSection: number;
 } {
-  for (let section = 1; section <= 5; section++) {
+  for (let section = 1; section <= FORM_SECTION_COUNT; section++) {
     if (section === 1) {
       const errors = validatePatientSection1(data);
       if (Object.keys(errors).length > 0) {
