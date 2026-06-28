@@ -17,6 +17,7 @@ import {
   setCollectionCenterActive,
 } from '../lib/collectionCentersApi';
 import { DEFAULT_MAP_CENTER, formatDistance, haversineMeters } from '../lib/geo';
+import { GeocodeResult, searchPlaces } from '../lib/geocodeApi';
 import GeoMapPicker, { requestDeviceLocation } from './GeoMapPicker';
 
 interface CollectionCentersPanelProps {
@@ -49,7 +50,19 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [locationQuery, setLocationQuery] = useState('');
+  const [geocodeResults, setGeocodeResults] = useState<GeocodeResult[]>([]);
+  const [searchingPlace, setSearchingPlace] = useState(false);
+  const [locationConfirmed, setLocationConfirmed] = useState(false);
+  const [searchedPlaceLabel, setSearchedPlaceLabel] = useState('');
   const [notice, setNotice] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+
+  const resetLocationSearch = () => {
+    setLocationQuery('');
+    setGeocodeResults([]);
+    setLocationConfirmed(false);
+    setSearchedPlaceLabel('');
+  };
 
   const loadCenters = async () => {
     setLoading(true);
@@ -87,6 +100,7 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
   const openCreate = () => {
     setEditingId(null);
     setForm(emptyForm());
+    resetLocationSearch();
     setShowForm(true);
   };
 
@@ -99,7 +113,47 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
       lng: center.geo_lng,
       active: center.active,
     });
+    resetLocationSearch();
+    setLocationConfirmed(true);
     setShowForm(true);
+  };
+
+  const handleSearchPlace = async (event?: React.FormEvent) => {
+    event?.preventDefault();
+    const q = locationQuery.trim();
+    if (!q) return;
+    setSearchingPlace(true);
+    setGeocodeResults([]);
+    try {
+      const results = await searchPlaces(q);
+      if (results.length === 0) {
+        setNotice({ type: 'error', message: 'No se encontró ese lugar. Pruebe con otra búsqueda.' });
+      } else {
+        setGeocodeResults(results);
+      }
+    } catch (err: any) {
+      setNotice({ type: 'error', message: err?.message || 'No se pudo buscar el lugar.' });
+    } finally {
+      setSearchingPlace(false);
+    }
+  };
+
+  const applyGeocodeResult = (result: GeocodeResult) => {
+    setForm((prev) => ({
+      ...prev,
+      lat: result.lat,
+      lng: result.lng,
+      address: prev.address.trim() ? prev.address : result.displayName.split(',').slice(0, 2).join(',').trim(),
+    }));
+    setSearchedPlaceLabel(result.displayName);
+    setGeocodeResults([]);
+    setLocationConfirmed(false);
+    setLocationQuery(result.displayName.split(',')[0].trim());
+  };
+
+  const handleMapCoordsChange = (coords: { lat: number; lng: number }) => {
+    setForm((prev) => ({ ...prev, lat: coords.lat, lng: coords.lng }));
+    setLocationConfirmed(false);
   };
 
   const handleUseLocation = async () => {
@@ -107,6 +161,8 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
     try {
       const coords = await requestDeviceLocation();
       setForm((prev) => ({ ...prev, lat: coords.lat, lng: coords.lng }));
+      setSearchedPlaceLabel('Ubicación actual del dispositivo');
+      setLocationConfirmed(false);
     } catch (err: any) {
       setNotice({ type: 'error', message: err?.message || 'No se pudo usar la ubicación del dispositivo.' });
     } finally {
@@ -118,6 +174,13 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
     event.preventDefault();
     if (!form.name.trim()) {
       setNotice({ type: 'error', message: 'El nombre del centro es obligatorio.' });
+      return;
+    }
+    if (!editingId && !locationConfirmed) {
+      setNotice({
+        type: 'error',
+        message: 'Busque el lugar, ajuste el marcador en el mapa y confirme la ubicación.',
+      });
       return;
     }
     setSaving(true);
@@ -139,7 +202,7 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
           ? editingId
             ? 'Centro actualizado correctamente.'
             : 'Centro de acopio registrado.'
-          : `Ya existe "${center.name}" en esa ubicación; no se creó un duplicado.`,
+          : `Ya existe un centro con el nombre "${center.name}"; no se creó un duplicado.`,
       });
       await loadCenters();
     } catch (err: any) {
@@ -336,7 +399,7 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
                   {editingId ? 'Editar centro de acopio' : 'Nuevo centro de acopio'}
                 </h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Arrastre el marcador azul para ubicar el punto aproximado del centro.
+                  Busque un lugar para mover el mapa, ajuste el marcador y asigne un nombre propio al centro.
                 </p>
               </div>
               <button
@@ -351,27 +414,50 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
             <div className="space-y-4 overflow-y-auto p-5">
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
-                  Nombre del centro *
+                  Buscar lugar en el mapa
                 </label>
-                <input
-                  value={form.name}
-                  onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                  placeholder="Ej. Acopio Parroquia San Juan"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
-                  Dirección de referencia
-                </label>
-                <input
-                  value={form.address}
-                  onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
-                  placeholder="Ej. Av. Principal, local comunal"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10"
-                />
+                <div className="flex gap-2">
+                  <input
+                    value={locationQuery}
+                    onChange={(e) => setLocationQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSearchPlace();
+                      }
+                    }}
+                    placeholder="Ej. Centro Letonía, Caracas"
+                    className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleSearchPlace()}
+                    disabled={searchingPlace || !locationQuery.trim()}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-teal-600 px-3.5 py-2.5 text-xs font-bold text-white hover:bg-teal-700 disabled:bg-slate-300"
+                  >
+                    {searchingPlace ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                    Buscar
+                  </button>
+                </div>
+                {geocodeResults.length > 0 && (
+                  <div className="mt-2 max-h-36 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+                    {geocodeResults.map((result, idx) => (
+                      <button
+                        key={`${result.lat}-${result.lng}-${idx}`}
+                        type="button"
+                        onClick={() => applyGeocodeResult(result)}
+                        className="block w-full border-b border-slate-100 px-3 py-2.5 text-left text-xs text-slate-700 last:border-0 hover:bg-teal-50"
+                      >
+                        {result.displayName}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {searchedPlaceLabel && (
+                  <p className="mt-2 text-[11px] font-medium text-teal-700">
+                    Lugar buscado: {searchedPlaceLabel}
+                  </p>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -393,10 +479,51 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
                 lat={form.lat}
                 lng={form.lng}
                 centers={mapCenters.filter((c) => c.id !== editingId)}
-                fitToCenters={mapCenters.length > 0}
-                onChange={(coords) => setForm((prev) => ({ ...prev, lat: coords.lat, lng: coords.lng }))}
+                fitToCenters={false}
+                onChange={handleMapCoordsChange}
                 height="260px"
               />
+
+              <label className="flex items-start gap-2 rounded-xl border border-teal-100 bg-teal-50/50 px-3 py-3 text-xs font-semibold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={locationConfirmed}
+                  onChange={(e) => setLocationConfirmed(e.target.checked)}
+                  className="mt-0.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                />
+                <span>
+                  Confirmo que el marcador azul indica el punto correcto para este centro de acopio.
+                  Puede arrastrarlo en el mapa antes de confirmar.
+                </span>
+              </label>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  Nombre del centro de acopio *
+                </label>
+                <input
+                  value={form.name}
+                  onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="Ej. Acopio Parroquia San Juan"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10"
+                  required
+                />
+                <p className="mt-1 text-[10px] text-slate-500">
+                  Puede ser distinto al lugar buscado (ej. buscar &quot;Centro Letonía&quot; y nombrar el acopio de otra forma).
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  Dirección de referencia
+                </label>
+                <input
+                  value={form.address}
+                  onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
+                  placeholder="Ej. Av. Principal, local comunal"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 focus:bg-white focus:ring-4 focus:ring-teal-500/10"
+                />
+              </div>
 
               <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600">
                 <input

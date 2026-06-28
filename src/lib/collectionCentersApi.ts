@@ -66,7 +66,6 @@ export async function findCollectionCenterDuplicate(
   const normalized = normalizeCenterName(input.name);
   if (!normalized) return null;
 
-  const coords = roundGeo(input.geo_lat, input.geo_lng);
   const { data, error } = await client.from('collection_centers').select('*');
   if (error) throw error;
 
@@ -74,12 +73,6 @@ export async function findCollectionCenterDuplicate(
     const center = normalizeRow(row);
     if (excludeId && center.id === excludeId) continue;
     if (normalizeCenterName(center.name) === normalized) return center;
-    if (
-      center.geo_lat === coords.lat &&
-      center.geo_lng === coords.lng
-    ) {
-      return center;
-    }
   }
   return null;
 }
