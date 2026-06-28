@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Paciente, GRUPOS_ETARIOS, grupoEtarioLabel, grupoEtarioFromAge, pacienteTieneEdad, pacienteRequiereRepresentante, EMPTY_GUARDIAN_FIELDS } from '../types';
+import { Paciente, GRUPOS_ETARIOS, grupoEtarioLabel, grupoEtarioFromAge, pacienteTieneEdad, pacienteRequiereRepresentante, EMPTY_GUARDIAN_FIELDS, resolveGrupoEtario, tituloDatosPersonales } from '../types';
 import { parseFormNumber, validatePatientSection1 } from '../lib/patientValidation';
 import { APP_NAME } from '../brand';
 import { 
@@ -399,8 +399,8 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     }
   };
 
-  // Secciones pediátricas: sin clasificación se asume contexto infantil; adulto/tercera edad ocultan campos pediátricos.
-  const isPediatricProfile = formData.grupoEtario !== 'adulto' && formData.grupoEtario !== 'tercera_edad';
+  // Campos de edad en meses solo para niño/a; adulto y tercera edad ocultan secciones de representante y escolaridad.
+  const isChildAgeProfile = formData.grupoEtario !== 'adulto' && formData.grupoEtario !== 'tercera_edad';
   const clasificacionManual = !pacienteTieneEdad(formData);
 
   // Autorrellena los datos del representante al coincidir con uno existente.
@@ -681,7 +681,9 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
           >
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
               <User className="w-5 h-5 text-teal-600" />
-              <h3 className="font-sans font-bold text-slate-700 text-base">1. Datos Personales</h3>
+              <h3 className="font-sans font-bold text-slate-700 text-base">
+                {tituloDatosPersonales(formData).replace(/^1\. /, '')}
+              </h3>
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -788,12 +790,12 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                   {hasExactBirthDate ? 'Edad calculada' : 'Edad tentativa'}
                 </label>
                 {hasExactBirthDate ? (
-                  <div className={`grid gap-2 ${isPediatricProfile ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  <div className={`grid gap-2 ${isChildAgeProfile ? 'grid-cols-2' : 'grid-cols-1'}`}>
                     <div className="relative bg-slate-100 rounded-xl px-4 py-2.5 border border-slate-200 flex items-center justify-between text-sm text-slate-700">
                       <span className="font-mono font-bold text-slate-800">{formData.edadAnios}</span>
                       <span className="text-xs text-slate-500">años</span>
                     </div>
-                    {isPediatricProfile && (
+                    {isChildAgeProfile && (
                       <div className="relative bg-slate-100 rounded-xl px-4 py-2.5 border border-slate-200 flex items-center justify-between text-sm text-slate-700">
                         <span className="font-mono font-bold text-slate-800">{formData.edadMeses}</span>
                         <span className="text-xs text-slate-500">meses</span>
@@ -1409,7 +1411,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 {formErrors.peso && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.peso}</p>}
               </div>
 
-              {isPediatricProfile && (
+              {isChildAgeProfile && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
                     Esquema de Vacunación (Según edad)

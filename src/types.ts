@@ -119,6 +119,24 @@ export function grupoEtarioLabel(grupo: GrupoEtario | null | undefined): string 
   return 'Tercera edad';
 }
 
+/** Encabezado de ficha según clasificación etaria (no asume pediátrico). */
+export function tituloHistoriaClinica(
+  p: Pick<Paciente, 'fechaNacimiento' | 'edadAnios' | 'edadMeses' | 'grupoEtario'>
+): string {
+  const grupo = resolveGrupoEtario(p);
+  if (!grupo) return 'Historia clínica';
+  return `Historia clínica · ${grupoEtarioLabel(grupo)}`;
+}
+
+/** Sección de identidad en ficha/detalle según clasificación. */
+export function tituloDatosPersonales(
+  p: Pick<Paciente, 'fechaNacimiento' | 'edadAnios' | 'edadMeses' | 'grupoEtario'>
+): string {
+  const grupo = resolveGrupoEtario(p);
+  if (!grupo) return '1. Datos personales del paciente';
+  return `1. Datos personales (${grupoEtarioLabel(grupo)})`;
+}
+
 /** Umbrales: <18 niño/a, <60 adulto, 60+ tercera edad. */
 export function grupoEtarioFromAge(years: number): GrupoEtario {
   if (years < 18) return 'nino';

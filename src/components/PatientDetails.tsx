@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Paciente, NotaClinica, puntoRegistroEtiqueta, grupoEtarioLabel, edadPacienteTexto, resolveGrupoEtario, pacienteRequiereRepresentante } from '../types';
+import { Paciente, NotaClinica, puntoRegistroEtiqueta, grupoEtarioLabel, edadPacienteTexto, resolveGrupoEtario, pacienteRequiereRepresentante, tituloHistoriaClinica, tituloDatosPersonales } from '../types';
 import { 
   User, MapPin, ShieldAlert, Heart, 
   ArrowLeft, Edit3, Printer, Plus, Calendar, Activity, 
@@ -165,7 +165,7 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
       {/* Main Clinical File Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left Column: Pediatric Profile ID Card & Health Stats */}
+        {/* Left Column: clinical profile card & health stats */}
         <div className="lg:col-span-1 space-y-6 print:col-span-3">
           
           {/* Visual ID Card resembling medical credential */}
@@ -175,7 +175,7 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
             <div className="flex justify-between items-start mb-6 gap-4">
               <div>
                 <span className="text-[10px] font-mono font-bold tracking-widest bg-white/20 px-2 py-0.5 rounded-md uppercase">
-                  HISTORIA CLÍNICA INFANTIL
+                  {tituloHistoriaClinica(patient).toUpperCase()}
                 </span>
                 <p className="text-[10px] text-blue-200 font-mono mt-1">ID: {patient.id.toUpperCase()}</p>
               </div>
@@ -344,7 +344,7 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
               {/* Seccion 1: Personales */}
               <div className="space-y-3">
                 <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5 pb-1.5 border-b border-slate-200">
-                  <User className="w-3.5 h-3.5" /> 1. Datos Personales del Niño/a
+                  <User className="w-3.5 h-3.5" /> {tituloDatosPersonales(patient)}
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-3 gap-x-4 text-xs">
                   <div>

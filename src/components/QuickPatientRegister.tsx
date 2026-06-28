@@ -29,8 +29,6 @@ export type PatientSaveOptions = { andContinue?: boolean };
 type OptionalSectionKey =
   | 'foto'
   | 'antropometria'
-  | 'puntoRegistro'
-  | 'ubicacion'
   | 'representante'
   | 'salud'
   | 'educacion';
@@ -38,8 +36,6 @@ type OptionalSectionKey =
 const OPTIONAL_SECTION_DEFAULTS: Record<OptionalSectionKey, boolean> = {
   foto: false,
   antropometria: false,
-  puntoRegistro: false,
-  ubicacion: false,
   representante: false,
   salud: false,
   educacion: false,
@@ -363,11 +359,6 @@ export default function QuickPatientRegister({
                 {[carryOver.ciudadMunicipio, carryOver.estadoProvincia].filter(Boolean).join(', ')}
               </span>
             )}
-            {!optionalSections.puntoRegistro && carryOver?.centroAcopioNombre && (
-              <span className="mt-1 block text-[10px] text-teal-600">
-                Active «Punto de registro» si necesita cambiar el centro.
-              </span>
-            )}
           </div>
         )}
 
@@ -496,6 +487,174 @@ export default function QuickPatientRegister({
           </div>
         </div>
 
+        <div className="space-y-3 rounded-2xl border border-teal-100 bg-teal-50/40 p-4">
+          <p className="text-xs font-bold text-teal-900">Punto de registro</p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setFormData((p) => ({ ...p, puntoRegistroTipo: 'centro' }))}
+              className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs font-bold transition-all ${
+                formData.puntoRegistroTipo === 'centro'
+                  ? 'border-teal-600 bg-teal-600 text-white'
+                  : 'border-teal-200 bg-white text-teal-800 hover:bg-teal-50'
+              }`}
+            >
+              <Warehouse className="h-4 w-4 shrink-0" />
+              Centro de acopio
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setFormData((p) => ({
+                  ...p,
+                  puntoRegistroTipo: 'medico',
+                  centroAcopioId: '',
+                  centroAcopioNombre: '',
+                  centroAcopioLat: null,
+                  centroAcopioLng: null,
+                }))
+              }
+              className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs font-bold transition-all ${
+                formData.puntoRegistroTipo === 'medico'
+                  ? 'border-indigo-600 bg-indigo-600 text-white'
+                  : 'border-indigo-200 bg-white text-indigo-800 hover:bg-indigo-50'
+              }`}
+            >
+              <Stethoscope className="h-4 w-4 shrink-0" />
+              Atención en calle
+            </button>
+          </div>
+
+          {formData.puntoRegistroTipo === 'centro' && (
+            <>
+              {recentCenters.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {recentCenters.map((center) => (
+                    <button
+                      key={center.id}
+                      type="button"
+                      onClick={() => applyCenter(center, true)}
+                      className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                        formData.centroAcopioId === center.id
+                          ? 'border-teal-600 bg-teal-600 text-white'
+                          : 'border-teal-200 bg-white text-teal-800 hover:bg-teal-50'
+                      }`}
+                    >
+                      {center.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <input
+                type="text"
+                value={centerFilter || formData.centroAcopioNombre}
+                onChange={(e) => {
+                  setCenterFilter(e.target.value);
+                  if (!e.target.value.trim()) {
+                    setFormData((p) => ({
+                      ...p,
+                      centroAcopioId: '',
+                      centroAcopioNombre: '',
+                    }));
+                  }
+                }}
+                placeholder="Buscar centro..."
+                className={inputClass}
+              />
+              {centerFilter.trim() && filteredCenters.length > 0 && (
+                <div className="max-h-32 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+                  {filteredCenters.map((center) => (
+                    <button
+                      key={center.id}
+                      type="button"
+                      onClick={() => applyCenter(center, true)}
+                      className="block w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-teal-50"
+                    >
+                      <span className="font-semibold">{center.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {formData.centroAcopioId && !centerFilter && (
+                <p className="text-xs font-semibold text-teal-700">
+                  Seleccionado: {formData.centroAcopioNombre}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowNewCenter(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-teal-300 bg-white px-3 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Nuevo centro
+              </button>
+              {centerNotice && (
+                <p className="text-[11px] font-medium text-teal-700">{centerNotice}</p>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+          <p className="text-xs font-bold text-slate-700">Ubicación del paciente</p>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+              Dirección
+            </label>
+            <textarea
+              value={formData.direccion}
+              onChange={(e) => setFormData((p) => ({ ...p, direccion: e.target.value }))}
+              rows={2}
+              placeholder="Calle, urbanización, apartamento..."
+              className={inputClass}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                Ciudad / Municipio
+              </label>
+              <input
+                type="text"
+                value={formData.ciudadMunicipio}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, ciudadMunicipio: e.target.value }))
+                }
+                placeholder="Ej. Chacao"
+                className={inputClass}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                Estado / Provincia
+              </label>
+              <input
+                type="text"
+                value={formData.estadoProvincia}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, estadoProvincia: e.target.value }))
+                }
+                placeholder="Ej. Miranda"
+                className={inputClass}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+              Punto de referencia
+            </label>
+            <input
+              type="text"
+              value={formData.puntoReferencia}
+              onChange={(e) =>
+                setFormData((p) => ({ ...p, puntoReferencia: e.target.value }))
+              }
+              placeholder="Ej. Frente a la plaza..."
+              className={inputClass}
+            />
+          </div>
+        </div>
+
         <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
           <ChevronDown className="h-3 w-3" />
           Datos adicionales (active el switch si los tiene)
@@ -575,186 +734,6 @@ export default function QuickPatientRegister({
                     setFormData((p) => ({ ...p, estatura: parseFormNumber(e.target.value) }))
                   }
                   placeholder="Ej. 105"
-                  className={inputClass}
-                />
-              </div>
-            </div>
-          </OptionalSection>
-
-          <OptionalSection
-            title="Punto de registro"
-            hint="Centro de acopio o atención en calle"
-            enabled={optionalSections.puntoRegistro}
-            onToggle={(v) => setSection('puntoRegistro', v)}
-          >
-            <div className="space-y-3">
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setFormData((p) => ({ ...p, puntoRegistroTipo: 'centro' }))}
-                  className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs font-bold transition-all ${
-                    formData.puntoRegistroTipo === 'centro'
-                      ? 'border-teal-600 bg-teal-600 text-white'
-                      : 'border-teal-200 bg-white text-teal-800 hover:bg-teal-50'
-                  }`}
-                >
-                  <Warehouse className="h-4 w-4 shrink-0" />
-                  Centro de acopio
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormData((p) => ({
-                      ...p,
-                      puntoRegistroTipo: 'medico',
-                      centroAcopioId: '',
-                      centroAcopioNombre: '',
-                      centroAcopioLat: null,
-                      centroAcopioLng: null,
-                    }))
-                  }
-                  className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs font-bold transition-all ${
-                    formData.puntoRegistroTipo === 'medico'
-                      ? 'border-indigo-600 bg-indigo-600 text-white'
-                      : 'border-indigo-200 bg-white text-indigo-800 hover:bg-indigo-50'
-                  }`}
-                >
-                  <Stethoscope className="h-4 w-4 shrink-0" />
-                  Atención en calle
-                </button>
-              </div>
-
-              {formData.puntoRegistroTipo === 'centro' && (
-                <>
-                  {recentCenters.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {recentCenters.map((center) => (
-                        <button
-                          key={center.id}
-                          type="button"
-                          onClick={() => applyCenter(center, true)}
-                          className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors ${
-                            formData.centroAcopioId === center.id
-                              ? 'border-teal-600 bg-teal-600 text-white'
-                              : 'border-teal-200 bg-white text-teal-800 hover:bg-teal-50'
-                          }`}
-                        >
-                          {center.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <input
-                    type="text"
-                    value={centerFilter || formData.centroAcopioNombre}
-                    onChange={(e) => {
-                      setCenterFilter(e.target.value);
-                      if (!e.target.value.trim()) {
-                        setFormData((p) => ({
-                          ...p,
-                          centroAcopioId: '',
-                          centroAcopioNombre: '',
-                        }));
-                      }
-                    }}
-                    placeholder="Buscar centro..."
-                    className={inputClass}
-                  />
-                  {centerFilter.trim() && filteredCenters.length > 0 && (
-                    <div className="max-h-32 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-                      {filteredCenters.map((center) => (
-                        <button
-                          key={center.id}
-                          type="button"
-                          onClick={() => applyCenter(center, true)}
-                          className="block w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-teal-50"
-                        >
-                          <span className="font-semibold">{center.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {formData.centroAcopioId && !centerFilter && (
-                    <p className="text-xs font-semibold text-teal-700">
-                      Seleccionado: {formData.centroAcopioNombre}
-                    </p>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setShowNewCenter(true)}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-teal-300 bg-white px-3 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Nuevo centro
-                  </button>
-                  {centerNotice && (
-                    <p className="text-[11px] font-medium text-teal-700">{centerNotice}</p>
-                  )}
-                </>
-              )}
-            </div>
-          </OptionalSection>
-
-          <OptionalSection
-            title="Ubicación del paciente"
-            hint="Dirección, ciudad y estado"
-            enabled={optionalSections.ubicacion}
-            onToggle={(v) => setSection('ubicacion', v)}
-          >
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
-                  Dirección
-                </label>
-                <textarea
-                  value={formData.direccion}
-                  onChange={(e) => setFormData((p) => ({ ...p, direccion: e.target.value }))}
-                  rows={2}
-                  placeholder="Calle, urbanización, apartamento..."
-                  className={inputClass}
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
-                    Ciudad / Municipio
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.ciudadMunicipio}
-                    onChange={(e) =>
-                      setFormData((p) => ({ ...p, ciudadMunicipio: e.target.value }))
-                    }
-                    placeholder="Ej. Chacao"
-                    className={inputClass}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
-                    Estado / Provincia
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.estadoProvincia}
-                    onChange={(e) =>
-                      setFormData((p) => ({ ...p, estadoProvincia: e.target.value }))
-                    }
-                    placeholder="Ej. Miranda"
-                    className={inputClass}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
-                  Punto de referencia
-                </label>
-                <input
-                  type="text"
-                  value={formData.puntoReferencia}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, puntoReferencia: e.target.value }))
-                  }
-                  placeholder="Ej. Frente a la plaza..."
                   className={inputClass}
                 />
               </div>

@@ -405,7 +405,7 @@ export default function DashboardStats({
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
           <div>
             <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Esquema de Vacunación</h4>
-            <p className="text-[10px] text-slate-400">Proporción de inmunización infantil.</p>
+            <p className="text-[10px] text-slate-400">Proporción con esquema de vacunación completo.</p>
           </div>
 
           <div className="flex items-center justify-center py-2 relative">
@@ -452,7 +452,7 @@ export default function DashboardStats({
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
           <div>
             <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Distribución por edad</h4>
-            <p className="text-[10px] text-slate-400">Rangos pediátricos según años registrados.</p>
+            <p className="text-[10px] text-slate-400">Rangos de edad según años registrados.</p>
           </div>
 
           {/* Custom SVG histogram */}
@@ -498,7 +498,7 @@ export default function DashboardStats({
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
           <div>
             <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Por clasificación</h4>
-            <p className="text-[10px] text-slate-400">Niño/a, adulto y tercera edad.</p>
+            <p className="text-[10px] text-slate-400">Clasificación etaria del censo.</p>
           </div>
 
           <div className="space-y-3">

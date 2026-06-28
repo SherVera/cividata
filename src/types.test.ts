@@ -7,6 +7,8 @@ import {
   pacienteTieneEdad,
   resolveGrupoEtario,
   pacienteRequiereRepresentante,
+  tituloHistoriaClinica,
+  tituloDatosPersonales,
 } from './types';
 
 describe('grupoEtarioFromAge', () => {
@@ -64,6 +66,27 @@ describe('grupoEtarioLabel', () => {
   it('etiqueta valores conocidos y ausentes', () => {
     expect(grupoEtarioLabel('nino')).toBe('Niño/a');
     expect(grupoEtarioLabel(null)).toBe('Sin clasificar');
+  });
+});
+
+describe('tituloHistoriaClinica', () => {
+  it('adapta el encabezado a la clasificación etaria', () => {
+    expect(
+      tituloHistoriaClinica({
+        fechaNacimiento: '',
+        edadAnios: 40,
+        edadMeses: 0,
+        grupoEtario: null,
+      })
+    ).toBe('Historia clínica · Adulto');
+    expect(
+      tituloDatosPersonales({
+        fechaNacimiento: '',
+        edadAnios: 5,
+        edadMeses: 0,
+        grupoEtario: null,
+      })
+    ).toBe('1. Datos personales (Niño/a)');
   });
 });
 

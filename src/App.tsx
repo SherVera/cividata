@@ -618,7 +618,7 @@ export default function App() {
                     </span>
                   </div>
                   <h2 className="font-sans font-bold text-lg md:text-xl text-slate-900 leading-tight tracking-tight">
-                    Gestión Integral de Pacientes Pediátricos
+                    Gestión integral de pacientes
                   </h2>
                   <p className="text-xs text-slate-500 max-w-xl leading-relaxed">
                     Registre pacientes, controle esquemas de vacunación, realice el seguimiento pondoestatural de peso/talla y acceda rápidamente a la historia de consultas.
@@ -711,7 +711,7 @@ export default function App() {
                           type="text"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          placeholder="Buscar por niño, cédula, representante, ciudad..."
+                          placeholder="Buscar por paciente, cédula, representante, ciudad..."
                           className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs md:text-sm text-slate-800 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
                         />
                         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -985,7 +985,7 @@ export default function App() {
                       <div>
                         <h3 className="font-sans font-bold text-slate-700 text-sm">No se encontraron pacientes</h3>
                         <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                          No hay ningún registro de niño que coincida con los criterios de búsqueda o filtros activos seleccionados.
+                          No hay ningún registro de paciente que coincida con los criterios de búsqueda o filtros activos seleccionados.
                         </p>
                       </div>
                       
