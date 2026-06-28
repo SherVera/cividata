@@ -15,6 +15,7 @@ import { fetchCatalogs } from '../lib/catalogsApi';
 import { parseMultiValue } from '../lib/multiValue';
 import GeoMapPicker from './GeoMapPicker';
 import { formatDistance, haversineMeters } from '../lib/geo';
+import { parseFormNumber, validateClinicalNote } from '../lib/patientValidation';
 import PatientPhoto from './PatientPhoto';
 
 interface PatientDetailsProps {
@@ -55,20 +56,17 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
 
   const handleNoteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newNote.motivo.trim() || !newNote.diagnostico.trim() || !newNote.tratamiento.trim()) {
-      setNoteError("Por favor complete todos los campos de la consulta.");
-      return;
-    }
-    if (newNote.peso <= 0 || newNote.estatura <= 0) {
-      setNoteError("El peso y la estatura deben ser mayores a 0.");
+    const validationError = validateClinicalNote(newNote);
+    if (validationError) {
+      setNoteError(validationError);
       return;
     }
 
     const createdNote: NotaClinica = {
       id: "note-" + Math.random().toString(36).substr(2, 9),
       fecha: newNote.fecha,
-      peso: parseFloat(newNote.peso.toString()),
-      estatura: parseFloat(newNote.estatura.toString()),
+      peso: newNote.peso,
+      estatura: newNote.estatura,
       motivo: newNote.motivo,
       diagnostico: newNote.diagnostico,
       tratamiento: newNote.tratamiento
@@ -653,7 +651,7 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                         <input
                           type="number"
                           value={newNote.estatura}
-                          onChange={(e) => setNewNote(prev => ({ ...prev, estatura: parseFloat(e.target.value) }))}
+                          onChange={(e) => setNewNote(prev => ({ ...prev, estatura: parseFormNumber(e.target.value) }))}
                           placeholder="cm"
                           className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-700"
                         />
@@ -663,7 +661,7 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                         <input
                           type="number"
                           value={newNote.peso}
-                          onChange={(e) => setNewNote(prev => ({ ...prev, peso: parseFloat(e.target.value) }))}
+                          onChange={(e) => setNewNote(prev => ({ ...prev, peso: parseFormNumber(e.target.value) }))}
                           placeholder="kg"
                           className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-700"
                         />

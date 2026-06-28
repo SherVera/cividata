@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { Paciente, NotaClinica, normalizeGrupoEtario, grupoEtarioFromAge, pacienteTieneEdad } from '../types';
+import { resolveAgeGroupForSave } from './patientValidation';
 import { joinMultiValue, parseMultiValue } from './multiValue';
 import { deletePatientPhoto } from './patientPhotosApi';
 
@@ -255,8 +256,7 @@ export async function savePatient(p: Paciente): Promise<void> {
     : { firstId: null, detail: null };
   const guardianId = await getOrCreateGuardian(p);
   const hasBirthDate = !!(p.fechaNacimiento || '').trim();
-  const hasAge = hasBirthDate || p.edadAnios > 0 || p.edadMeses > 0;
-  const grupoEtario = hasAge ? grupoEtarioFromAge(p.edadAnios) : (p.grupoEtario || null);
+  const grupoEtario = resolveAgeGroupForSave(p);
 
   const row = {
     id: p.id,

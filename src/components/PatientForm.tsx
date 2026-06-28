@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Paciente, GRUPOS_ETARIOS, grupoEtarioLabel, grupoEtarioFromAge, pacienteTieneEdad } from '../types';
+import { parseFormNumber, validatePatientSection1 } from '../lib/patientValidation';
 import { APP_NAME } from '../brand';
 import { 
   User, MapPin, ShieldAlert, Heart, GraduationCap, 
@@ -469,7 +470,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     if (type === 'checkbox') {
       parsedValue = (e.target as HTMLInputElement).checked;
     } else if (type === 'number') {
-      parsedValue = value === '' ? 0 : parseFloat(value);
+      parsedValue = parseFormNumber(value);
     }
 
     setFormData(prev => ({
@@ -489,21 +490,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
   };
 
   const validateSection = (sectionNum: number): boolean => {
-    const errors: Record<string, string> = {};
-
-    if (sectionNum === 1) {
-      const hasIdentity =
-        formData.nombres.trim() ||
-        formData.apellidos.trim() ||
-        formData.documentoIdentidad.trim();
-      if (!hasIdentity) {
-        errors.nombres = 'Indique al menos nombre, apellido o documento del paciente';
-      }
-      if (!pacienteTieneEdad(formData) && !formData.grupoEtario) {
-        errors.grupoEtario = 'Seleccione la clasificación etaria manualmente';
-      }
-    }
-
+    const errors = sectionNum === 1 ? validatePatientSection1(formData) : {};
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };

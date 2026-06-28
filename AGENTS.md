@@ -21,6 +21,7 @@ Guidance for AI coding agents working in this repository.
 ## Validation
 
 - Run `npm run lint` after TypeScript/React changes.
+- Run `npm run test` after changes to validation, types, or data parsing helpers.
 - Run `npm run build` after frontend, dependency, config, or deploy changes.
 - Fix errors introduced by your own changes before handing work back.
 
