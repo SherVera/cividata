@@ -313,6 +313,7 @@ alter table public.patients add column if not exists registration_lat double pre
 alter table public.patients add column if not exists registration_lng double precision;
 alter table public.patients add column if not exists registrant_lat double precision;
 alter table public.patients add column if not exists registrant_lng double precision;
+alter table public.patients add column if not exists registration_site_type text not null default 'centro';
 
 -- 3) Index only after the column exists (safe when re-running on an old patients table).
 do $$
@@ -387,3 +388,28 @@ end $$;
 update auth.users
 set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"personal_medico"}'::jsonb
 where raw_app_meta_data->>'role' = 'registrador';
+
+-- =========================================================
+-- Staff audit: user management actions (profile, contact, roles…)
+-- Written by api/users (service role). Admins can read.
+-- =========================================================
+create table if not exists public.staff_audit_log (
+  id              bigint generated always as identity primary key,
+  target_user_id  uuid not null,
+  action          text not null,
+  actor           uuid,
+  actor_email     text,
+  actor_role      text,
+  changes         jsonb not null default '{}'::jsonb,
+  created_at      timestamptz not null default now()
+);
+
+create index if not exists staff_audit_log_created_at_idx on public.staff_audit_log (created_at desc);
+create index if not exists staff_audit_log_target_idx on public.staff_audit_log (target_user_id);
+
+alter table public.staff_audit_log enable row level security;
+
+drop policy if exists "admin read staff audit" on public.staff_audit_log;
+create policy "admin read staff audit"
+  on public.staff_audit_log for select to authenticated
+  using (public.is_admin());

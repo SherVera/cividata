@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Paciente, NotaClinica } from '../types';
+import { Paciente, NotaClinica, puntoRegistroEtiqueta } from '../types';
 import { 
   User, MapPin, ShieldAlert, Heart, GraduationCap, 
   ArrowLeft, Edit3, Printer, Plus, Calendar, Activity, 
-  ShieldCheck, FileText, ChevronRight, Phone, Mail, FileClock, ClipboardList, Warehouse
+  ShieldCheck, FileText, ChevronRight, Phone, Mail, FileClock, ClipboardList, Warehouse, Stethoscope
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { fetchCatalogs } from '../lib/catalogsApi';
@@ -358,16 +358,23 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
               </div>
 
               {/* Seccion 2: Registro y Centro de Acopio */}
-              {(patient.centroAcopioNombre || patient.registroLat != null) && (
+              {(patient.puntoRegistroTipo === 'medico' || patient.centroAcopioNombre || patient.registroLat != null) && (
                 <div className="space-y-3 pt-2">
                   <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5 pb-1.5 border-b border-slate-200">
-                    <Warehouse className="w-3.5 h-3.5" /> Punto de Registro del Paciente
+                    {patient.puntoRegistroTipo === 'medico' ? (
+                      <Stethoscope className="w-3.5 h-3.5" />
+                    ) : (
+                      <Warehouse className="w-3.5 h-3.5" />
+                    )}
+                    Punto de Registro del Paciente
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-3 gap-x-4 text-xs">
                     <div className="sm:col-span-3">
-                      <span className="text-slate-400 block mb-0.5">Centro de acopio</span>
-                      <span className="font-semibold text-slate-700">
-                        {patient.centroAcopioNombre || 'No especificado'}
+                      <span className="text-slate-400 block mb-0.5">
+                        {patient.puntoRegistroTipo === 'medico' ? 'Tipo de atención' : 'Centro de acopio'}
+                      </span>
+                      <span className={`font-semibold ${patient.puntoRegistroTipo === 'medico' ? 'text-indigo-700' : 'text-slate-700'}`}>
+                        {puntoRegistroEtiqueta(patient) || 'No especificado'}
                       </span>
                     </div>
                     {patient.registroLat != null && patient.registroLng != null && (
@@ -376,7 +383,9 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                         <span className="font-mono text-[10px] font-semibold text-slate-600">
                           {patient.registroLat.toFixed(3)}, {patient.registroLng.toFixed(3)}
                         </span>
-                        {patient.centroAcopioLat != null && patient.centroAcopioLng != null && (
+                        {patient.puntoRegistroTipo === 'centro' &&
+                          patient.centroAcopioLat != null &&
+                          patient.centroAcopioLng != null && (
                           <span className="block mt-1 text-[10px] font-medium text-teal-700">
                             Distancia al centro:{' '}
                             {formatDistance(
@@ -398,7 +407,9 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                       lng={patient.registroLng}
                       readOnly
                       centers={
-                        patient.centroAcopioLat != null && patient.centroAcopioLng != null
+                        patient.puntoRegistroTipo === 'centro' &&
+                        patient.centroAcopioLat != null &&
+                        patient.centroAcopioLng != null
                           ? [{
                               id: patient.centroAcopioId || 'center',
                               name: patient.centroAcopioNombre || 'Centro',

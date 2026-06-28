@@ -179,7 +179,7 @@ export default function DashboardStats({
   const adminFieldStats = {
     registrosHoy: patients.filter((p) => isToday(p.fechaRegistro)).length,
     registrosUltimos7Dias: patients.filter((p) => isWithinDays(p.fechaRegistro, 7)).length,
-    sinCentro: patients.filter((p) => !p.centroAcopioId).length,
+    sinCentro: patients.filter((p) => p.puntoRegistroTipo !== 'medico' && !p.centroAcopioId).length,
     conHistoriaClinica: patients.filter((p) => p.notasClinicas.length > 0).length,
   };
 

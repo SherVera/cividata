@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
+import type { StaffAuditEntry, StaffProfile } from '../types';
 
 type UserRole = 'super_admin' | 'admin' | 'personal_medico';
 
@@ -23,21 +24,61 @@ type AdminUser = {
   id: string;
   email: string | null;
   phone: string | null;
+  profile: StaffProfile;
   role: UserRole | string;
   disabled: boolean;
   created_at: string;
   last_sign_in_at: string | null;
   manageable?: boolean;
   canEditContact?: boolean;
+  canEditProfile?: boolean;
   canResetPassword?: boolean;
   canToggle?: boolean;
   canChangeRole?: boolean;
 };
 
+const PROFILE_FIELDS: { key: keyof StaffProfile; label: string; placeholder: string }[] = [
+  { key: 'first_name', label: 'Nombres', placeholder: 'Ej. María' },
+  { key: 'last_name', label: 'Apellidos', placeholder: 'Ej. Pérez' },
+  { key: 'id_document', label: 'Documento de identidad', placeholder: 'V-12345678' },
+  { key: 'specialty', label: 'Especialidad / cargo', placeholder: 'Pediatría, enfermería…' },
+  { key: 'workplace', label: 'Centro de trabajo', placeholder: 'Hospital, ambulatorio…' },
+  { key: 'contact_phone', label: 'Teléfono de contacto', placeholder: '+584141234567' },
+  { key: 'address', label: 'Dirección', placeholder: 'Opcional' },
+  { key: 'professional_license', label: 'Cédula profesional', placeholder: 'Opcional' },
+];
+
 type Notice = { type: 'success' | 'error' | 'info'; message: string } | null;
 
+function displayName(user: AdminUser) {
+  const full = [user.profile.first_name, user.profile.last_name].filter(Boolean).join(' ').trim();
+  return full || user.email || user.phone || user.id.slice(0, 8);
+}
+
 function identity(user: AdminUser) {
-  return user.email || user.phone || user.id.slice(0, 8);
+  return displayName(user);
+}
+
+function profileSummary(user: AdminUser) {
+  const parts = [
+    user.profile.id_document,
+    user.profile.specialty,
+    user.profile.workplace,
+  ].filter(Boolean);
+  return parts.join(' · ');
+}
+
+function auditActionLabel(action: string) {
+  const labels: Record<string, string> = {
+    create: 'Alta de usuario',
+    contact_update: 'Contacto de acceso',
+    profile_update: 'Datos personales',
+    role_change: 'Cambio de rol',
+    password_reset: 'Contraseña',
+    enable: 'Activación',
+    disable: 'Deshabilitación',
+  };
+  return labels[action] || action;
 }
 
 function formatDate(value: string | null) {
@@ -67,7 +108,14 @@ async function requestUsers(token: string, method: 'GET' | 'POST' | 'PATCH', bod
   return response.json();
 }
 
-function ContactEditModal({
+async function requestAudit(token: string) {
+  const response = await fetch('/api/users?audit=1', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.json();
+}
+
+function UserEditModal({
   user,
   isSaving,
   onClose,
@@ -76,25 +124,43 @@ function ContactEditModal({
   user: AdminUser;
   isSaving: boolean;
   onClose: () => void;
-  onSave: (payload: { email?: string; phone?: string }) => void;
+  onSave: (payload: { contact?: { email?: string; phone?: string }; profile?: Partial<StaffProfile> }) => void;
 }) {
   const [email, setEmail] = useState(user.email || '');
   const [phone, setPhone] = useState(user.phone || '');
-  const cleanPhone = normalizePhone(phone);
+  const [profile, setProfile] = useState<StaffProfile>({ ...user.profile });
 
-  const hasChanges = useMemo(() => {
+  const contactChanged = useMemo(() => {
     return email.trim() !== (user.email || '') || normalizePhone(phone) !== (user.phone || '');
   }, [email, phone, user.email, user.phone]);
+
+  const profileChanged = useMemo(() => {
+    return PROFILE_FIELDS.some(({ key }) => (profile[key] || '') !== (user.profile[key] || ''));
+  }, [profile, user.profile]);
+
+  const hasChanges = contactChanged || profileChanged;
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!hasChanges) return;
 
-    const payload: { email?: string; phone?: string } = {};
-    const cleanEmail = email.trim();
+    const payload: { contact?: { email?: string; phone?: string }; profile?: Partial<StaffProfile> } = {};
 
-    if (cleanEmail && cleanEmail !== user.email) payload.email = cleanEmail;
-    if (cleanPhone && cleanPhone !== user.phone) payload.phone = cleanPhone;
+    if (contactChanged) {
+      payload.contact = {
+        email: email.trim(),
+        phone: normalizePhone(phone),
+      };
+    }
+
+    if (profileChanged) {
+      const nextProfile: Partial<StaffProfile> = {};
+      for (const { key } of PROFILE_FIELDS) {
+        nextProfile[key] = (profile[key] || '').trim();
+      }
+      payload.profile = nextProfile;
+    }
+
     onSave(payload);
   };
 
@@ -107,7 +173,7 @@ function ContactEditModal({
     >
       <motion.form
         onSubmit={handleSubmit}
-        className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl"
+        className="max-h-[90vh] w-full max-w-2xl overflow-hidden overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl"
         initial={{ opacity: 0, scale: 0.96, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 16 }}
@@ -117,9 +183,9 @@ function ContactEditModal({
             <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-blue-700">
               <ShieldCheck className="h-3 w-3" /> Usuario
             </span>
-            <h3 className="mt-3 text-lg font-bold tracking-tight text-slate-900">Editar contacto</h3>
+            <h3 className="mt-3 text-lg font-bold tracking-tight text-slate-900">Editar usuario</h3>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Actualiza el correo o teléfono de acceso para <strong className="text-slate-700">{identity(user)}</strong>.
+              Datos personales opcionales y contacto de acceso para <strong className="text-slate-700">{displayName(user)}</strong>.
             </p>
           </div>
           <button
@@ -132,34 +198,59 @@ function ContactEditModal({
           </button>
         </div>
 
-        <div className="space-y-4 px-6 py-5">
-          <label className="block">
-            <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              <Mail className="h-3.5 w-3.5" /> Correo
-            </span>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="correo@ejemplo.com"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-            />
-          </label>
+        <div className="space-y-6 px-6 py-5">
+          <section>
+            <h4 className="mb-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Datos personales (opcional)</h4>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {PROFILE_FIELDS.map(({ key, label, placeholder }) => (
+                <label key={key} className={key === 'address' ? 'block sm:col-span-2' : 'block'}>
+                  <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
+                  <input
+                    value={profile[key] || ''}
+                    onChange={(event) => setProfile((prev) => ({ ...prev, [key]: event.target.value }))}
+                    placeholder={placeholder}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                  />
+                </label>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+              Dejar un campo vacío y guardar lo oculta del perfil. Los cambios quedan registrados en auditoría.
+            </p>
+          </section>
 
-          <label className="block">
-            <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              <Phone className="h-3.5 w-3.5" /> Teléfono
-            </span>
-            <input
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              placeholder="+584141234567"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-            />
-          </label>
+          <section>
+            <h4 className="mb-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Contacto de acceso</h4>
+            <div className="space-y-3">
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <Mail className="h-3.5 w-3.5" /> Correo
+                </span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="correo@ejemplo.com"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <Phone className="h-3.5 w-3.5" /> Teléfono
+                </span>
+                <input
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  placeholder="+584141234567"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                />
+              </label>
+            </div>
+          </section>
 
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
-            Verifique los datos antes de guardar. Los cambios afectan el acceso del usuario al sistema.
+            Debe permanecer al menos un correo o teléfono de acceso. Las eliminaciones y cambios sensibles quedan en el registro de auditoría.
           </div>
         </div>
 
@@ -177,7 +268,7 @@ function ContactEditModal({
             className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-blue-600/15 transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
           >
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            Guardar contacto
+            Guardar cambios
           </button>
         </div>
       </motion.form>
@@ -194,23 +285,38 @@ function CreateUserModal({
   roles: string[];
   isSaving: boolean;
   onClose: () => void;
-  onSave: (payload: { email?: string; phone?: string; password: string; role: string }) => void;
+  onSave: (payload: {
+    email?: string;
+    phone?: string;
+    password: string;
+    role: string;
+    profile?: Partial<StaffProfile>;
+  }) => void;
 }) {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState(roles[0] || 'personal_medico');
+  const [profile, setProfile] = useState<StaffProfile>({});
   const cleanPhone = normalizePhone(phone);
   const canSubmit = password.length >= 6 && (!!email.trim() || !!cleanPhone);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!canSubmit) return;
+
+    const nextProfile: Partial<StaffProfile> = {};
+    for (const { key } of PROFILE_FIELDS) {
+      const value = (profile[key] || '').trim();
+      if (value) nextProfile[key] = value;
+    }
+
     onSave({
       email: email.trim() || undefined,
       phone: cleanPhone || undefined,
       password,
       role,
+      profile: Object.keys(nextProfile).length ? nextProfile : undefined,
     });
   };
 
@@ -223,7 +329,7 @@ function CreateUserModal({
     >
       <motion.form
         onSubmit={handleSubmit}
-        className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl"
+        className="max-h-[90vh] w-full max-w-2xl overflow-hidden overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl"
         initial={{ opacity: 0, scale: 0.96, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.96, y: 16 }}
@@ -235,7 +341,7 @@ function CreateUserModal({
             </span>
             <h3 className="mt-3 text-lg font-bold tracking-tight text-slate-900">Crear usuario</h3>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Registre una cuenta para acceder al sistema.
+              Registre una cuenta y, si lo desea, datos personales para identificación y auditoría.
             </p>
           </div>
           <button type="button" onClick={onClose} className="rounded-xl p-2 text-slate-400 hover:bg-white hover:text-slate-700" aria-label="Cerrar">
@@ -243,57 +349,79 @@ function CreateUserModal({
           </button>
         </div>
 
-        <div className="space-y-4 px-6 py-5">
-          <label className="block">
-            <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              <Mail className="h-3.5 w-3.5" /> Correo
-            </span>
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="correo@ejemplo.com"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-            />
-          </label>
+        <div className="space-y-6 px-6 py-5">
+          <section>
+            <h4 className="mb-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Acceso</h4>
+            <div className="space-y-3">
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <Mail className="h-3.5 w-3.5" /> Correo
+                </span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="correo@ejemplo.com"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                />
+              </label>
 
-          <label className="block">
-            <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              <Phone className="h-3.5 w-3.5" /> Teléfono
-            </span>
-            <input
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              placeholder="+584141234567"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-            />
-          </label>
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <Phone className="h-3.5 w-3.5" /> Teléfono
+                </span>
+                <input
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  placeholder="+584141234567"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                />
+              </label>
 
-          <label className="block">
-            <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              <Lock className="h-3.5 w-3.5" /> Contraseña temporal
-            </span>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Mínimo 6 caracteres"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-            />
-          </label>
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <Lock className="h-3.5 w-3.5" /> Contraseña temporal
+                </span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                />
+              </label>
 
-          <label className="block">
-            <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Rol</span>
-            <select
-              value={role}
-              onChange={(event) => setRole(event.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-bold text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-            >
-              {roles.map((availableRole) => (
-                <option key={availableRole} value={availableRole}>{roleLabel(availableRole)}</option>
+              <label className="block">
+                <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Rol</span>
+                <select
+                  value={role}
+                  onChange={(event) => setRole(event.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-bold text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                >
+                  {roles.map((availableRole) => (
+                    <option key={availableRole} value={availableRole}>{roleLabel(availableRole)}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <section>
+            <h4 className="mb-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Datos personales (opcional)</h4>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {PROFILE_FIELDS.map(({ key, label, placeholder }) => (
+                <label key={key} className={key === 'address' ? 'block sm:col-span-2' : 'block'}>
+                  <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
+                  <input
+                    value={profile[key] || ''}
+                    onChange={(event) => setProfile((prev) => ({ ...prev, [key]: event.target.value }))}
+                    placeholder={placeholder}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                  />
+                </label>
               ))}
-            </select>
-          </label>
+            </div>
+          </section>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-slate-100 bg-slate-50 px-6 py-4">
@@ -403,6 +531,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [identityInput, setIdentityInput] = useState('');
   const [password, setPassword] = useState('');
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [auditLog, setAuditLog] = useState<StaffAuditEntry[]>([]);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [resetUser, setResetUser] = useState<AdminUser | null>(null);
   const [showCreateUser, setShowCreateUser] = useState(false);
@@ -417,7 +546,10 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
 
   const loadUsers = async (accessToken: string) => {
     setIsLoading(true);
-    const result = await requestUsers(accessToken, 'GET');
+    const [result, auditResult] = await Promise.all([
+      requestUsers(accessToken, 'GET'),
+      requestAudit(accessToken),
+    ]);
     if (result.error) {
       showNotice({ type: 'error', message: result.error });
       setUsers([]);
@@ -426,6 +558,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       setCurrentRole((result.role || null) as UserRole | null);
       setCanCreateRoles(result.canCreateRoles || []);
     }
+    if (!auditResult.error) setAuditLog(auditResult.audit || []);
     setIsLoading(false);
   };
 
@@ -478,27 +611,52 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     await loadUsers(data.session.access_token);
   };
 
-  const handleUpdateContact = async (payload: { email?: string; phone?: string }) => {
+  const handleUpdateUser = async (payload: {
+    contact?: { email?: string; phone?: string };
+    profile?: Partial<StaffProfile>;
+  }) => {
     if (!token || !selectedUser) return;
     setIsSaving(true);
-    const result = await requestUsers(token, 'PATCH', {
-      id: selectedUser.id,
-      action: 'contact',
-      ...payload,
-    });
-    setIsSaving(false);
 
-    if (result.error) {
-      showNotice({ type: 'error', message: result.error });
-      return;
+    if (payload.contact) {
+      const result = await requestUsers(token, 'PATCH', {
+        id: selectedUser.id,
+        action: 'contact',
+        ...payload.contact,
+      });
+      if (result.error) {
+        setIsSaving(false);
+        showNotice({ type: 'error', message: result.error });
+        return;
+      }
     }
 
+    if (payload.profile) {
+      const result = await requestUsers(token, 'PATCH', {
+        id: selectedUser.id,
+        action: 'profile',
+        ...payload.profile,
+      });
+      if (result.error) {
+        setIsSaving(false);
+        showNotice({ type: 'error', message: result.error });
+        return;
+      }
+    }
+
+    setIsSaving(false);
     setSelectedUser(null);
-    showNotice({ type: 'success', message: 'Contacto actualizado correctamente.' });
+    showNotice({ type: 'success', message: 'Usuario actualizado correctamente.' });
     await loadUsers(token);
   };
 
-  const handleCreateUser = async (payload: { email?: string; phone?: string; password: string; role: string }) => {
+  const handleCreateUser = async (payload: {
+    email?: string;
+    phone?: string;
+    password: string;
+    role: string;
+    profile?: Partial<StaffProfile>;
+  }) => {
     if (!token) return;
     setIsSaving(true);
     const result = await requestUsers(token, 'POST', payload);
@@ -577,6 +735,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     setCurrentRole(null);
     setCanCreateRoles([]);
     setUsers([]);
+    setAuditLog([]);
   };
 
   if (!hasSupabaseConfig) {
@@ -728,11 +887,12 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
+            <table className="w-full min-w-[900px] text-left text-sm">
               <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-400">
                 <tr>
                   <th className="px-5 py-3 font-bold">Identidad</th>
-                  <th className="px-5 py-3 font-bold">Contacto</th>
+                  <th className="px-5 py-3 font-bold">Datos personales</th>
+                  <th className="px-5 py-3 font-bold">Contacto acceso</th>
                   <th className="px-5 py-3 font-bold">Rol</th>
                   <th className="px-5 py-3 font-bold">Estado</th>
                   <th className="px-5 py-3 font-bold">Último acceso</th>
@@ -743,8 +903,18 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                 {users.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50/70">
                     <td className="px-5 py-4">
-                      <div className="font-semibold text-slate-800">{identity(user)}</div>
+                      <div className="font-semibold text-slate-800">{displayName(user)}</div>
                       <div className="mt-0.5 font-mono text-[10px] text-slate-400">{user.id.slice(0, 12)}</div>
+                    </td>
+                    <td className="px-5 py-4 text-xs text-slate-500">
+                      {profileSummary(user) ? (
+                        <div className="max-w-[220px] leading-relaxed">{profileSummary(user)}</div>
+                      ) : (
+                        <span className="text-slate-300">Sin datos adicionales</span>
+                      )}
+                      {user.profile.contact_phone && (
+                        <div className="mt-1 font-mono text-[11px] text-slate-400">{user.profile.contact_phone}</div>
+                      )}
                     </td>
                     <td className="px-5 py-4 text-xs text-slate-500">
                       <div className="font-medium">{user.email || 'Sin correo'}</div>
@@ -778,15 +948,15 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                     </td>
                     <td className="px-5 py-4 text-xs font-medium text-slate-500">{formatDate(user.last_sign_in_at)}</td>
                     <td className="px-5 py-4">
-                      {user.canEditContact || user.canResetPassword || user.canToggle ? (
+                      {user.canEditContact || user.canEditProfile || user.canResetPassword || user.canToggle ? (
                         <div className="flex flex-wrap gap-2">
-                          {user.canEditContact && (
+                          {(user.canEditContact || user.canEditProfile) && (
                             <button
                               onClick={() => setSelectedUser(user)}
                               className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-md shadow-blue-600/10 transition-colors hover:bg-blue-700"
                             >
                               <Edit3 className="h-3.5 w-3.5" />
-                              Contacto
+                              Editar
                             </button>
                           )}
                           {user.canResetPassword && (
@@ -824,9 +994,74 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
         )}
       </div>
 
+      <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Auditoría de usuarios</h3>
+            <p className="text-xs text-slate-400">
+              Registro de altas, cambios de contacto, datos personales, roles y contraseñas.
+            </p>
+          </div>
+          <button
+            onClick={() => token && loadUsers(token)}
+            className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50"
+          >
+            Actualizar
+          </button>
+        </div>
+
+        {auditLog.length === 0 ? (
+          <div className="px-6 py-10 text-center text-sm text-slate-400">
+            Sin registros de auditoría todavía. Ejecute el SQL nuevo en Supabase si la tabla no existe.
+          </div>
+        ) : (
+          <div className="max-h-80 overflow-x-auto overflow-y-auto">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wider text-slate-400">
+                <tr>
+                  <th className="px-5 py-3 font-bold">Fecha</th>
+                  <th className="px-5 py-3 font-bold">Acción</th>
+                  <th className="px-5 py-3 font-bold">Actor</th>
+                  <th className="px-5 py-3 font-bold">Usuario afectado</th>
+                  <th className="px-5 py-3 font-bold">Cambios</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {auditLog.map((entry) => {
+                  const target = users.find((user) => user.id === entry.target_user_id);
+                  const changeSummary = Object.entries(entry.changes || {})
+                    .map(([field, value]) => {
+                      const diff = value as { before: unknown; after: unknown };
+                      if (diff.before == null && diff.after != null) return `${field}: +`;
+                      if (diff.before != null && diff.after == null) return `${field}: eliminado`;
+                      return `${field}: modificado`;
+                    })
+                    .join(', ');
+
+                  return (
+                    <tr key={entry.id} className="hover:bg-slate-50/70">
+                      <td className="px-5 py-3 text-xs text-slate-500">{formatDate(entry.created_at)}</td>
+                      <td className="px-5 py-3 text-xs font-semibold text-slate-700">{auditActionLabel(entry.action)}</td>
+                      <td className="px-5 py-3 text-xs text-slate-500">
+                        <div>{entry.actor_email || 'Sin correo'}</div>
+                        <div className="text-[10px] uppercase text-slate-400">{entry.actor_role}</div>
+                      </td>
+                      <td className="px-5 py-3 text-xs text-slate-500">
+                        {target ? displayName(target) : entry.target_user_id.slice(0, 12)}
+                      </td>
+                      <td className="px-5 py-3 text-xs text-slate-500">{changeSummary || '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500">
         <UserPlus className="mr-1 inline h-4 w-4 text-blue-600" />
-        Otros administradores quedan en solo lectura para un admin. La cuenta super admin solo es visible para sí misma.
+        Los datos personales son opcionales. Borrar un campo lo oculta del perfil, pero el historial permanece en auditoría.
       </div>
 
       <AnimatePresence>
@@ -839,11 +1074,11 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
           />
         )}
         {selectedUser && (
-          <ContactEditModal
+          <UserEditModal
             user={selectedUser}
             isSaving={isSaving}
             onClose={() => setSelectedUser(null)}
-            onSave={handleUpdateContact}
+            onSave={handleUpdateUser}
           />
         )}
         {resetUser && (

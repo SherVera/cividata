@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Session } from '@supabase/supabase-js';
-import { Paciente } from './types';
+import { Paciente, puntoRegistroEtiqueta } from './types';
 import AuthScreen from './components/AuthScreen';
 import PatientForm from './components/PatientForm';
 import PatientDetails from './components/PatientDetails';
@@ -345,7 +345,8 @@ export default function App() {
 
       const matchCentro =
         filterCentro === 'All' ||
-        (filterCentro === 'SinCentro' && !p.centroAcopioId) ||
+        (filterCentro === 'AtencionMedico' && p.puntoRegistroTipo === 'medico') ||
+        (filterCentro === 'SinCentro' && p.puntoRegistroTipo !== 'medico' && !p.centroAcopioId) ||
         p.centroAcopioId === filterCentro;
 
       return matchQuery && matchGender && matchVacuna && matchEscuela && matchAge && matchCentro;
@@ -722,6 +723,7 @@ export default function App() {
                           >
                             <option value="All">Todos</option>
                             <option value="SinCentro">Sin centro asignado</option>
+                            <option value="AtencionMedico">Atención por médico</option>
                             {collectionCenters.map((c) => (
                               <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
@@ -833,7 +835,7 @@ export default function App() {
                           {/* Quick button bar */}
                           <div className="pt-3 border-t border-slate-50 flex items-center justify-between gap-2">
                             <span className="text-[10px] font-mono text-slate-400 font-medium truncate">
-                              {p.centroAcopioNombre || `${p.ciudadMunicipio}${p.estadoProvincia ? `, ${p.estadoProvincia}` : ''}`}
+                              {puntoRegistroEtiqueta(p) || `${p.ciudadMunicipio}${p.estadoProvincia ? `, ${p.estadoProvincia}` : ''}`}
                             </span>
                             
                             <div className="flex items-center gap-1.5">

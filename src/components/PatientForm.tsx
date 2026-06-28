@@ -7,7 +7,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Paciente } from '../types';
 import { 
   User, MapPin, ShieldAlert, Heart, GraduationCap, 
-  ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles, Warehouse, Plus
+  ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles, Warehouse, Plus, Stethoscope
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Catalogs, GuardianOption, fetchCatalogs } from '../lib/catalogsApi';
@@ -67,6 +67,7 @@ const emptyPatient: Omit<Paciente, 'id' | 'fechaRegistro' | 'notasClinicas'> = {
 
   centroAcopioId: "",
   centroAcopioNombre: "",
+  puntoRegistroTipo: "centro",
   centroAcopioLat: null,
   centroAcopioLng: null,
   registroLat: DEFAULT_MAP_CENTER.lat,
@@ -80,6 +81,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     if (initialPatient) {
       return {
         ...initialPatient,
+        puntoRegistroTipo: initialPatient.puntoRegistroTipo ?? 'centro',
         registroLat: initialPatient.registroLat ?? DEFAULT_MAP_CENTER.lat,
         registroLng: initialPatient.registroLng ?? DEFAULT_MAP_CENTER.lng,
       };
@@ -171,8 +173,11 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
   const applyCenter = (center: CollectionCenter, trackRecent = false) => {
     setFormData((prev) => ({
       ...prev,
+      puntoRegistroTipo: 'centro',
       centroAcopioId: center.id,
       centroAcopioNombre: center.name,
+      centroAcopioLat: center.geo_lat,
+      centroAcopioLng: center.geo_lng,
       registroLat: center.geo_lat,
       registroLng: center.geo_lng,
     }));
@@ -210,7 +215,28 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     );
   };
 
+  const setAtencionMedico = () => {
+    setFormData((prev) => ({
+      ...prev,
+      puntoRegistroTipo: 'medico',
+      centroAcopioId: '',
+      centroAcopioNombre: '',
+      centroAcopioLat: null,
+      centroAcopioLng: null,
+    }));
+    setCenterFilter('');
+    setGeoHint('Marque en el mapa dónde se atendió al paciente (calle, comunidad u otro sitio sin centro de acopio).');
+    if (formErrors.centroAcopioId) {
+      setFormErrors((prev) => {
+        const copy = { ...prev };
+        delete copy.centroAcopioId;
+        return copy;
+      });
+    }
+  };
+
   const suggestCenterFromCoords = (lat: number, lng: number, autoSelect = false) => {
+    if (formData.puntoRegistroTipo === 'medico') return;
     const points: GeoNamedPoint[] = collectionCenters.map((c) => ({
       id: c.id,
       name: c.name,
@@ -295,7 +321,9 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       registroLat: coords.lat,
       registroLng: coords.lng,
     }));
-    suggestCenterFromCoords(coords.lat, coords.lng, !formData.centroAcopioId);
+    if (formData.puntoRegistroTipo !== 'medico') {
+      suggestCenterFromCoords(coords.lat, coords.lng, !formData.centroAcopioId);
+    }
   };
 
   // Las secciones pediátricas (vacunación, edad en meses, educación) solo
@@ -394,7 +422,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       if (!formData.fechaNacimiento) errors.fechaNacimiento = "Fecha de nacimiento requerida";
       if (!formData.nacionalidad.trim()) errors.nacionalidad = "Especifique nacionalidad";
     } else if (sectionNum === 2) {
-      if (!initialPatient && !formData.centroAcopioId) {
+      if (!initialPatient && formData.puntoRegistroTipo === 'centro' && !formData.centroAcopioId) {
         errors.centroAcopioId = 'Seleccione el centro de acopio donde se realiza el registro';
       }
     } else if (sectionNum === 3) {
@@ -458,7 +486,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
         registrantLat,
         registrantLng,
       });
-      if (formData.centroAcopioId) {
+      if (formData.puntoRegistroTipo === 'centro' && formData.centroAcopioId) {
         recordRecentCenter(formData.centroAcopioId);
       }
     } else {
@@ -705,14 +733,54 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
             <div className="rounded-2xl border border-teal-100 bg-teal-50/40 p-4 space-y-4">
               <div className="flex items-center gap-2">
-                <Warehouse className="w-4 h-4 text-teal-700" />
-                <h4 className="text-sm font-bold text-teal-900">Punto de registro / Centro de acopio</h4>
+                <MapPin className="w-4 h-4 text-teal-700" />
+                <h4 className="text-sm font-bold text-teal-900">Punto de registro del paciente</h4>
               </div>
               <p className="text-xs text-teal-800/80 leading-relaxed">
-                Elija un centro reciente, busque uno existente o regístrelo aquí mismo. Luego ajuste el punto del paciente en el mapa.
+                Indique si la atención fue en un centro de acopio o apoyo, o si un médico atendió en la calle u otro lugar sin centro.
               </p>
 
-              {recentCenters.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData((prev) => ({ ...prev, puntoRegistroTipo: 'centro' }));
+                    setGeoHint('Elija un centro de acopio y ajuste el punto del paciente en el mapa.');
+                  }}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-3 text-left text-xs font-bold transition-all ${
+                    formData.puntoRegistroTipo === 'centro'
+                      ? 'border-teal-600 bg-teal-600 text-white shadow-sm'
+                      : 'border-teal-200 bg-white text-teal-800 hover:bg-teal-50'
+                  }`}
+                >
+                  <Warehouse className="w-4 h-4 shrink-0" />
+                  Centro de acopio / apoyo
+                </button>
+                <button
+                  type="button"
+                  onClick={setAtencionMedico}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-3 text-left text-xs font-bold transition-all ${
+                    formData.puntoRegistroTipo === 'medico'
+                      ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm'
+                      : 'border-indigo-200 bg-white text-indigo-800 hover:bg-indigo-50'
+                  }`}
+                >
+                  <Stethoscope className="w-4 h-4 shrink-0" />
+                  Atención por médico (calle u otro sitio)
+                </button>
+              </div>
+
+              {formData.puntoRegistroTipo === 'centro' ? (
+                <p className="text-xs text-teal-800/80 leading-relaxed">
+                  Elija un centro reciente, busque uno existente o regístrelo aquí mismo. Luego ajuste el punto del paciente en el mapa.
+                </p>
+              ) : (
+                <p className="text-xs font-medium text-indigo-800 leading-relaxed">
+                  No se asignará un centro de acopio. El registro quedará como atención médica en campo; marque el punto en el mapa.
+                </p>
+              )}
+
+              {formData.puntoRegistroTipo === 'centro' && recentCenters.length > 0 && (
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                     Usados recientemente
@@ -736,6 +804,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 </div>
               )}
 
+              {formData.puntoRegistroTipo === 'centro' && (
               <button
                 type="button"
                 onClick={() => {
@@ -747,11 +816,13 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 <Plus className="w-3.5 h-3.5" />
                 Registrar nuevo centro de acopio
               </button>
+              )}
 
-              {centerNotice && (
+              {formData.puntoRegistroTipo === 'centro' && centerNotice && (
                 <p className="text-[11px] font-medium text-teal-700">{centerNotice}</p>
               )}
 
+              {formData.puntoRegistroTipo === 'centro' && (
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
                   Centro de acopio {!initialPatient && '*'}
@@ -799,7 +870,9 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                   <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.centroAcopioId}</p>
                 )}
               </div>
+              )}
 
+              {formData.puntoRegistroTipo === 'centro' && (
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
@@ -816,17 +889,18 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                   </span>
                 )}
               </div>
+              )}
               {geoHint && <p className="text-[11px] font-medium text-teal-700">{geoHint}</p>}
 
               {!showNewCenter ? (
                 <div
-                  key={`map-${formData.centroAcopioId || 'none'}-${formData.registroLat}-${formData.registroLng}`}
+                  key={`map-${formData.puntoRegistroTipo}-${formData.centroAcopioId || 'none'}-${formData.registroLat}-${formData.registroLng}`}
                 >
                   <GeoMapPicker
                     lat={formData.registroLat}
                     lng={formData.registroLng}
-                    centers={centersForMap}
-                    fitToCenters={!!formData.centroAcopioId}
+                    centers={formData.puntoRegistroTipo === 'centro' ? centersForMap : []}
+                    fitToCenters={formData.puntoRegistroTipo === 'centro' && !!formData.centroAcopioId}
                     showLocateButton
                     onLocateError={(message) => setGeoHint(message)}
                     onChange={handleRegistrationCoords}

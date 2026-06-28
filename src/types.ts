@@ -63,6 +63,8 @@ export interface Paciente {
   fechaRegistro: string;
 
   // Punto de captura / centro de acopio
+  /** 'centro' = centro de salud o acopio; 'medico' = atención en calle u otro sitio sin centro */
+  puntoRegistroTipo: 'centro' | 'medico';
   centroAcopioId: string;
   centroAcopioNombre: string;
   centroAcopioLat: number | null;
@@ -91,4 +93,43 @@ export interface CensoStats {
     escolar: number; // 6-12 años
     adolescentes: number; // 13+ años
   };
+}
+
+export function puntoRegistroEtiqueta(
+  p: Pick<Paciente, 'puntoRegistroTipo' | 'centroAcopioNombre'>
+): string {
+  if (p.puntoRegistroTipo === 'medico') return 'Atención por médico';
+  return p.centroAcopioNombre;
+}
+
+/** Datos personales opcionales del personal médico / admin (user_metadata.staff_profile). */
+export interface StaffProfile {
+  first_name?: string;
+  last_name?: string;
+  id_document?: string;
+  specialty?: string;
+  workplace?: string;
+  contact_phone?: string;
+  address?: string;
+  professional_license?: string;
+}
+
+export type StaffAuditAction =
+  | 'create'
+  | 'contact_update'
+  | 'profile_update'
+  | 'role_change'
+  | 'password_reset'
+  | 'enable'
+  | 'disable';
+
+export interface StaffAuditEntry {
+  id: number;
+  target_user_id: string;
+  action: StaffAuditAction;
+  actor: string | null;
+  actor_email: string | null;
+  actor_role: string | null;
+  changes: Record<string, { before: unknown; after: unknown }>;
+  created_at: string;
 }
