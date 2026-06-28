@@ -12,13 +12,13 @@ import {
   ClipboardCheck,
   HelpCircle,
   Stethoscope,
-  Mail,
-  Phone,
+  MessageCircle,
+  Send,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 import AppLogo from './AppLogo';
-import { APP_NAME, CONTACT_EMAIL, CONTACT_PHONE } from '../brand';
+import { APP_NAME, CONTACT_PHONE, contactWhatsAppUrl } from '../brand';
 
 const publicInfo = [
   {
@@ -57,6 +57,31 @@ export default function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSubmittingState, setIsSubmitting] = useState(false);
+  const [contactName, setContactName] = useState('');
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactHoneypot, setContactHoneypot] = useState('');
+
+  const whatsAppHref = contactWhatsAppUrl();
+  const canSendContact = contactMessage.trim().length >= 10;
+
+  const handleContactSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (contactHoneypot || !canSendContact) return;
+
+    const lines = [
+      `Consulta sobre ${APP_NAME}`,
+      contactName.trim() ? `Nombre: ${contactName.trim()}` : null,
+      '',
+      contactMessage.trim(),
+    ].filter((line) => line !== null);
+
+    const url = contactWhatsAppUrl(lines.join('\n'));
+    if (!url) return;
+
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setContactMessage('');
+    setContactName('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,6 +203,74 @@ export default function AuthScreen() {
               </p>
             </div>
           </div>
+
+          {whatsAppHref ? (
+            <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600 shrink-0">
+                  <MessageCircle className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-sm font-bold text-slate-800">Consultas generales</h2>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                    Use este formulario para dudas sobre acceso o el sistema. No envíe datos clínicos, contraseñas ni información de pacientes por este canal.
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleContactSubmit} className="mt-4 space-y-3">
+                <input
+                  type="text"
+                  name="website"
+                  value={contactHoneypot}
+                  onChange={(e) => setContactHoneypot(e.target.value)}
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  className="hidden"
+                />
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">
+                    Su nombre <span className="font-normal normal-case text-slate-400">(opcional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={contactName}
+                    onChange={(e) => setContactName(e.target.value)}
+                    placeholder="Ej. Dra. García"
+                    autoComplete="name"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">
+                    Mensaje
+                  </label>
+                  <textarea
+                    value={contactMessage}
+                    onChange={(e) => setContactMessage(e.target.value)}
+                    placeholder="Ej. Necesito información para solicitar una cuenta..."
+                    rows={3}
+                    required
+                    minLength={10}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all resize-none"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={!canSendContact}
+                  className={`w-full py-2.5 px-4 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
+                    canSendContact
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  <Send className="w-4 h-4" />
+                  Enviar por WhatsApp
+                </button>
+              </form>
+            </div>
+          ) : null}
         </section>
 
         <motion.aside
@@ -280,24 +373,17 @@ export default function AuthScreen() {
       </main>
 
       <footer className="text-center z-10 space-y-3">
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-xs text-slate-500">
+        {whatsAppHref ? (
           <a
-            href={`mailto:${CONTACT_EMAIL}`}
-            className="inline-flex items-center gap-1.5 font-medium hover:text-blue-600 transition-colors"
+            href={whatsAppHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
           >
-            <Mail className="w-3.5 h-3.5" />
-            {CONTACT_EMAIL}
+            <MessageCircle className="w-3.5 h-3.5" />
+            WhatsApp{CONTACT_PHONE ? ` · ${CONTACT_PHONE}` : ''}
           </a>
-          {CONTACT_PHONE ? (
-            <a
-              href={`tel:${CONTACT_PHONE.replace(/[\s()-]/g, '')}`}
-              className="inline-flex items-center gap-1.5 font-medium hover:text-blue-600 transition-colors"
-            >
-              <Phone className="w-3.5 h-3.5" />
-              {CONTACT_PHONE}
-            </a>
-          ) : null}
-        </div>
+        ) : null}
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 font-medium">
           <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
           <span>{APP_NAME} &bull; Acceso seguro &bull; Sin datos críticos en pantalla pública</span>

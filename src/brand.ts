@@ -8,5 +8,16 @@ export const APP_DESCRIPTION =
 
 export const CONTACT_EMAIL = 'vera8german@gmail.com';
 
-/** Formato E.164 o legible; vacío oculta el teléfono en la landing. */
+/** Formato E.164 o legible; vacío oculta WhatsApp en la landing. */
 export const CONTACT_PHONE: string = '+58 412-2027769';
+
+const contactPhoneDigits = () => CONTACT_PHONE.replace(/\D/g, '');
+
+/** Enlace wa.me; con texto opcional prellenado para el formulario de contacto. */
+export function contactWhatsAppUrl(text?: string): string {
+  const digits = contactPhoneDigits();
+  if (!digits) return '';
+  const base = `https://wa.me/${digits}`;
+  const clean = text?.trim();
+  return clean ? `${base}?text=${encodeURIComponent(clean)}` : base;
+}
