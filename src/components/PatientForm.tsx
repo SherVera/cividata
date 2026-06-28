@@ -73,6 +73,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
   const [activeTab, setActiveTab] = useState<number>(1);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string>("");
 
   // Catálogos reutilizables (sugerencias para no re-tipear datos repetidos).
   const [catalogs, setCatalogs] = useState<Catalogs>({
@@ -171,6 +172,8 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       [name]: parsedValue
     }));
 
+    if (submitError) setSubmitError("");
+
     if (formErrors[name]) {
       setFormErrors(prev => {
         const copy = { ...prev };
@@ -189,9 +192,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       if (!formData.fechaNacimiento) errors.fechaNacimiento = "Fecha de nacimiento requerida";
       if (!formData.nacionalidad.trim()) errors.nacionalidad = "Especifique nacionalidad";
     } else if (sectionNum === 2) {
-      if (!formData.direccion.trim()) errors.direccion = "Dirección de residencia requerida";
-      if (!formData.ciudadMunicipio.trim()) errors.ciudadMunicipio = "Ciudad o Municipio requerido";
-      if (!formData.estadoProvincia.trim()) errors.estadoProvincia = "Estado o Provincia requerido";
+      // La ubicación del paciente es opcional: no se valida.
     } else if (sectionNum === 3) {
       if (!formData.nombreRepresentante.trim()) errors.nombreRepresentante = "Nombre del representante requerido";
       if (!formData.telefonoPrincipal.trim()) errors.telefonoPrincipal = "Teléfono de contacto principal requerido";
@@ -221,9 +222,8 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
   };
 
   const handleNext = () => {
-    if (validateSection(activeTab)) {
-      setActiveTab(prev => Math.min(prev + 1, 5));
-    }
+    // Navegación libre entre paneles; los requeridos se validan al guardar.
+    setActiveTab(prev => Math.min(prev + 1, 5));
   };
 
   const handlePrev = () => {
@@ -232,19 +232,23 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate all sections up to the current one
-    let isValid = true;
+
+    // Solo al guardar: validar todos los paneles y avisar de los faltantes.
+    let firstInvalid = 0;
     for (let i = 1; i <= 5; i++) {
       if (!validateSection(i)) {
-        setActiveTab(i);
-        isValid = false;
+        firstInvalid = i;
         break;
       }
     }
 
-    if (isValid) {
+    if (firstInvalid === 0) {
+      setSubmitError("");
       onSave(formData);
+    } else {
+      const tabName = tabs.find(t => t.id === firstInvalid)?.label.split('. ')[1] || `Paso ${firstInvalid}`;
+      setSubmitError(`Faltan campos requeridos en "${tabName}". Revise los campos marcados.`);
+      setActiveTab(firstInvalid);
     }
   };
 
@@ -300,15 +304,8 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 key={tab.id}
                 type="button"
                 onClick={() => {
-                  // Only allow jumping to tabs if current is valid, or jumping backwards
-                  if (tab.id < activeTab) {
-                    setActiveTab(tab.id);
-                  } else {
-                    // Check validation for active tab first
-                    if (validateSection(activeTab)) {
-                      setActiveTab(tab.id);
-                    }
-                  }
+                  // Navegación libre entre paneles (sin bloquear por requeridos).
+                  setActiveTab(tab.id);
                 }}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 px-2 border-b-2 font-medium text-xs md:text-sm transition-all cursor-pointer ${
                   isActive 
@@ -493,7 +490,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Dirección de Residencia Actual <span className="text-red-500">*</span>
+                  Dirección de Residencia Actual
                 </label>
                 <textarea
                   name="direccion"
@@ -510,7 +507,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Ciudad / Municipio <span className="text-red-500">*</span>
+                  Ciudad / Municipio
                 </label>
                 <input
                   type="text"
@@ -531,7 +528,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Estado / Provincia <span className="text-red-500">*</span>
+                  Estado / Provincia
                 </label>
                 <input
                   type="text"
@@ -1123,6 +1120,14 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
               )}
             </div>
           </motion.div>
+        )}
+
+        {/* Aviso de campos requeridos (solo al intentar guardar) */}
+        {submitError && (
+          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-medium">
+            <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0" />
+            <span>{submitError}</span>
+          </div>
         )}
 
         {/* Form Footer Navigation */}
