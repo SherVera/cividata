@@ -7,13 +7,15 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Plus, Search, SlidersHorizontal, Download, Upload, Lock, 
   ShieldCheck, Eye, Settings, Trash2, LogOut, Edit, Filter, Database, 
-  Activity, FileSpreadsheet, AlertTriangle, Heart, Sparkles, Menu, X, Check, RefreshCw, Warehouse, Home
+  Activity, FileSpreadsheet, AlertTriangle, Heart, Sparkles, Menu, X, Check, RefreshCw, Warehouse, Home, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Session } from '@supabase/supabase-js';
 import { Paciente, puntoRegistroEtiqueta, grupoEtarioLabel, normalizeGrupoEtario, edadPacienteTexto, pacienteTieneEdad, resolveGrupoEtario, grupoEtarioFromAge } from './types';
 import AuthScreen from './components/AuthScreen';
 import PatientForm from './components/PatientForm';
+import QuickPatientRegister, { PatientSaveOptions } from './components/QuickPatientRegister';
+import { extractPatientCarryOver, PatientCarryOver, patientDisplayName } from './lib/patientDefaults';
 import PatientDetails from './components/PatientDetails';
 import DashboardStats, { SuperAdminDashboardStats } from './components/DashboardStats';
 import AdminPanel from './components/AdminPanel';
@@ -41,9 +43,13 @@ export default function App() {
   const [patientsLoading, setPatientsLoading] = useState<boolean>(false);
   const [dataRefreshing, setDataRefreshing] = useState<boolean>(false);
 
-  // Views state: 'list' | 'create' | 'edit' | 'details' | 'admin' | 'centros'
-  const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'details' | 'admin' | 'centros'>('list');
+  // Views state: 'list' | 'quick-create' | 'create' | 'edit' | 'details' | 'admin' | 'centros'
+  const [currentView, setCurrentView] = useState<
+    'list' | 'quick-create' | 'create' | 'edit' | 'details' | 'admin' | 'centros'
+  >('list');
   const [selectedPatient, setSelectedPatient] = useState<Paciente | null>(null);
+  const [quickCarryOver, setQuickCarryOver] = useState<PatientCarryOver | null>(null);
+  const [quickFormKey, setQuickFormKey] = useState(0);
   
   // Tabs state in main list: 'listado' | 'estadisticas'
   const [activeTab, setActiveTab] = useState<'listado' | 'estadisticas'>('estadisticas');
@@ -240,7 +246,7 @@ export default function App() {
   };
 
   // Patient CRUD operations (persisted in Supabase)
-  const handleSavePatient = async (savedPatient: Paciente) => {
+  const handleSavePatient = async (savedPatient: Paciente, options?: PatientSaveOptions) => {
     const wasEditing = currentView === 'edit';
     try {
       await savePatient(savedPatient);
@@ -250,11 +256,26 @@ export default function App() {
     }
     if (wasEditing) {
       setPatients(prev => prev.map(p => p.id === savedPatient.id ? savedPatient : p));
-      showNotification('success', `Registro de ${savedPatient.nombres} actualizado correctamente.`);
-    } else {
-      setPatients(prev => [savedPatient, ...prev]);
-      showNotification('success', `Se ha registrado a ${savedPatient.nombres} en ${APP_NAME}.`);
+      showNotification('success', `Registro de ${patientDisplayName(savedPatient)} actualizado correctamente.`);
+      setSelectedPatient(savedPatient);
+      setCurrentView('details');
+      return;
     }
+
+    setPatients(prev => [savedPatient, ...prev]);
+
+    if (options?.andContinue) {
+      setQuickCarryOver(extractPatientCarryOver(savedPatient));
+      setQuickFormKey((k) => k + 1);
+      setCurrentView('quick-create');
+      showNotification(
+        'success',
+        `${patientDisplayName(savedPatient)} registrado. Puede agregar otro paciente.`
+      );
+      return;
+    }
+
+    showNotification('success', `Se ha registrado a ${patientDisplayName(savedPatient)} en ${APP_NAME}.`);
     setSelectedPatient(savedPatient);
     setCurrentView('details');
   };
@@ -399,7 +420,7 @@ export default function App() {
   const bottomNavActive: BottomNavKey =
     currentView === 'admin'
       ? 'admin'
-      : currentView === 'create' || currentView === 'edit'
+      : currentView === 'quick-create' || currentView === 'create' || currentView === 'edit'
         ? 'create'
         : currentView === 'list' && activeTab === 'estadisticas'
           ? 'estadisticas'
@@ -408,7 +429,8 @@ export default function App() {
   const handleBottomNav = (key: BottomNavKey) => {
     if (key === 'admin' && !isAppAdministrator) return;
     if (key === 'create') {
-      setCurrentView('create');
+      setQuickCarryOver(null);
+      setCurrentView('quick-create');
     } else if (key === 'admin') {
       setCurrentView('admin');
     } else {
@@ -603,12 +625,23 @@ export default function App() {
                   </p>
                 </div>
                 
-                <button
-                  onClick={() => setCurrentView('create')}
-                  className="w-full md:w-auto flex items-center justify-center gap-1.5 px-5 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm shadow-sm active:scale-95 transition-all cursor-pointer shrink-0"
-                >
-                  <Plus className="w-4 h-4 stroke-[2px]" /> Registrar Nuevo Paciente
-                </button>
+                <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
+                  <button
+                    onClick={() => {
+                      setQuickCarryOver(null);
+                      setCurrentView('quick-create');
+                    }}
+                    className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-5 py-3 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95 sm:w-auto"
+                  >
+                    <Zap className="h-4 w-4 stroke-[2px]" /> Registro rápido
+                  </button>
+                  <button
+                    onClick={() => setCurrentView('create')}
+                    className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-95 sm:w-auto"
+                  >
+                    <Plus className="h-4 w-4 stroke-[2px]" /> Ficha completa
+                  </button>
+                </div>
               </div>
 
               {/* View Toggle Bar — Estadísticas primero para todos los roles */}
@@ -980,7 +1013,28 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* 2. CREATE PATIENT VIEW */}
+          {/* 2. QUICK CREATE PATIENT VIEW */}
+          {currentView === 'quick-create' && (
+            <motion.div
+              key="quick-create-view"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <QuickPatientRegister
+                formKey={quickFormKey}
+                carryOver={quickCarryOver}
+                onSave={handleSavePatient}
+                onOpenFullForm={() => setCurrentView('create')}
+                onCancel={() => {
+                  setQuickCarryOver(null);
+                  setCurrentView('list');
+                }}
+              />
+            </motion.div>
+          )}
+
+          {/* 3. CREATE PATIENT VIEW (full form) */}
           {currentView === 'create' && (
             <motion.div
               key="create-view"
@@ -995,7 +1049,7 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* 3. EDIT PATIENT VIEW */}
+          {/* 4. EDIT PATIENT VIEW */}
           {currentView === 'edit' && (
             <motion.div
               key="edit-view"
@@ -1011,7 +1065,7 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* 4. DETAILS / CLINICAL FILE VIEW */}
+          {/* 5. DETAILS / CLINICAL FILE VIEW */}
           {currentView === 'details' && selectedPatient && (
             <motion.div
               key="details-view"
@@ -1028,7 +1082,7 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* 5. ADMIN PANEL VIEW */}
+          {/* 6. ADMIN PANEL VIEW */}
           {currentView === 'admin' && isAppAdministrator && (
             <motion.div
               key="admin-view"
