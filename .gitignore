@@ -9,3 +9,6 @@ node_modules/
 # Secretos
 .env
 .env.*
+
+# Generado en build desde env vars (no versionar claves)
+web/config.js

@@ -6,7 +6,8 @@
       "Bash(node -e \"const fs=require\\('fs'\\);for\\(const f of ['web/index.html','web/registros.html','web/login.html']\\){const s=fs.readFileSync\\(f,'utf8'\\);const m=[...s.matchAll\\(/<script>\\([\\\\s\\\\S]*?\\)<\\\\/script>/g\\)].map\\(x=>x[1]\\).join\\('\\\\n;\\\\n'\\);try{new Function\\('supabase','navigator','location','document','window','alert','FormData',m\\);console.log\\(f,'JS OK'\\)}catch\\(e\\){console.log\\(f,'JS ERROR',e.message\\)}}\")",
       "Bash(git -c user.name=sherman8 -c user.email=vera8german@gmail.com commit -qm 'Generalizar a censo/registro universal \\(quitar enfoque infantil\\) *)",
       "Bash(node -e \"const fs=require\\('fs'\\);const s=fs.readFileSync\\('web/login.html','utf8'\\);const m=[...s.matchAll\\(/<script>\\([\\\\s\\\\S]*?\\)<\\\\/script>/g\\)].map\\(x=>x[1]\\).join\\('\\\\n;\\\\n'\\);try{new Function\\('supabase','location','document',m\\);console.log\\('login.html JS OK'\\)}catch\\(e\\){console.log\\('JS ERROR',e.message\\)}\")",
-      "Bash(git -c user.name=sherman8 -c user.email=vera8german@gmail.com commit -qm 'Roles, panel admin, gestión de usuarios y auditoría *)"
+      "Bash(git -c user.name=sherman8 -c user.email=vera8german@gmail.com commit -qm 'Roles, panel admin, gestión de usuarios y auditoría *)",
+      "Bash(npx vercel *)"
     ]
   }
 }

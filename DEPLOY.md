@@ -27,24 +27,30 @@ El panel crea usuarios, pero el primer admin se crea a mano una sola vez:
    ```
 3. Ese admin ya entra al **🛠️ Panel** y desde ahí crea a los demás (registradores o más admins).
 
-## 5. Claves
-- **Pública** → en [`web/config.js`](web/config.js): *Project URL* + clave *anon public*
-  (Supabase → Project Settings → API). Es segura de exponer.
-- **Secreta** → la clave *service_role* va SOLO como variable de entorno en Vercel (paso 6).
-  Nunca la pongas en `web/` ni en el repo.
+## 5. Claves — TODAS como variables de entorno en Vercel (nada en el repo)
+De Supabase → Project Settings → API necesitas 3 valores:
+- `SUPABASE_URL` — Project URL (pública)
+- `SUPABASE_ANON_KEY` — clave *anon public* (pública)
+- `SUPABASE_SERVICE_ROLE_KEY` — clave *service_role* (SECRETA)
+
+En el build, `scripts/gen-config.js` genera `web/config.js` a partir de
+`SUPABASE_URL` + `SUPABASE_ANON_KEY`. La *service_role* solo la usa la función
+serverless en runtime. Ninguna clave queda en el código.
 
 ## 6. Desplegar en Vercel (desde la RAÍZ del repo, no desde `web/`)
 ```bash
 npx vercel            # primer deploy + login (acepta los valores por defecto)
 ```
-Luego carga las variables de entorno (server-side):
+Carga las 3 variables (te pedirá pegar el valor en cada una):
 ```bash
-vercel env add SUPABASE_URL                 # pega tu Project URL
-vercel env add SUPABASE_SERVICE_ROLE_KEY    # pega la clave service_role
-vercel --prod
+vercel env add SUPABASE_URL
+vercel env add SUPABASE_ANON_KEY
+vercel env add SUPABASE_SERVICE_ROLE_KEY
+vercel --prod                               # redeploy ya con las claves
 ```
-(O en el dashboard: Project → Settings → Environment Variables.)
-`vercel.json` ya sirve `web/` como estático y `/api` se detecta solo.
+(O en el dashboard: Project → Settings → Environment Variables. Marca los 3
+entornos: Production, Preview y Development.)
+`vercel.json` corre el build (genera config.js) y sirve `web/`; `/api` se detecta solo.
 
 ## 7. Uso
 - **Admin**: entra → ve 🛠️ Panel con estadísticas, crea/gestiona usuarios, ve la auditoría.
