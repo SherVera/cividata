@@ -143,36 +143,167 @@ $$;
 grant execute on function public.general_stats() to authenticated;
 
 -- =========================================================
--- App React: tabla de pacientes (censo general + historia clínica)
--- Cada registro se guarda como JSONB para soportar campos
--- opcionales/condicionales (p. ej. la sección pediátrica solo
--- aplica a menores) sin migraciones de columnas.
+-- React app: relational schema (normalized, flat tables).
+-- Catalog tables hold reusable values so staff don't retype
+-- repeated data; new entries are created on the fly.
 -- =========================================================
-create table if not exists public.pacientes (
-  id          text primary key,            -- id generado por la app (pac-xxxx)
-  data        jsonb not null,              -- objeto Paciente completo
-  created_by  uuid default auth.uid(),
-  created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now()
+
+-- ---- Helper: apply "any authenticated user" RLS to a table ----
+-- (shared registry, multi-user / multi-device)
+
+-- Catalog: nationalities
+create table if not exists public.nationalities (
+  id    uuid primary key default gen_random_uuid(),
+  name  text not null unique
 );
 
-create index if not exists pacientes_created_at_idx on public.pacientes (created_at desc);
+-- Catalog: states / provinces
+create table if not exists public.states (
+  id    uuid primary key default gen_random_uuid(),
+  name  text not null unique
+);
 
-alter table public.pacientes enable row level security;
+-- Catalog: cities / municipalities (optionally linked to a state)
+create table if not exists public.cities (
+  id        uuid primary key default gen_random_uuid(),
+  name      text not null,
+  state_id  uuid references public.states(id) on delete set null,
+  unique (name, state_id)
+);
 
--- Registros compartidos entre usuarios autenticados (multi-dispositivo).
-drop policy if exists "pacientes select" on public.pacientes;
-create policy "pacientes select"
-  on public.pacientes for select to authenticated using (true);
+-- Catalog: educational institutions
+create table if not exists public.institutions (
+  id    uuid primary key default gen_random_uuid(),
+  name  text not null unique
+);
 
-drop policy if exists "pacientes insert" on public.pacientes;
-create policy "pacientes insert"
-  on public.pacientes for insert to authenticated with check (true);
+-- Health catalogs (reusable; created on the fly, filtered when they exist)
+create table if not exists public.blood_types (
+  id    uuid primary key default gen_random_uuid(),
+  name  text not null unique
+);
 
-drop policy if exists "pacientes update" on public.pacientes;
-create policy "pacientes update"
-  on public.pacientes for update to authenticated using (true) with check (true);
+create table if not exists public.allergies (
+  id    uuid primary key default gen_random_uuid(),
+  name  text not null unique
+);
 
-drop policy if exists "pacientes delete" on public.pacientes;
-create policy "pacientes delete"
-  on public.pacientes for delete to authenticated using (true);
+create table if not exists public.medical_conditions (
+  id    uuid primary key default gen_random_uuid(),
+  name  text not null unique
+);
+
+create table if not exists public.medications (
+  id    uuid primary key default gen_random_uuid(),
+  name  text not null unique
+);
+
+create table if not exists public.diagnoses (
+  id    uuid primary key default gen_random_uuid(),
+  name  text not null unique
+);
+
+create table if not exists public.treatments (
+  id    uuid primary key default gen_random_uuid(),
+  name  text not null unique
+);
+
+-- Reusable guardians / contacts (one guardian -> many patients)
+create table if not exists public.guardians (
+  id              uuid primary key default gen_random_uuid(),
+  full_name       text not null,
+  id_document     text unique,
+  occupation      text,
+  phone_primary   text,
+  phone_alternate text,
+  email           text,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+
+-- Main table: patients (flat columns + foreign keys)
+create table if not exists public.patients (
+  id                 text primary key,
+  first_name         text not null,
+  last_name          text not null,
+  birth_date         date,
+  gender             text,
+  id_document        text,
+  nationality_id     uuid references public.nationalities(id) on delete set null,
+  address            text,
+  state_id           uuid references public.states(id) on delete set null,
+  city_id            uuid references public.cities(id) on delete set null,
+  landmark           text,
+  guardian_id        uuid references public.guardians(id) on delete set null,
+  relationship       text,
+  height_cm          numeric,
+  weight_kg          numeric,
+  blood_type_id      uuid references public.blood_types(id) on delete set null,
+  has_allergies      boolean not null default false,
+  allergy_id         uuid references public.allergies(id) on delete set null,
+  has_condition      boolean not null default false,
+  condition_id       uuid references public.medical_conditions(id) on delete set null,
+  takes_medication   boolean not null default false,
+  medication_id      uuid references public.medications(id) on delete set null,
+  vaccination_scheme text,
+  attends_school     boolean not null default false,
+  education_level    text,
+  grade              text,
+  institution_id     uuid references public.institutions(id) on delete set null,
+  registered_at      date not null default now(),
+  created_by         uuid default auth.uid(),
+  created_at         timestamptz not null default now(),
+  updated_at         timestamptz not null default now()
+);
+
+create index if not exists patients_created_at_idx on public.patients (created_at desc);
+create index if not exists patients_guardian_idx on public.patients (guardian_id);
+
+-- Clinical notes / evolution (one patient -> many notes)
+create table if not exists public.clinical_notes (
+  id            text primary key,
+  patient_id    text not null references public.patients(id) on delete cascade,
+  note_date     date,
+  weight        numeric,
+  height        numeric,
+  reason        text,
+  diagnosis_id  uuid references public.diagnoses(id) on delete set null,
+  treatment_id  uuid references public.treatments(id) on delete set null,
+  created_by    uuid default auth.uid(),
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists clinical_notes_patient_idx on public.clinical_notes (patient_id);
+
+-- ---- Migration helpers: upgrade an existing DB to the relational health model ----
+alter table public.patients add column if not exists blood_type_id uuid references public.blood_types(id) on delete set null;
+alter table public.patients add column if not exists allergy_id    uuid references public.allergies(id) on delete set null;
+alter table public.patients add column if not exists condition_id  uuid references public.medical_conditions(id) on delete set null;
+alter table public.patients add column if not exists medication_id uuid references public.medications(id) on delete set null;
+alter table public.patients drop column if exists blood_type;
+alter table public.patients drop column if exists allergies_detail;
+alter table public.patients drop column if exists condition_detail;
+alter table public.patients drop column if exists medication_detail;
+
+alter table public.clinical_notes add column if not exists diagnosis_id uuid references public.diagnoses(id) on delete set null;
+alter table public.clinical_notes add column if not exists treatment_id uuid references public.treatments(id) on delete set null;
+alter table public.clinical_notes drop column if exists diagnosis;
+alter table public.clinical_notes drop column if exists treatment;
+
+-- ---- Row Level Security: authenticated users share all data ----
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'nationalities','states','cities','institutions',
+    'blood_types','allergies','medical_conditions','medications','diagnoses','treatments',
+    'guardians','patients','clinical_notes'
+  ] loop
+    execute format('alter table public.%I enable row level security;', t);
+    execute format('drop policy if exists "%s all" on public.%I;', t, t);
+    execute format(
+      'create policy "%s all" on public.%I for all to authenticated using (true) with check (true);',
+      t, t
+    );
+  end loop;
+end $$;

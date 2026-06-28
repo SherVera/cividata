@@ -10,6 +10,7 @@ import {
   ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { Catalogs, GuardianOption, fetchCatalogs } from '../lib/catalogsApi';
 
 interface PatientFormProps {
   initialPatient?: Paciente | null;
@@ -73,9 +74,53 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
   const [activeTab, setActiveTab] = useState<number>(1);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  // Catálogos reutilizables (sugerencias para no re-tipear datos repetidos).
+  const [catalogs, setCatalogs] = useState<Catalogs>({
+    nationalities: [],
+    states: [],
+    cities: [],
+    institutions: [],
+    bloodTypes: [],
+    allergies: [],
+    conditions: [],
+    medications: [],
+    diagnoses: [],
+    treatments: [],
+    guardians: [],
+  });
+
+  useEffect(() => {
+    fetchCatalogs()
+      .then(setCatalogs)
+      .catch(() => {/* sin catálogos: el formulario sigue funcionando con texto libre */});
+  }, []);
+
   // Las secciones pediátricas (vacunación, edad en meses, educación) solo
   // aplican a menores de edad. Para adultos se ocultan automáticamente.
   const isMinor = !!formData.fechaNacimiento && formData.edadAnios < 18;
+
+  // Autorrellena los datos del representante al coincidir con uno existente.
+  const applyGuardian = (guardian: GuardianOption) => {
+    setFormData(prev => ({
+      ...prev,
+      nombreRepresentante: guardian.full_name || prev.nombreRepresentante,
+      documentoRepresentante: guardian.id_document || prev.documentoRepresentante,
+      ocupacion: guardian.occupation || prev.ocupacion,
+      telefonoPrincipal: guardian.phone_primary || prev.telefonoPrincipal,
+      telefonoEmergencias: guardian.phone_alternate || prev.telefonoEmergencias,
+      correo: guardian.email || prev.correo,
+    }));
+  };
+
+  const handleGuardianLookup = (field: 'nombreRepresentante' | 'documentoRepresentante', value: string) => {
+    const v = value.trim().toLowerCase();
+    if (!v) return;
+    const match = catalogs.guardians.find(g =>
+      (field === 'nombreRepresentante' && (g.full_name || '').toLowerCase() === v) ||
+      (field === 'documentoRepresentante' && (g.id_document || '').toLowerCase() === v)
+    );
+    if (match) applyGuardian(match);
+  };
 
   // Calculate age automatically when birthdate changes
   useEffect(() => {
@@ -416,6 +461,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 <input
                   type="text"
                   name="nacionalidad"
+                  list="catalog-nationalities"
                   value={formData.nacionalidad}
                   onChange={handleInputChange}
                   placeholder="Ej. Venezolana, Colombiana, Española"
@@ -423,6 +469,9 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                     formErrors.nacionalidad ? 'border-red-300 ring-2 ring-red-500/10' : 'border-slate-200'
                   }`}
                 />
+                <datalist id="catalog-nationalities">
+                  {catalogs.nationalities.map(n => <option key={n} value={n} />)}
+                </datalist>
                 {formErrors.nacionalidad && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.nacionalidad}</p>}
               </div>
             </div>
@@ -466,6 +515,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 <input
                   type="text"
                   name="ciudadMunicipio"
+                  list="catalog-cities"
                   value={formData.ciudadMunicipio}
                   onChange={handleInputChange}
                   placeholder="Ej. Chacao / Sucre"
@@ -473,6 +523,9 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                     formErrors.ciudadMunicipio ? 'border-red-300 ring-2 ring-red-500/10' : 'border-slate-200'
                   }`}
                 />
+                <datalist id="catalog-cities">
+                  {catalogs.cities.map(c => <option key={c} value={c} />)}
+                </datalist>
                 {formErrors.ciudadMunicipio && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.ciudadMunicipio}</p>}
               </div>
 
@@ -483,6 +536,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 <input
                   type="text"
                   name="estadoProvincia"
+                  list="catalog-states"
                   value={formData.estadoProvincia}
                   onChange={handleInputChange}
                   placeholder="Ej. Miranda / Distrito Capital"
@@ -490,6 +544,9 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                     formErrors.estadoProvincia ? 'border-red-300 ring-2 ring-red-500/10' : 'border-slate-200'
                   }`}
                 />
+                <datalist id="catalog-states">
+                  {catalogs.states.map(s => <option key={s} value={s} />)}
+                </datalist>
                 {formErrors.estadoProvincia && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.estadoProvincia}</p>}
               </div>
 
@@ -530,13 +587,23 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 <input
                   type="text"
                   name="nombreRepresentante"
+                  list="catalog-guardians"
                   value={formData.nombreRepresentante}
                   onChange={handleInputChange}
+                  onBlur={(e) => handleGuardianLookup('nombreRepresentante', e.target.value)}
                   placeholder="Ej. María Carolina Rodríguez"
                   className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
                     formErrors.nombreRepresentante ? 'border-red-300 ring-2 ring-red-500/10' : 'border-slate-200'
                   }`}
                 />
+                <datalist id="catalog-guardians">
+                  {catalogs.guardians.map(g => (
+                    <option key={g.id} value={g.full_name}>
+                      {g.id_document ? `${g.full_name} — ${g.id_document}` : g.full_name}
+                    </option>
+                  ))}
+                </datalist>
+                <p className="text-[10px] text-slate-400 mt-1">Si el representante ya existe, selecciónelo para autocompletar sus datos.</p>
                 {formErrors.nombreRepresentante && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.nombreRepresentante}</p>}
               </div>
 
@@ -566,6 +633,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                   name="documentoRepresentante"
                   value={formData.documentoRepresentante}
                   onChange={handleInputChange}
+                  onBlur={(e) => handleGuardianLookup('documentoRepresentante', e.target.value)}
                   placeholder="Ej. V-12.345.678"
                   className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
                     formErrors.documentoRepresentante ? 'border-red-300 ring-2 ring-red-500/10' : 'border-slate-200'
@@ -787,13 +855,17 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                     <input
                       type="text"
                       name="alergiasEspecificas"
+                      list="catalog-allergies"
                       value={formData.alergiasEspecificas}
                       onChange={handleInputChange}
-                      placeholder="Ej. Alérgico a la Penicilina y al huevo."
+                      placeholder="Ej. Penicilina, Huevo, Maní"
                       className={`w-full px-4 py-2 bg-white border rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
                         formErrors.alergiasEspecificas ? 'border-red-300 ring-2' : 'border-slate-200'
                       }`}
                     />
+                    <datalist id="catalog-allergies">
+                      {catalogs.allergies.map(a => <option key={a} value={a} />)}
+                    </datalist>
                     {formErrors.alergiasEspecificas && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.alergiasEspecificas}</p>}
                   </motion.div>
                 )}
@@ -844,13 +916,17 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                     <input
                       type="text"
                       name="condicionMedicaEspecifica"
+                      list="catalog-conditions"
                       value={formData.condicionMedicaEspecifica}
                       onChange={handleInputChange}
-                      placeholder="Ej. Diagnóstico de Asma infantil leve."
+                      placeholder="Ej. Asma, Diabetes, Hipertensión"
                       className={`w-full px-4 py-2 bg-white border rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
                         formErrors.condicionMedicaEspecifica ? 'border-red-300' : 'border-slate-200'
                       }`}
                     />
+                    <datalist id="catalog-conditions">
+                      {catalogs.conditions.map(c => <option key={c} value={c} />)}
+                    </datalist>
                     {formErrors.condicionMedicaEspecifica && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.condicionMedicaEspecifica}</p>}
                   </motion.div>
                 )}
@@ -901,13 +977,17 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                     <input
                       type="text"
                       name="medicamentosEspecificos"
+                      list="catalog-medications"
                       value={formData.medicamentosEspecificos}
                       onChange={handleInputChange}
-                      placeholder="Ej. Salbutamol inhalador 1 puf al día."
+                      placeholder="Ej. Salbutamol, Insulina, Losartán"
                       className={`w-full px-4 py-2 bg-white border rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
                         formErrors.medicamentosEspecificos ? 'border-red-300' : 'border-slate-200'
                       }`}
                     />
+                    <datalist id="catalog-medications">
+                      {catalogs.medications.map(m => <option key={m} value={m} />)}
+                    </datalist>
                     {formErrors.medicamentosEspecificos && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.medicamentosEspecificos}</p>}
                   </motion.div>
                 )}
@@ -1024,6 +1104,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                       <input
                         type="text"
                         name="nombreInstitucion"
+                        list="catalog-institutions"
                         value={formData.nombreInstitucion}
                         onChange={handleInputChange}
                         placeholder="Ej. U.E. Nacional Simón Bolívar"
@@ -1031,6 +1112,9 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                           formErrors.nombreInstitucion ? 'border-red-300' : 'border-slate-200'
                         }`}
                       />
+                      <datalist id="catalog-institutions">
+                        {catalogs.institutions.map(i => <option key={i} value={i} />)}
+                      </datalist>
                       {formErrors.nombreInstitucion && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.nombreInstitucion}</p>}
                     </div>
                   </motion.div>

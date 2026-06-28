@@ -139,7 +139,7 @@ function ContactEditModal({
           </label>
 
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
-            Los cambios se aplican en Supabase Auth. No uses datos de prueba reales para pacientes.
+            Verifique los datos antes de guardar. Los cambios afectan el acceso del usuario al sistema.
           </div>
         </div>
 
@@ -269,9 +269,9 @@ export default function AdminPanel() {
     return (
       <div className="mx-auto max-w-3xl rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
         <AlertTriangle className="mb-3 h-7 w-7" />
-        <h2 className="text-lg font-bold">Falta configurar Supabase</h2>
+        <h2 className="text-lg font-bold">Servicio no disponible</h2>
         <p className="mt-2 text-sm leading-relaxed">
-          Define `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` para usar el panel de administración en React.
+          No se pudo iniciar la conexión segura. Contacte al administrador del sistema.
         </p>
       </div>
     );
@@ -286,7 +286,7 @@ export default function AdminPanel() {
           </span>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Panel de administración</h2>
           <p className="max-w-xl text-sm leading-relaxed text-slate-500">
-            Gestiona usuarios desde componentes React: sin `prompt()`, sin HTML suelto y con modales consistentes con la app.
+            Gestiona las cuentas autorizadas para acceder al registro clínico.
           </p>
         </div>
 
@@ -346,7 +346,7 @@ export default function AdminPanel() {
             <Users className="h-3.5 w-3.5" /> Administración
           </span>
           <h2 className="mt-3 text-xl font-bold tracking-tight">Gestión de usuarios</h2>
-          <p className="mt-1 text-sm text-slate-300">Edita accesos desde React con modales visuales y acciones controladas.</p>
+          <p className="mt-1 text-sm text-slate-300">Administra accesos y datos de contacto de las cuentas del sistema.</p>
         </div>
         <button
           onClick={handleSignOut}
@@ -439,7 +439,7 @@ export default function AdminPanel() {
 
       <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500">
         <UserPlus className="mr-1 inline h-4 w-4 text-blue-600" />
-        La creación de usuarios y cambios de rol pueden migrarse a componentes React con el mismo patrón de modal.
+        La creación de usuarios y cambios de rol se gestionan desde la administración segura del sistema.
       </div>
 
       <AnimatePresence>

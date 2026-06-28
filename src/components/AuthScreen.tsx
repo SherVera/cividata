@@ -1,7 +1,60 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Eye, EyeOff, AtSign, Loader2, AlertTriangle } from 'lucide-react';
+import {
+  ShieldCheck,
+  Lock,
+  Eye,
+  EyeOff,
+  AtSign,
+  Loader2,
+  AlertTriangle,
+  Activity,
+  BarChart3,
+  ClipboardCheck,
+  HeartPulse,
+  HelpCircle,
+  Stethoscope,
+} from 'lucide-react';
 import { motion } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
+
+const publicStats = [
+  {
+    label: 'Datos públicos de pacientes',
+    value: '0',
+    detail: 'La landing no muestra nombres, diagnósticos, teléfonos, direcciones ni documentos.',
+    icon: Lock,
+  },
+  {
+    label: 'Acceso a expedientes',
+    value: '100%',
+    detail: 'La información sensible queda detrás de autenticación segura.',
+    icon: ShieldCheck,
+  },
+  {
+    label: 'Indicadores permitidos',
+    value: 'Agregados',
+    detail: 'Las estadísticas clínicas reales se revisan solo dentro del sistema.',
+    icon: BarChart3,
+  },
+];
+
+const helpItems = [
+  {
+    title: 'Censo comunitario organizado',
+    description: 'Centraliza registros pediátricos para seguimiento operativo sin publicar información personal.',
+    icon: ClipboardCheck,
+  },
+  {
+    title: 'Apoyo a jornadas de salud',
+    description: 'Ayuda a priorizar vacunación, escolaridad y controles de crecimiento desde el área protegida.',
+    icon: HeartPulse,
+  },
+  {
+    title: 'Historia clínica bajo resguardo',
+    description: 'Las notas, condiciones, alergias y datos familiares se consultan únicamente con sesión autorizada.',
+    icon: Stethoscope,
+  },
+];
 
 export default function AuthScreen() {
   const [identity, setIdentity] = useState('');
@@ -41,10 +94,9 @@ export default function AuthScreen() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900 shadow-sm">
           <AlertTriangle className="mb-3 h-7 w-7" />
-          <h1 className="text-lg font-bold">Falta configurar Supabase</h1>
+          <h1 className="text-lg font-bold">Servicio no disponible</h1>
           <p className="mt-2 text-sm leading-relaxed">
-            Define <code className="font-mono">VITE_SUPABASE_URL</code> y{' '}
-            <code className="font-mono">VITE_SUPABASE_ANON_KEY</code> para habilitar el inicio de sesión.
+            No se pudo iniciar la conexión segura. Contacte al administrador del sistema.
           </p>
         </div>
       </div>
@@ -52,24 +104,91 @@ export default function AuthScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-between items-center p-4 relative overflow-hidden select-none pt-safe pb-safe">
-      <div className="absolute top-0 left-0 w-96 h-96 bg-blue-100/30 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-100/30 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
+    <div className="min-h-screen bg-slate-50 flex flex-col p-4 md:p-6 relative overflow-hidden select-none pt-safe pb-safe">
+      <div className="absolute top-0 left-0 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-100/40 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
 
-      <div className="w-full max-w-md flex items-center justify-between mt-4 z-10 px-2">
+      <header className="w-full max-w-7xl mx-auto flex items-center justify-between z-10">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-blue-600 rounded-lg text-white">
+          <div className="p-1.5 bg-blue-600 rounded-lg text-white shadow-sm">
             <ShieldCheck className="w-5 h-5" />
           </div>
           <span className="font-sans font-bold text-slate-800 tracking-tight text-sm">CENSO &amp; REGISTRO</span>
         </div>
         <span className="text-xs bg-blue-50 text-blue-700 border border-blue-100 font-mono px-2.5 py-1 rounded-full flex items-center gap-1 font-medium">
-          <Lock className="w-3.5 h-3.5" /> Acceso Seguro
+          <Lock className="w-3.5 h-3.5" /> Privacidad primero
         </span>
-      </div>
+      </header>
 
-      <div className="w-full max-w-md my-auto z-10">
-        <motion.div
+      <main className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8 lg:gap-10 items-center flex-1 py-8 md:py-12 z-10">
+        <section className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: 'easeOut' }}
+            className="space-y-5"
+          >
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-blue-700">
+              <Activity className="w-3.5 h-3.5" /> Salud infantil con datos protegidos
+            </span>
+
+            <div className="space-y-4">
+              <h1 className="font-sans text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-slate-900 leading-[1.02]">
+                Información útil para cuidar mejor, sin exponer a los niños.
+              </h1>
+              <p className="max-w-2xl text-sm md:text-base text-slate-500 leading-relaxed">
+                Plataforma para apoyar censos, jornadas médicas y seguimiento pediátrico. Esta pantalla pública solo muestra información general: los datos críticos de pacientes permanecen resguardados dentro del sistema.
+              </p>
+            </div>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {publicStats.map(({ label, value, detail, icon: Icon }, index) => (
+              <motion.div
+                key={label}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + index * 0.06, duration: 0.35 }}
+                className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</span>
+                    <strong className="mt-1 block font-mono text-2xl font-bold text-slate-900">{value}</strong>
+                  </div>
+                  <div className="rounded-xl bg-blue-50 p-2 text-blue-600">
+                    <Icon className="w-4 h-4" />
+                  </div>
+                </div>
+                <p className="mt-3 text-[11px] leading-relaxed text-slate-500">{detail}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {helpItems.map(({ title, description, icon: Icon }) => (
+              <div key={title} className="rounded-2xl border border-slate-200 bg-white/70 p-4">
+                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white">
+                  <Icon className="w-4 h-4" />
+                </div>
+                <h2 className="text-sm font-bold text-slate-800">{title}</h2>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500">{description}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 flex gap-3">
+            <HelpCircle className="mt-0.5 h-5 w-5 shrink-0" />
+            <div>
+              <h2 className="text-sm font-bold">Uso responsable de la información</h2>
+              <p className="mt-1 text-xs leading-relaxed">
+                Las estadísticas identificables, historias clínicas, teléfonos, direcciones, documentos y notas médicas no se publican en esta landing. Para revisar información operativa real, inicie sesión con una cuenta autorizada.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <motion.aside
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -81,11 +200,11 @@ export default function AuthScreen() {
               <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full border-2 border-white animate-pulse"></div>
             </div>
 
-            <h1 className="font-sans font-bold text-2xl text-slate-800 tracking-tight leading-tight">
-              Censo &amp; Historia Clínica
-            </h1>
+            <h2 className="font-sans font-bold text-2xl text-slate-800 tracking-tight leading-tight">
+              Acceso Seguro
+            </h2>
             <p className="text-sm text-slate-500 mt-2 max-w-xs">
-              Ingrese sus credenciales para gestionar el registro de pacientes.
+              Ingrese sus credenciales para gestionar el censo y la historia clínica.
             </p>
           </div>
 
@@ -102,7 +221,7 @@ export default function AuthScreen() {
                     setIdentity(e.target.value);
                     setError('');
                   }}
-                  placeholder="correo@ejemplo.com o +58…"
+                  placeholder="correo@ejemplo.com o +58..."
                   autoComplete="username"
                   autoFocus
                   className="w-full px-4 py-3.5 pl-11 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
@@ -125,7 +244,7 @@ export default function AuthScreen() {
                     setPassword(e.target.value);
                     setError('');
                   }}
-                  placeholder="Ingrese su contraseña…"
+                  placeholder="Ingrese su contraseña..."
                   autoComplete="current-password"
                   className="w-full px-4 py-3.5 pl-11 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
                 />
@@ -165,15 +284,15 @@ export default function AuthScreen() {
               Acceder al Sistema
             </button>
           </form>
-        </motion.div>
-      </div>
+        </motion.aside>
+      </main>
 
-      <div className="text-center z-10 mb-2 mt-4">
+      <footer className="text-center z-10">
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 font-medium">
           <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-          <span>Sistema de Censo &amp; Registro &bull; Autenticación gestionada por Supabase</span>
+          <span>Sistema de Censo &amp; Registro &bull; Acceso seguro &bull; Sin datos críticos en pantalla pública</span>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }

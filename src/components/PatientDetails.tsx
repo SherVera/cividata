@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Paciente, NotaClinica } from '../types';
 import { 
   User, MapPin, ShieldAlert, Heart, GraduationCap, 
@@ -11,6 +11,7 @@ import {
   ShieldCheck, FileText, ChevronRight, Phone, Mail, FileClock, ClipboardList
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { fetchCatalogs } from '../lib/catalogsApi';
 
 interface PatientDetailsProps {
   patient: Paciente;
@@ -30,6 +31,19 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
     tratamiento: ""
   });
   const [noteError, setNoteError] = useState("");
+
+  // Catálogos de salud para diagnóstico/tratamiento (filtrar existentes o crear nuevo).
+  const [diagnosisOptions, setDiagnosisOptions] = useState<string[]>([]);
+  const [treatmentOptions, setTreatmentOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetchCatalogs()
+      .then((c) => {
+        setDiagnosisOptions(c.diagnoses);
+        setTreatmentOptions(c.treatments);
+      })
+      .catch(() => {/* sin catálogos: texto libre */});
+  }, []);
 
   const handlePrint = () => {
     window.print();
@@ -545,24 +559,32 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
 
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Diagnóstico / Evaluación Clínica</label>
-                      <textarea
+                      <input
+                        type="text"
+                        list="note-diagnoses"
                         value={newNote.diagnostico}
                         onChange={(e) => setNewNote(prev => ({ ...prev, diagnostico: e.target.value }))}
-                        rows={2}
-                        placeholder="Ej. Paciente sano, peso acorde para la edad. Ligera congestión nasal viral."
+                        placeholder="Ej. Paciente sano, Faringitis viral, Anemia leve"
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-700"
                       />
+                      <datalist id="note-diagnoses">
+                        {diagnosisOptions.map(d => <option key={d} value={d} />)}
+                      </datalist>
                     </div>
 
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tratamiento / Indicaciones Médicas</label>
-                      <textarea
+                      <input
+                        type="text"
+                        list="note-treatments"
                         value={newNote.tratamiento}
                         onChange={(e) => setNewNote(prev => ({ ...prev, tratamiento: e.target.value }))}
-                        rows={2}
-                        placeholder="Ej. Alimentación adecuada, mantener hidratación. Aplicar lavados nasales si hay obstrucción."
+                        placeholder="Ej. Hidratación, Salbutamol, Reposo"
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-700"
                       />
+                      <datalist id="note-treatments">
+                        {treatmentOptions.map(t => <option key={t} value={t} />)}
+                      </datalist>
                     </div>
 
                     <div className="flex justify-end gap-2 pt-1">

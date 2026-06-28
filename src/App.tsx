@@ -12,7 +12,6 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import type { Session } from '@supabase/supabase-js';
 import { Paciente } from './types';
-import { INITIAL_PACIENTES } from './mockData';
 import AuthScreen from './components/AuthScreen';
 import PatientForm from './components/PatientForm';
 import PatientDetails from './components/PatientDetails';
@@ -227,19 +226,6 @@ export default function App() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Load demo records into Supabase (upsert, does not delete existing data)
-  const handleResetDatabase = async () => {
-    if (window.confirm('¿Desea cargar los pacientes de demostración? Se agregarán/actualizarán en la base de datos compartida.')) {
-      try {
-        await bulkUpsertPatients(INITIAL_PACIENTES);
-        await loadPatients();
-        showNotification('info', 'Pacientes de demostración cargados en la base de datos.');
-      } catch (err: any) {
-        showNotification('error', 'Error al cargar demos: ' + (err?.message || err));
-      }
-    }
-  };
-
   // Filters & Search processing
   const filteredPatients = useMemo(() => {
     return patients.filter(p => {
@@ -438,7 +424,7 @@ export default function App() {
                       Registro de Salud Comunitaria
                     </span>
                     <span className="flex items-center gap-0.5 text-[10px] text-blue-600 font-semibold">
-                      <Sparkles className="w-3 h-3 animate-pulse text-blue-500" /> Sincronizado Localmente
+                      <Sparkles className="w-3 h-3 animate-pulse text-blue-500" /> Datos en línea
                     </span>
                   </div>
                   <h2 className="font-sans font-bold text-lg md:text-xl text-slate-900 leading-tight tracking-tight">
@@ -503,14 +489,6 @@ export default function App() {
                     accept=".json" 
                     className="hidden" 
                   />
-                  <span className="text-slate-200">|</span>
-                  <button
-                    onClick={handleResetDatabase}
-                    className="text-slate-400 hover:text-red-500 font-mono text-[10px] font-semibold"
-                    title="Cargar Pacientes Demo"
-                  >
-                    Cargar Demos
-                  </button>
                 </div>
               </div>
 
@@ -855,7 +833,7 @@ export default function App() {
             <span>Censo y Archivos Médicos &bull; Registro de Pacientes</span>
           </div>
           <p className="text-[10px] text-slate-300">
-            Acceso protegido con autenticación de Supabase. Los datos clínicos se gestionan de forma segura.
+            Acceso protegido con autenticación segura. Los datos clínicos se gestionan de forma centralizada.
           </p>
         </div>
       </footer>
@@ -896,7 +874,7 @@ export default function App() {
                     autoComplete="new-password"
                     autoFocus
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">Actualiza la contraseña de tu cuenta en Supabase.</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Actualiza la contraseña de tu cuenta de acceso.</p>
                 </div>
 
                 {settingsSuccess && (
