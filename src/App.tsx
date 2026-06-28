@@ -7,7 +7,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   HeartPulse, Plus, Search, SlidersHorizontal, Download, Upload, Lock, 
   ShieldCheck, Eye, Settings, Trash2, LogOut, Edit, Filter, Database, 
-  Activity, FileSpreadsheet, AlertTriangle, Heart, Sparkles, Menu, X, Check, RefreshCw
+  Activity, FileSpreadsheet, AlertTriangle, Heart, Sparkles, Menu, X, Check, RefreshCw, Warehouse
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Session } from '@supabase/supabase-js';
@@ -17,9 +17,11 @@ import PatientForm from './components/PatientForm';
 import PatientDetails from './components/PatientDetails';
 import DashboardStats from './components/DashboardStats';
 import AdminPanel from './components/AdminPanel';
+import CollectionCentersPanel from './components/CollectionCentersPanel';
 import BottomNav, { BottomNavKey } from './components/BottomNav';
 import { supabase } from './lib/supabaseClient';
 import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
+import { listCollectionCenters } from './lib/collectionCentersApi';
 
 export default function App() {
   // Authentication via Supabase
@@ -31,8 +33,8 @@ export default function App() {
   const [patients, setPatients] = useState<Paciente[]>([]);
   const [patientsLoading, setPatientsLoading] = useState<boolean>(false);
 
-  // Views state: 'list' | 'create' | 'edit' | 'details' | 'admin'
-  const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'details' | 'admin'>('list');
+  // Views state: 'list' | 'create' | 'edit' | 'details' | 'admin' | 'centros'
+  const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'details' | 'admin' | 'centros'>('list');
   const [selectedPatient, setSelectedPatient] = useState<Paciente | null>(null);
   
   // Tabs state in main list: 'listado' | 'estadisticas'
@@ -44,6 +46,8 @@ export default function App() {
   const [filterVacuna, setFilterVacuna] = useState<string>('All');
   const [filterEscuela, setFilterEscuela] = useState<string>('All');
   const [filterAgeRange, setFilterAgeRange] = useState<string>('All');
+  const [filterCentro, setFilterCentro] = useState<string>('All');
+  const [collectionCenters, setCollectionCenters] = useState<{ id: string; name: string }[]>([]);
   const [sortBy, setSortBy] = useState<string>('recent'); // 'recent' | 'alphabetical' | 'age-asc' | 'age-desc'
   const [showFiltersMobile, setShowFiltersMobile] = useState<boolean>(false);
 
@@ -104,8 +108,12 @@ export default function App() {
   useEffect(() => {
     if (isAuthenticated) {
       loadPatients();
+      listCollectionCenters(true)
+        .then((centers) => setCollectionCenters(centers.map((c) => ({ id: c.id, name: c.name }))))
+        .catch(() => setCollectionCenters([]));
     } else {
       setPatients([]);
+      setCollectionCenters([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
@@ -260,7 +268,12 @@ export default function App() {
         else if (filterAgeRange === 'Adolescentes') matchAge = age >= 13;
       }
 
-      return matchQuery && matchGender && matchVacuna && matchEscuela && matchAge;
+      const matchCentro =
+        filterCentro === 'All' ||
+        (filterCentro === 'SinCentro' && !p.centroAcopioId) ||
+        p.centroAcopioId === filterCentro;
+
+      return matchQuery && matchGender && matchVacuna && matchEscuela && matchAge && matchCentro;
     }).sort((a, b) => {
       // Sorting
       if (sortBy === 'alphabetical') {
@@ -275,7 +288,7 @@ export default function App() {
       // default: recent (by registration date/id reverse order)
       return b.fechaRegistro.localeCompare(a.fechaRegistro) || b.id.localeCompare(a.id);
     });
-  }, [patients, searchQuery, filterGender, filterVacuna, filterEscuela, filterAgeRange, sortBy]);
+  }, [patients, searchQuery, filterGender, filterVacuna, filterEscuela, filterAgeRange, filterCentro, sortBy]);
 
   // Bottom navigation active state (app-like mobile tab bar)
   const bottomNavActive: BottomNavKey =
@@ -367,6 +380,19 @@ export default function App() {
 
           {/* Quick Actions Header */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentView('centros')}
+              title="Centros de acopio"
+              className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                currentView === 'centros'
+                  ? 'bg-teal-50 text-teal-700'
+                  : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+              }`}
+            >
+              <Warehouse className="w-4 h-4" />
+              <span className="text-xs font-semibold hidden md:inline">Centros</span>
+            </button>
+
             <button
               onClick={() => setCurrentView('admin')}
               title="Panel de Administración"
@@ -599,6 +625,22 @@ export default function App() {
                           </select>
                         </div>
 
+                        {/* Collection center filter */}
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Centro de acopio</span>
+                          <select
+                            value={filterCentro}
+                            onChange={(e) => setFilterCentro(e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 font-semibold focus:outline-none cursor-pointer"
+                          >
+                            <option value="All">Todos</option>
+                            <option value="SinCentro">Sin centro asignado</option>
+                            {collectionCenters.map((c) => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
                         {/* Age range filter */}
                         <div className="space-y-1">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Grupo de Edad</span>
@@ -701,7 +743,9 @@ export default function App() {
 
                           {/* Quick button bar */}
                           <div className="pt-3 border-t border-slate-50 flex items-center justify-between gap-2">
-                            <span className="text-[10px] font-mono text-slate-400 font-medium">{p.ciudadMunicipio}, {p.estadoProvincia}</span>
+                            <span className="text-[10px] font-mono text-slate-400 font-medium truncate">
+                              {p.centroAcopioNombre || `${p.ciudadMunicipio}${p.estadoProvincia ? `, ${p.estadoProvincia}` : ''}`}
+                            </span>
                             
                             <div className="flex items-center gap-1.5">
                               <button
@@ -821,6 +865,26 @@ export default function App() {
                 onBack={() => {
                   setCurrentView('list');
                   setActiveTab('listado');
+                }}
+              />
+            </motion.div>
+          )}
+
+          {/* 6. COLLECTION CENTERS VIEW */}
+          {currentView === 'centros' && (
+            <motion.div
+              key="centros-view"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+            >
+              <CollectionCentersPanel
+                onBack={() => {
+                  setCurrentView('list');
+                  setActiveTab('listado');
+                  listCollectionCenters(true)
+                    .then((centers) => setCollectionCenters(centers.map((c) => ({ id: c.id, name: c.name }))))
+                    .catch(() => setCollectionCenters([]));
                 }}
               />
             </motion.div>

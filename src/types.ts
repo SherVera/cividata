@@ -61,6 +61,17 @@ export interface Paciente {
   // Notas e historial médico adicional
   notasClinicas: NotaClinica[];
   fechaRegistro: string;
+
+  // Punto de captura / centro de acopio
+  centroAcopioId: string;
+  centroAcopioNombre: string;
+  centroAcopioLat: number | null;
+  centroAcopioLng: number | null;
+  registroLat: number | null;
+  registroLng: number | null;
+  /** Device location of the user who saved the record (internal, not shown in UI). */
+  registrantLat: number | null;
+  registrantLng: number | null;
 }
 
 export interface CensoStats {

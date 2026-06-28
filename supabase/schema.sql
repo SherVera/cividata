@@ -208,6 +208,20 @@ create table if not exists public.treatments (
   name  text not null unique
 );
 
+-- Collection centers (centros de acopio) with approximate geolocation
+create table if not exists public.collection_centers (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  address     text,
+  geo_lat     double precision not null,
+  geo_lng     double precision not null,
+  active      boolean not null default true,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+
+create index if not exists collection_centers_active_idx on public.collection_centers (active, name);
+
 -- Reusable guardians / contacts (one guardian -> many patients)
 create table if not exists public.guardians (
   id              uuid primary key default gen_random_uuid(),
@@ -253,6 +267,11 @@ create table if not exists public.patients (
   education_level    text,
   grade              text,
   institution_id     uuid references public.institutions(id) on delete set null,
+  collection_center_id uuid references public.collection_centers(id) on delete set null,
+  registration_lat   double precision,
+  registration_lng   double precision,
+  registrant_lat     double precision,
+  registrant_lng     double precision,
   registered_at      date not null default now(),
   created_by         uuid default auth.uid(),
   created_at         timestamptz not null default now(),
@@ -261,6 +280,30 @@ create table if not exists public.patients (
 
 create index if not exists patients_created_at_idx on public.patients (created_at desc);
 create index if not exists patients_guardian_idx on public.patients (guardian_id);
+create index if not exists patients_collection_center_idx on public.patients (collection_center_id);
+
+alter table public.patients add column if not exists collection_center_id uuid references public.collection_centers(id) on delete set null;
+alter table public.patients add column if not exists registration_lat double precision;
+alter table public.patients add column if not exists registration_lng double precision;
+alter table public.patients add column if not exists registrant_lat double precision;
+alter table public.patients add column if not exists registrant_lng double precision;
+
+-- Rename legacy Spanish column names if already applied
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'patients' and column_name = 'registrar_lat'
+  ) then
+    alter table public.patients rename column registrar_lat to registrant_lat;
+  end if;
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'patients' and column_name = 'registrar_lng'
+  ) then
+    alter table public.patients rename column registrar_lng to registrant_lng;
+  end if;
+end $$;
 
 -- Clinical notes / evolution (one patient -> many notes)
 create table if not exists public.clinical_notes (
@@ -305,6 +348,7 @@ begin
   foreach t in array array[
     'nationalities','states','cities','institutions',
     'blood_types','allergies','medical_conditions','medications','diagnoses','treatments',
+    'collection_centers',
     'guardians','patients','clinical_notes'
   ] loop
     execute format('alter table public.%I enable row level security;', t);

@@ -36,6 +36,7 @@ const PATIENT_SELECT = `
   condition:medical_conditions(name),
   medication:medications(name),
   guardian:guardians(*),
+  collection_center:collection_centers(id, name, geo_lat, geo_lng),
   clinical_notes(
     *,
     diagnosis:diagnoses(name),
@@ -95,6 +96,14 @@ function rowToPaciente(row: any): Paciente {
     nombreInstitucion: row.institution?.name || '',
     notasClinicas: notes,
     fechaRegistro: row.registered_at || '',
+    centroAcopioId: row.collection_center_id || row.collection_center?.id || '',
+    centroAcopioNombre: row.collection_center?.name || '',
+    centroAcopioLat: row.collection_center?.geo_lat ?? null,
+    centroAcopioLng: row.collection_center?.geo_lng ?? null,
+    registroLat: row.registration_lat ?? null,
+    registroLng: row.registration_lng ?? null,
+    registrantLat: row.registrant_lat ?? null,
+    registrantLng: row.registrant_lng ?? null,
   };
 }
 
@@ -266,6 +275,11 @@ export async function savePatient(p: Paciente): Promise<void> {
     education_level: p.nivelEducativo || null,
     grade: (p.gradoAnio || '').trim() || null,
     institution_id: institutionId,
+    collection_center_id: (p.centroAcopioId || '').trim() || null,
+    registration_lat: p.registroLat ?? null,
+    registration_lng: p.registroLng ?? null,
+    registrant_lat: p.registrantLat ?? null,
+    registrant_lng: p.registrantLng ?? null,
     registered_at: p.fechaRegistro || new Date().toISOString().split('T')[0],
     updated_at: new Date().toISOString(),
   };

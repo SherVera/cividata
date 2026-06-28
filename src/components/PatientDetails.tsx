@@ -8,11 +8,13 @@ import { Paciente, NotaClinica } from '../types';
 import { 
   User, MapPin, ShieldAlert, Heart, GraduationCap, 
   ArrowLeft, Edit3, Printer, Plus, Calendar, Activity, 
-  ShieldCheck, FileText, ChevronRight, Phone, Mail, FileClock, ClipboardList
+  ShieldCheck, FileText, ChevronRight, Phone, Mail, FileClock, ClipboardList, Warehouse
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { fetchCatalogs } from '../lib/catalogsApi';
 import { parseMultiValue } from '../lib/multiValue';
+import GeoMapPicker from './GeoMapPicker';
+import { formatDistance, haversineMeters } from '../lib/geo';
 
 interface PatientDetailsProps {
   patient: Paciente;
@@ -355,7 +357,63 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                 </div>
               </div>
 
-              {/* Seccion 2: Vivienda y Ubicacion */}
+              {/* Seccion 2: Registro y Centro de Acopio */}
+              {(patient.centroAcopioNombre || patient.registroLat != null) && (
+                <div className="space-y-3 pt-2">
+                  <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5 pb-1.5 border-b border-slate-200">
+                    <Warehouse className="w-3.5 h-3.5" /> Punto de Registro del Paciente
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-3 gap-x-4 text-xs">
+                    <div className="sm:col-span-3">
+                      <span className="text-slate-400 block mb-0.5">Centro de acopio</span>
+                      <span className="font-semibold text-slate-700">
+                        {patient.centroAcopioNombre || 'No especificado'}
+                      </span>
+                    </div>
+                    {patient.registroLat != null && patient.registroLng != null && (
+                      <div className="sm:col-span-3">
+                        <span className="text-slate-400 block mb-0.5">Ubicación aproximada</span>
+                        <span className="font-mono text-[10px] font-semibold text-slate-600">
+                          {patient.registroLat.toFixed(3)}, {patient.registroLng.toFixed(3)}
+                        </span>
+                        {patient.centroAcopioLat != null && patient.centroAcopioLng != null && (
+                          <span className="block mt-1 text-[10px] font-medium text-teal-700">
+                            Distancia al centro:{' '}
+                            {formatDistance(
+                              haversineMeters(
+                                patient.registroLat,
+                                patient.registroLng,
+                                patient.centroAcopioLat,
+                                patient.centroAcopioLng
+                              )
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {patient.registroLat != null && patient.registroLng != null && (
+                    <GeoMapPicker
+                      lat={patient.registroLat}
+                      lng={patient.registroLng}
+                      readOnly
+                      centers={
+                        patient.centroAcopioLat != null && patient.centroAcopioLng != null
+                          ? [{
+                              id: patient.centroAcopioId || 'center',
+                              name: patient.centroAcopioNombre || 'Centro',
+                              lat: patient.centroAcopioLat,
+                              lng: patient.centroAcopioLng,
+                            }]
+                          : []
+                      }
+                      height="200px"
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Seccion 3: Vivienda y Ubicacion */}
               <div className="space-y-3 pt-2">
                 <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5 pb-1.5 border-b border-slate-200">
                   <MapPin className="w-3.5 h-3.5" /> 2. Información de Vivienda y Ubicación

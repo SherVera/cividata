@@ -3,16 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Paciente } from '../types';
 import { 
   User, MapPin, ShieldAlert, Heart, GraduationCap, 
-  ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles
+  ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles, Warehouse
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Catalogs, GuardianOption, fetchCatalogs } from '../lib/catalogsApi';
 import { parseMultiValue } from '../lib/multiValue';
 import CatalogMultiPicker from './CatalogMultiPicker';
+import { CollectionCenter, listCollectionCenters } from '../lib/collectionCentersApi';
+import { DEFAULT_MAP_CENTER, findNearest, formatDistance, GeoNamedPoint } from '../lib/geo';
+import GeoMapPicker, { requestDeviceLocation } from './GeoMapPicker';
 
 interface PatientFormProps {
   initialPatient?: Paciente | null;
@@ -57,13 +60,26 @@ const emptyPatient: Omit<Paciente, 'id' | 'fechaRegistro' | 'notasClinicas'> = {
   asisteEscuela: false,
   nivelEducativo: "",
   gradoAnio: "",
-  nombreInstitucion: ""
+  nombreInstitucion: "",
+
+  centroAcopioId: "",
+  centroAcopioNombre: "",
+  centroAcopioLat: null,
+  centroAcopioLng: null,
+  registroLat: DEFAULT_MAP_CENTER.lat,
+  registroLng: DEFAULT_MAP_CENTER.lng,
+  registrantLat: null,
+  registrantLng: null,
 };
 
 export default function PatientForm({ initialPatient, onSave, onCancel }: PatientFormProps) {
   const [formData, setFormData] = useState<Paciente>(() => {
     if (initialPatient) {
-      return { ...initialPatient };
+      return {
+        ...initialPatient,
+        registroLat: initialPatient.registroLat ?? DEFAULT_MAP_CENTER.lat,
+        registroLng: initialPatient.registroLng ?? DEFAULT_MAP_CENTER.lng,
+      };
     }
     return {
       ...emptyPatient,
@@ -76,6 +92,9 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
   const [activeTab, setActiveTab] = useState<number>(1);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string>("");
+  const [collectionCenters, setCollectionCenters] = useState<CollectionCenter[]>([]);
+  const [centerFilter, setCenterFilter] = useState("");
+  const [geoHint, setGeoHint] = useState<string>("");
 
   // Catálogos reutilizables (sugerencias para no re-tipear datos repetidos).
   const [catalogs, setCatalogs] = useState<Catalogs>({
@@ -96,7 +115,124 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     fetchCatalogs()
       .then(setCatalogs)
       .catch(() => {/* sin catálogos: el formulario sigue funcionando con texto libre */});
+    listCollectionCenters(true)
+      .then(setCollectionCenters)
+      .catch(() => {/* sin centros: el formulario sigue con texto */});
   }, []);
+
+  const activeCentersForMap = useMemo(
+    () =>
+      collectionCenters.map((c) => ({
+        id: c.id,
+        name: c.name,
+        lat: c.geo_lat,
+        lng: c.geo_lng,
+      })),
+    [collectionCenters]
+  );
+
+  const filteredCenters = useMemo(() => {
+    const q = centerFilter.trim().toLowerCase();
+    if (!q) return collectionCenters;
+    return collectionCenters.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        (c.address || '').toLowerCase().includes(q)
+    );
+  }, [collectionCenters, centerFilter]);
+
+  const suggestCenterFromCoords = (lat: number, lng: number, autoSelect = false) => {
+    const points: GeoNamedPoint[] = collectionCenters.map((c) => ({
+      id: c.id,
+      name: c.name,
+      lat: c.geo_lat,
+      lng: c.geo_lng,
+    }));
+    const nearest = findNearest(lat, lng, points);
+    if (!nearest) {
+      setGeoHint('No hay centros registrados cerca. Seleccione uno manualmente.');
+      return;
+    }
+    setGeoHint(
+      `Centro más cercano: ${nearest.item.name} (${formatDistance(nearest.distanceM)}).`
+    );
+    if (autoSelect && nearest.distanceM <= 1500) {
+      setFormData((prev) => ({
+        ...prev,
+        centroAcopioId: nearest.item.id,
+        centroAcopioNombre: nearest.item.name,
+      }));
+    }
+  };
+
+  useEffect(() => {
+    if (initialPatient) return;
+    let cancelled = false;
+    requestDeviceLocation()
+      .then((coords) => {
+        if (cancelled) return;
+        // Same initial coords for patient and registrant (on-site); registrant is not shown in UI.
+        setFormData((prev) => ({
+          ...prev,
+          registrantLat: coords.lat,
+          registrantLng: coords.lng,
+          registroLat: coords.lat,
+          registroLng: coords.lng,
+        }));
+        suggestCenterFromCoords(coords.lat, coords.lng, true);
+        setGeoHint('Arrastre el marcador para ajustar dónde se registra al paciente.');
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setGeoHint('Seleccione el centro de acopio y ajuste el punto en el mapa.');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPatient]);
+
+  const handleCenterOnMap = () => {
+    const center = collectionCenters.find((c) => c.id === formData.centroAcopioId);
+    if (!center) {
+      setGeoHint('Seleccione primero un centro de acopio.');
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      registroLat: center.geo_lat,
+      registroLng: center.geo_lng,
+    }));
+    setGeoHint(`Punto de registro centrado en ${center.name}. Ajuste arrastrando el marcador si hace falta.`);
+  };
+
+  const handleCenterSelect = (centerId: string) => {
+    const center = collectionCenters.find((c) => c.id === centerId);
+    setFormData((prev) => ({
+      ...prev,
+      centroAcopioId: centerId,
+      centroAcopioNombre: center?.name || '',
+      registroLat: center?.geo_lat ?? prev.registroLat,
+      registroLng: center?.geo_lng ?? prev.registroLng,
+    }));
+    if (formErrors.centroAcopioId) {
+      setFormErrors((prev) => {
+        const copy = { ...prev };
+        delete copy.centroAcopioId;
+        return copy;
+      });
+    }
+  };
+
+  const handleRegistrationCoords = (coords: { lat: number; lng: number }) => {
+    setFormData((prev) => ({
+      ...prev,
+      registroLat: coords.lat,
+      registroLng: coords.lng,
+    }));
+    suggestCenterFromCoords(coords.lat, coords.lng, !formData.centroAcopioId);
+  };
 
   // Las secciones pediátricas (vacunación, edad en meses, educación) solo
   // aplican a menores de edad. Para adultos se ocultan automáticamente.
@@ -194,7 +330,9 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       if (!formData.fechaNacimiento) errors.fechaNacimiento = "Fecha de nacimiento requerida";
       if (!formData.nacionalidad.trim()) errors.nacionalidad = "Especifique nacionalidad";
     } else if (sectionNum === 2) {
-      // La ubicación del paciente es opcional: no se valida.
+      if (!initialPatient && !formData.centroAcopioId) {
+        errors.centroAcopioId = 'Seleccione el centro de acopio donde se realiza el registro';
+      }
     } else if (sectionNum === 3) {
       if (!formData.nombreRepresentante.trim()) errors.nombreRepresentante = "Nombre del representante requerido";
       if (!formData.telefonoPrincipal.trim()) errors.telefonoPrincipal = "Teléfono de contacto principal requerido";
@@ -228,7 +366,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     setActiveTab(prev => Math.max(prev - 1, 1));
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Solo al guardar: validar todos los paneles y avisar de los faltantes.
@@ -242,7 +380,20 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
     if (firstInvalid === 0) {
       setSubmitError("");
-      onSave(formData);
+      let registrantLat = formData.registrantLat;
+      let registrantLng = formData.registrantLng;
+      try {
+        const device = await requestDeviceLocation();
+        registrantLat = device.lat;
+        registrantLng = device.lng;
+      } catch {
+        /* keep last device location if available */
+      }
+      onSave({
+        ...formData,
+        registrantLat,
+        registrantLng,
+      });
     } else {
       const tabName = tabs.find(t => t.id === firstInvalid)?.label.split('. ')[1] || `Paso ${firstInvalid}`;
       setSubmitError(`Faltan campos requeridos en "${tabName}". Revise los campos marcados.`);
@@ -483,6 +634,98 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
               <MapPin className="w-5 h-5 text-teal-600" />
               <h3 className="font-sans font-bold text-slate-700 text-base">2. Información de Vivienda y Ubicación</h3>
+            </div>
+
+            <div className="rounded-2xl border border-teal-100 bg-teal-50/40 p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <Warehouse className="w-4 h-4 text-teal-700" />
+                <h4 className="text-sm font-bold text-teal-900">Punto de registro / Centro de acopio</h4>
+              </div>
+              <p className="text-xs text-teal-800/80 leading-relaxed">
+                Indique el centro de acopio y el punto donde se registra al paciente. Arrastre el marcador en el mapa para confirmar la ubicación aproximada (~100 m).
+              </p>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
+                  Centro de acopio {!initialPatient && '*'}
+                </label>
+                <input
+                  type="text"
+                  value={centerFilter || formData.centroAcopioNombre}
+                  onChange={(e) => {
+                    setCenterFilter(e.target.value);
+                    if (!e.target.value.trim()) {
+                      handleCenterSelect('');
+                      setFormData((prev) => ({ ...prev, centroAcopioId: '', centroAcopioNombre: '' }));
+                    }
+                  }}
+                  placeholder="Filtrar o buscar centro..."
+                  className={`w-full px-4 py-2.5 bg-white border rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
+                    formErrors.centroAcopioId ? 'border-red-300 ring-2 ring-red-500/10' : 'border-slate-200'
+                  }`}
+                />
+                {centerFilter.trim() && filteredCenters.length > 0 && (
+                  <div className="mt-1 max-h-36 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+                    {filteredCenters.map((center) => (
+                      <button
+                        key={center.id}
+                        type="button"
+                        onClick={() => {
+                          handleCenterSelect(center.id);
+                          setCenterFilter('');
+                        }}
+                        className={`block w-full px-3 py-2 text-left text-xs hover:bg-teal-50 ${
+                          formData.centroAcopioId === center.id ? 'bg-teal-50 font-bold text-teal-800' : 'text-slate-700'
+                        }`}
+                      >
+                        <span className="block font-semibold">{center.name}</span>
+                        {center.address && (
+                          <span className="block text-[10px] text-slate-400 truncate">{center.address}</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {formData.centroAcopioId && !centerFilter && (
+                  <p className="mt-1 text-xs font-semibold text-teal-700">
+                    Seleccionado: {formData.centroAcopioNombre}
+                  </p>
+                )}
+                {formErrors.centroAcopioId && (
+                  <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.centroAcopioId}</p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCenterOnMap}
+                  disabled={!formData.centroAcopioId}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-white px-3 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+                >
+                  <Warehouse className="w-3.5 h-3.5" />
+                  Centrar en centro seleccionado
+                </button>
+                {formData.registroLat != null && formData.registroLng != null && (
+                  <span className="font-mono text-[10px] text-slate-500">
+                    {formData.registroLat.toFixed(3)}, {formData.registroLng.toFixed(3)} (aprox.)
+                  </span>
+                )}
+              </div>
+              {geoHint && <p className="text-[11px] font-medium text-teal-700">{geoHint}</p>}
+
+              <GeoMapPicker
+                lat={formData.registroLat}
+                lng={formData.registroLng}
+                centers={activeCentersForMap}
+                onChange={handleRegistrationCoords}
+                height="240px"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 pb-2 border-b border-slate-100">
+              <MapPin className="w-4 h-4 text-slate-500" />
+              <h4 className="font-sans font-bold text-slate-600 text-sm">Residencia del paciente</h4>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
