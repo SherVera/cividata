@@ -16,7 +16,7 @@
 <body>
 <form id="f">
   <h1>📋 Censo / Registro — Acceso</h1>
-  <input type="email" id="email" placeholder="Correo" autocomplete="username" autofocus required>
+  <input type="text" id="identidad" placeholder="Correo o teléfono" autocomplete="username" autofocus required>
   <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password" required>
   <button type="submit">Entrar</button>
   <p class="err" id="e"></p>
@@ -29,10 +29,13 @@
   sb.auth.getSession().then(({ data }) => { if (data.session) location.replace('index.html'); });
   document.getElementById('f').addEventListener('submit', async (ev) => {
     ev.preventDefault();
-    const { error } = await sb.auth.signInWithPassword({
-      email: document.getElementById('email').value,
-      password: document.getElementById('password').value,
-    });
+    const id = document.getElementById('identidad').value.trim();
+    const password = document.getElementById('password').value;
+    // Si tiene "@" es correo; si no, se trata como teléfono (formato E.164: +<país><número>).
+    const creds = id.includes('@')
+      ? { email: id, password }
+      : { phone: id.replace(/[\s-]/g, ''), password };
+    const { error } = await sb.auth.signInWithPassword(creds);
     if (error) { document.getElementById('e').textContent = 'Credenciales incorrectas'; return; }
     location.replace('index.html');
   });

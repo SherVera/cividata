@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel Admin — Censo / Registro</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:system-ui,sans-serif;background:#eef2f7;margin:0;color:#1e293b}
+  header{background:#0f172a;color:#fff;padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
+  header a{color:#fff;text-decoration:none;font-size:.9rem;cursor:pointer}
+  main{max-width:1000px;margin:1.2rem auto;padding:0 1rem}
+  h2{font-size:1.05rem;margin:1.4rem 0 .6rem}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.8rem}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1rem}
+  .card .n{font-size:1.8rem;font-weight:800;color:#2563eb}
+  .card .l{font-size:.8rem;color:#64748b}
+  table{border-collapse:collapse;width:100%;background:#fff;font-size:.85rem;border-radius:10px;overflow:hidden}
+  th,td{border:1px solid #e2e8f0;padding:.45rem .6rem;text-align:left}
+  th{background:#f1f5f9}
+  .wrap{overflow:auto;max-height:45vh}
+  form.new{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;align-items:end}
+  label{font-size:.78rem;font-weight:600;display:block;margin-bottom:.2rem}
+  input,select{width:100%;padding:.45rem;border:1px solid #cbd5e1;border-radius:8px;font-size:.9rem}
+  button{padding:.5rem .9rem;background:#2563eb;color:#fff;border:0;border-radius:8px;cursor:pointer;font-size:.85rem}
+  button.s{background:#475569;padding:.3rem .55rem;font-size:.78rem}
+  button.d{background:#dc2626}
+  .badge{font-size:.7rem;padding:.1rem .4rem;border-radius:6px;background:#e2e8f0}
+  .badge.admin{background:#fde68a}
+  .badge.off{background:#fecaca}
+  .msg{margin:.5rem 0;font-size:.85rem;min-height:1rem}
+</style>
+</head>
+<body>
+<header>
+  <strong>🛠️ Panel de Administración</strong>
+  <span><a href="index.html">➕ Registrar</a> &nbsp;·&nbsp; <a href="registros.html">📋 Registros</a> &nbsp;·&nbsp; <a id="out">Salir</a></span>
+</header>
+<main>
+  <h2>Estadísticas</h2>
+  <div class="cards" id="cards"></div>
+
+  <h2>Registros por usuario</h2>
+  <div class="wrap"><table id="porUsuario"></table></div>
+
+  <h2>Gestión de usuarios</h2>
+  <p class="msg" id="msg"></p>
+  <form class="new" id="newUser">
+    <div><label>Correo (opcional)</label><input id="nEmail" type="email" placeholder="correo@ej.com"></div>
+    <div><label>Teléfono (opcional, +E.164)</label><input id="nPhone" placeholder="+584141234567"></div>
+    <div><label>Contraseña</label><input id="nPass" type="text" placeholder="mín. 6 caracteres"></div>
+    <div><label>Rol</label><select id="nRole"><option value="registrador">Registrador</option><option value="admin">Admin</option></select></div>
+    <div><button type="submit">＋ Crear usuario</button></div>
+  </form>
+  <div class="wrap" style="margin-top:.8rem"><table id="usuarios"></table></div>
+
+  <h2>Auditoría reciente (últimas 50 operaciones)</h2>
+  <div class="wrap"><table id="audit"></table></div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+  const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+  let token = null;
+  const esc = (v) => (v == null ? '' : String(v).replace(/</g, '&lt;'));
+
+  async function api(method, body) {
+    const r = await fetch('/api/users', {
+      method,
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    return r.json();
+  }
+
+  document.getElementById('out').onclick = async () => { await sb.auth.signOut(); location.replace('login.html'); };
+
+  function identidad(u) { return u.email || u.phone || u.id.slice(0, 8); }
+
+  async function cargarUsuarios() {
+    const { users, error } = await api('GET');
+    if (error) { document.getElementById('msg').textContent = 'Error: ' + error; return []; }
+    const t = document.getElementById('usuarios');
+    t.innerHTML = '<tr><th>Identidad</th><th>Rol</th><th>Estado</th><th>Último acceso</th><th>Acciones</th></tr>';
+    for (const u of users) {
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        `<td>${esc(u.email || u.phone)}</td>` +
+        `<td><span class="badge ${u.role === 'admin' ? 'admin' : ''}">${u.role}</span></td>` +
+        `<td><span class="badge ${u.disabled ? 'off' : ''}">${u.disabled ? 'deshabilitado' : 'activo'}</span></td>` +
+        `<td>${u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString('es') : '—'}</td>`;
+      const td = document.createElement('td');
+      td.append(
+        botón('🔑', 'Resetear contraseña', async () => {
+          const p = prompt('Nueva contraseña para ' + identidad(u));
+          if (p) { await api('PATCH', { id: u.id, action: 'reset', password: p }); flash('Contraseña actualizada'); }
+        }),
+        botón(u.disabled ? '✅' : '🚫', u.disabled ? 'Habilitar' : 'Deshabilitar', async () => {
+          await api('PATCH', { id: u.id, action: u.disabled ? 'enable' : 'disable' });
+          flash('Estado actualizado'); cargarUsuarios();
+        }, u.disabled ? 's' : 's d'),
+        botón(u.role === 'admin' ? '↓ registrador' : '↑ admin', 'Cambiar rol', async () => {
+          await api('PATCH', { id: u.id, action: 'role', role: u.role === 'admin' ? 'registrador' : 'admin' });
+          flash('Rol actualizado'); cargarUsuarios();
+        })
+      );
+      tr.append(td);
+      t.append(tr);
+    }
+    return users;
+  }
+  function botón(txt, title, fn, cls = 's') {
+    const b = document.createElement('button');
+    b.className = cls; b.textContent = txt; b.title = title;
+    b.style.marginRight = '.3rem';
+    b.onclick = fn;
+    return b;
+  }
+  function flash(m) { const e = document.getElementById('msg'); e.textContent = m; setTimeout(() => (e.textContent = ''), 2500); }
+
+  document.getElementById('newUser').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const body = {
+      email: document.getElementById('nEmail').value.trim() || undefined,
+      phone: document.getElementById('nPhone').value.trim().replace(/[\s-]/g, '') || undefined,
+      password: document.getElementById('nPass').value,
+      role: document.getElementById('nRole').value,
+    };
+    const r = await api('POST', body);
+    if (r.error) { flash('Error: ' + r.error); return; }
+    e.target.reset(); flash('Usuario creado'); cargarTodo();
+  });
+
+  async function cargarStats(users) {
+    const mapU = Object.fromEntries(users.map((u) => [u.id, u.email || u.phone || u.id.slice(0, 8)]));
+    const { data: regs } = await sb.from('registros').select('created_by,created_at');
+    const total = regs ? regs.length : 0;
+    const semana = (regs || []).filter((r) => Date.now() - new Date(r.created_at).getTime() < 7 * 864e5).length;
+    document.getElementById('cards').innerHTML =
+      tarjeta(total, 'Registros totales') +
+      tarjeta(semana, 'Últimos 7 días') +
+      tarjeta(users.length, 'Usuarios') +
+      tarjeta(users.filter((u) => u.role === 'admin').length, 'Administradores');
+
+    const conteo = {};
+    for (const r of regs || []) conteo[r.created_by] = (conteo[r.created_by] || 0) + 1;
+    const filas = Object.entries(conteo).sort((a, b) => b[1] - a[1]);
+    const t = document.getElementById('porUsuario');
+    t.innerHTML = '<tr><th>Usuario</th><th>Registros</th></tr>' +
+      (filas.length ? filas.map(([id, n]) => `<tr><td>${esc(mapU[id] || id)}</td><td>${n}</td></tr>`).join('')
+                    : '<tr><td colspan="2">Sin registros aún</td></tr>');
+  }
+  const tarjeta = (n, l) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+
+  async function cargarAudit() {
+    const { data, error } = await sb.from('audit_log').select('*').order('id', { ascending: false }).limit(50);
+    const t = document.getElementById('audit');
+    if (error) { t.innerHTML = '<tr><td>Error: ' + esc(error.message) + '</td></tr>'; return; }
+    t.innerHTML = '<tr><th>Fecha</th><th>Acción</th><th>Registro #</th><th>Usuario</th></tr>' +
+      (data.length ? data.map((a) =>
+        `<tr><td>${new Date(a.created_at).toLocaleString('es')}</td><td>${esc(a.accion)}</td><td>${esc(a.registro_id)}</td><td>${esc(a.actor_email || a.actor)}</td></tr>`
+      ).join('') : '<tr><td colspan="4">Sin operaciones aún</td></tr>');
+  }
+
+  async function cargarTodo() {
+    const users = await cargarUsuarios();
+    await cargarStats(users);
+    await cargarAudit();
+  }
+
+  (async () => {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return location.replace('login.html');
+    if (session.user.app_metadata?.role !== 'admin') return location.replace('index.html'); // solo admin
+    token = session.access_token;
+    cargarTodo();
+  })();
+</script>
+</body>
+</html>

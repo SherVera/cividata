@@ -28,7 +28,7 @@
 <body>
 <header>
   <strong>📋 Ficha de Registro / Censo</strong>
-  <span><a href="registros.html">📋 Ver registros</a> &nbsp;·&nbsp; <a id="out">Salir</a></span>
+  <span><span id="adminwrap" style="display:none"><a href="admin.html">🛠️ Admin</a> &nbsp;·&nbsp; </span><a href="registros.html">📋 Ver registros</a> &nbsp;·&nbsp; <a id="out">Salir</a></span>
 </header>
 <main>
   <div class="ok" id="ok">✅ Registro guardado correctamente.</div>
@@ -110,7 +110,10 @@
   const f = document.getElementById('f');
 
   // Guardia de sesión: sin login -> a la pantalla de acceso.
-  sb.auth.getSession().then(({ data }) => { if (!data.session) location.replace('login.html'); });
+  sb.auth.getSession().then(({ data }) => {
+    if (!data.session) return location.replace('login.html');
+    if (data.session.user.app_metadata?.role === 'admin') document.getElementById('adminwrap').style.display = 'inline';
+  });
   document.getElementById('out').onclick = async () => { await sb.auth.signOut(); location.replace('login.html'); };
 
   // Geolocalización como metadata (no obligatoria).
