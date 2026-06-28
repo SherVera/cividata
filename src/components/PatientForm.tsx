@@ -5,6 +5,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Paciente } from '../types';
+import {
+  GRUPOS_ETARIOS,
+  grupoEtarioFromAge,
+  grupoEtarioLabel,
+} from '../types';
 import { 
   User, MapPin, ShieldAlert, Heart, GraduationCap, 
   ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles, Warehouse, Plus, Stethoscope, Camera, X
@@ -43,6 +48,7 @@ const emptyPatient: Omit<Paciente, 'id' | 'fechaRegistro' | 'notasClinicas'> = {
   documentoIdentidad: "",
   nacionalidad: "Venezolana",
   fotoPath: null,
+  grupoEtario: "nino",
   
   direccion: "",
   ciudadMunicipio: "",
@@ -90,6 +96,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       return {
         ...initialPatient,
         fotoPath: initialPatient.fotoPath ?? null,
+        grupoEtario: initialPatient.grupoEtario ?? 'nino',
         puntoRegistroTipo: initialPatient.puntoRegistroTipo ?? 'centro',
         registroLat: initialPatient.registroLat ?? DEFAULT_MAP_CENTER.lat,
         registroLng: initialPatient.registroLng ?? DEFAULT_MAP_CENTER.lng,
@@ -391,9 +398,9 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     }
   };
 
-  // Las secciones pediátricas (vacunación, edad en meses, educación) solo
-  // aplican a menores de edad. Para adultos se ocultan automáticamente.
-  const isMinor = !!formData.fechaNacimiento && formData.edadAnios < 18;
+  // Secciones pediátricas: sin fecha de nacimiento se asume contexto infantil;
+  // con fecha, solo menores de 18 años.
+  const isPediatricProfile = formData.grupoEtario === 'nino';
 
   // Autorrellena los datos del representante al coincidir con uno existente.
   const applyGuardian = (guardian: GuardianOption) => {
@@ -418,39 +425,36 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     if (match) applyGuardian(match);
   };
 
-  // Calculate age automatically when birthdate changes
+  // Calculate age and classification when exact birth date is known.
   useEffect(() => {
-    if (formData.fechaNacimiento) {
-      const birthDate = new Date(formData.fechaNacimiento);
-      const today = new Date();
-      
-      // Basic validation
-      if (isNaN(birthDate.getTime())) return;
-      
-      let years = today.getFullYear() - birthDate.getFullYear();
-      let months = today.getMonth() - birthDate.getMonth();
-      
-      if (today.getDate() < birthDate.getDate()) {
-        months--;
-      }
-      
-      if (months < 0) {
-        years--;
-        months += 12;
-      }
-      
-      if (years < 0) {
-        years = 0;
-        months = 0;
-      }
-      
-      setFormData(prev => ({
-        ...prev,
-        edadAnios: years,
-        edadMeses: months
-      }));
+    if (!formData.fechaNacimiento) return;
+
+    const birthDate = new Date(formData.fechaNacimiento);
+    const today = new Date();
+    if (isNaN(birthDate.getTime())) return;
+
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+
+    if (today.getDate() < birthDate.getDate()) months--;
+    if (months < 0) {
+      years--;
+      months += 12;
     }
+    if (years < 0) {
+      years = 0;
+      months = 0;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      edadAnios: years,
+      edadMeses: months,
+      grupoEtario: grupoEtarioFromAge(years),
+    }));
   }, [formData.fechaNacimiento]);
+
+  const hasExactBirthDate = !!formData.fechaNacimiento;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -480,34 +484,18 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
   const validateSection = (sectionNum: number): boolean => {
     const errors: Record<string, string> = {};
-    
+
     if (sectionNum === 1) {
-      if (!formData.nombres.trim()) errors.nombres = "Los nombres son requeridos";
-      if (!formData.apellidos.trim()) errors.apellidos = "Los apellidos son requeridos";
-      if (!formData.fechaNacimiento) errors.fechaNacimiento = "Fecha de nacimiento requerida";
-      if (!formData.nacionalidad.trim()) errors.nacionalidad = "Especifique nacionalidad";
-    } else if (sectionNum === 2) {
-      if (!initialPatient && formData.puntoRegistroTipo === 'centro' && !formData.centroAcopioId) {
-        errors.centroAcopioId = 'Seleccione el centro de acopio donde se realiza el registro';
+      const hasIdentity =
+        formData.nombres.trim() ||
+        formData.apellidos.trim() ||
+        formData.documentoIdentidad.trim();
+      if (!hasIdentity) {
+        errors.nombres = 'Indique al menos nombre, apellido o documento del paciente';
       }
-    } else if (sectionNum === 3) {
-      if (!formData.nombreRepresentante.trim()) errors.nombreRepresentante = "Nombre del representante requerido";
-      if (!formData.telefonoPrincipal.trim()) errors.telefonoPrincipal = "Teléfono de contacto principal requerido";
-      if (!formData.documentoRepresentante.trim()) errors.documentoRepresentante = "Documento de identidad requerido";
-    } else if (sectionNum === 4) {
-      if (formData.peso <= 0) errors.peso = "Escriba un peso válido mayor a 0 kg";
-      if (formData.estatura <= 0) errors.estatura = "Escriba una estatura válida mayor a 0 cm";
-      if (formData.tieneAlergias && parseMultiValue(formData.alergiasEspecificas).length === 0) {
-        errors.alergiasEspecificas = "Agregue al menos una alergia";
+      if (!formData.fechaNacimiento && formData.edadAnios <= 0 && formData.edadMeses <= 0) {
+        errors.edadAnios = 'Sin fecha exacta, indique una edad tentativa (años o meses)';
       }
-      if (formData.tieneCondicionMedica && parseMultiValue(formData.condicionMedicaEspecifica).length === 0) {
-        errors.condicionMedicaEspecifica = "Agregue al menos una condición médica";
-      }
-      if (formData.tomaMedicamentos && parseMultiValue(formData.medicamentosEspecificos).length === 0) {
-        errors.medicamentosEspecificos = "Agregue al menos un medicamento";
-      }
-    } else if (sectionNum === 5) {
-      // La sección educativa es totalmente opcional: no se valida.
     }
 
     setFormErrors(errors);
@@ -607,7 +595,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             {initialPatient ? "Modificar Ficha de Registro" : "Nueva Ficha de Registro"}
           </h2>
           <p className="text-xs text-slate-300 mt-1 max-w-xl">
-            Complete los datos personales y médicos del paciente. Las secciones pediátricas aparecen solo para menores de edad. Los campos marcados con (*) son obligatorios.
+            Complete los datos que tenga disponibles. Solo se exige un dato mínimo de identificación; sin fecha exacta, indique edad tentativa y clasificación etaria.
           </p>
         </div>
         <button
@@ -724,7 +712,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Nombres Completos <span className="text-red-500">*</span>
+                  Nombres Completos <span className="font-normal normal-case text-slate-400">(opcional)</span>
                 </label>
                 <input
                   type="text"
@@ -741,7 +729,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Apellidos Completos <span className="text-red-500">*</span>
+                  Apellidos Completos <span className="font-normal normal-case text-slate-400">(opcional)</span>
                 </label>
                 <input
                   type="text"
@@ -758,7 +746,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Fecha de Nacimiento <span className="text-red-500">*</span>
+                  Fecha de Nacimiento <span className="font-normal normal-case text-slate-400">(opcional)</span>
                 </label>
                 <input
                   type="date"
@@ -774,21 +762,84 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Edad Calculada
+                  {hasExactBirthDate ? 'Edad calculada' : 'Edad tentativa'}
                 </label>
-                <div className={`grid gap-2 ${isMinor ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                  <div className="relative bg-slate-100 rounded-xl px-4 py-2.5 border border-slate-200 flex items-center justify-between text-sm text-slate-700">
-                    <span className="font-mono font-bold text-slate-800">{formData.edadAnios}</span>
-                    <span className="text-xs text-slate-500">años</span>
-                  </div>
-                  {isMinor && (
+                {hasExactBirthDate ? (
+                  <div className={`grid gap-2 ${isPediatricProfile ? 'grid-cols-2' : 'grid-cols-1'}`}>
                     <div className="relative bg-slate-100 rounded-xl px-4 py-2.5 border border-slate-200 flex items-center justify-between text-sm text-slate-700">
-                      <span className="font-mono font-bold text-slate-800">{formData.edadMeses}</span>
-                      <span className="text-xs text-slate-500">meses</span>
+                      <span className="font-mono font-bold text-slate-800">{formData.edadAnios}</span>
+                      <span className="text-xs text-slate-500">años</span>
                     </div>
-                  )}
+                    {isPediatricProfile && (
+                      <div className="relative bg-slate-100 rounded-xl px-4 py-2.5 border border-slate-200 flex items-center justify-between text-sm text-slate-700">
+                        <span className="font-mono font-bold text-slate-800">{formData.edadMeses}</span>
+                        <span className="text-xs text-slate-500">meses</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <input
+                        type="number"
+                        name="edadAnios"
+                        min={0}
+                        value={formData.edadAnios || ''}
+                        onChange={handleInputChange}
+                        placeholder="Años"
+                        className={`w-full px-4 py-2.5 bg-slate-50 border rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 ${
+                          formErrors.edadAnios ? 'border-red-300' : 'border-slate-200'
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="number"
+                        name="edadMeses"
+                        min={0}
+                        max={11}
+                        value={formData.edadMeses || ''}
+                        onChange={handleInputChange}
+                        placeholder="Meses"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500"
+                      />
+                    </div>
+                  </div>
+                )}
+                {formErrors.edadAnios && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.edadAnios}</p>}
+                <p className="text-[10px] text-slate-400 mt-1">
+                  {hasExactBirthDate
+                    ? 'Calculada automáticamente desde la fecha de nacimiento.'
+                    : 'Estimación aproximada cuando no se conoce la fecha exacta.'}
+                </p>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
+                  Clasificación etaria {hasExactBirthDate ? '' : <span className="font-normal normal-case text-slate-400">(asignar manualmente)</span>}
+                </label>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {GRUPOS_ETARIOS.map((grupo) => (
+                    <button
+                      key={grupo}
+                      type="button"
+                      disabled={hasExactBirthDate}
+                      onClick={() => setFormData((prev) => ({ ...prev, grupoEtario: grupo }))}
+                      className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-all disabled:cursor-not-allowed disabled:opacity-60 ${
+                        formData.grupoEtario === grupo
+                          ? 'border-teal-600 bg-teal-50 text-teal-700 ring-2 ring-teal-500/10'
+                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      {grupoEtarioLabel(grupo)}
+                    </button>
+                  ))}
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1">La edad se actualiza de manera automática de acuerdo a la fecha de nacimiento ingresada.</p>
+                <p className="text-[10px] text-slate-400 mt-1.5">
+                  {hasExactBirthDate
+                    ? 'Se calcula automáticamente según la fecha de nacimiento.'
+                    : 'Seleccione niño/a, adulto o tercera edad según su criterio clínico.'}
+                </p>
               </div>
 
               <div>
@@ -829,7 +880,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
               <div className="md:col-span-2">
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Nacionalidad <span className="text-red-500">*</span>
+                  Nacionalidad <span className="font-normal normal-case text-slate-400">(opcional)</span>
                 </label>
                 <input
                   type="text"
@@ -957,7 +1008,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
               {formData.puntoRegistroTipo === 'centro' && (
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Centro de acopio {!initialPatient && '*'}
+                  Centro de acopio <span className="font-normal normal-case text-slate-400">(opcional)</span>
                 </label>
                 <input
                   type="text"
@@ -1143,7 +1194,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Nombre Completo del Representante <span className="text-red-500">*</span>
+                  Nombre Completo del Representante <span className="font-normal normal-case text-slate-400">(opcional)</span>
                 </label>
                 <input
                   type="text"
@@ -1187,7 +1238,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Documento de Identidad <span className="text-red-500">*</span>
+                  Documento de Identidad <span className="font-normal normal-case text-slate-400">(opcional)</span>
                 </label>
                 <input
                   type="text"
@@ -1219,7 +1270,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Teléfono de Contacto Principal <span className="text-red-500">*</span>
+                  Teléfono de Contacto Principal <span className="font-normal normal-case text-slate-400">(opcional)</span>
                 </label>
                 <input
                   type="text"
@@ -1280,7 +1331,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Estatura Actual (cm) <span className="text-red-500">*</span>
+                  Estatura Actual (cm) <span className="font-normal normal-case text-slate-400">(opcional)</span>
                 </label>
                 <div className="relative rounded-xl">
                   <input
@@ -1303,7 +1354,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Peso Actual (kg) <span className="text-red-500">*</span>
+                  Peso Actual (kg) <span className="font-normal normal-case text-slate-400">(opcional)</span>
                 </label>
                 <div className="relative rounded-xl">
                   <input
@@ -1347,7 +1398,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 </select>
               </div>
 
-              {isMinor && (
+              {isPediatricProfile && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
                     Esquema de Vacunación (Según edad)
@@ -1573,12 +1624,12 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             </div>
 
             <div className="space-y-4">
-              {!isMinor && (
+              {!isPediatricProfile && (
                 <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 text-xs text-blue-800 leading-relaxed">
-                  La sección educativa aplica únicamente a menores de edad. Indique la fecha de nacimiento del paciente; si es menor de 18 años, este apartado se habilitará automáticamente.
+                  La sección educativa aplica únicamente a niños y niñas. Para adultos y tercera edad este apartado no aplica.
                 </div>
               )}
-              {isMinor && (
+              {isPediatricProfile && (
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                 <div className="flex items-center justify-between">
                   <div>

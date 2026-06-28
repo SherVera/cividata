@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Session } from '@supabase/supabase-js';
-import { Paciente, puntoRegistroEtiqueta } from './types';
+import { Paciente, puntoRegistroEtiqueta, grupoEtarioLabel, normalizeGrupoEtario, edadPacienteTexto, pacienteTieneEdad } from './types';
 import AuthScreen from './components/AuthScreen';
 import PatientForm from './components/PatientForm';
 import PatientDetails from './components/PatientDetails';
@@ -52,6 +52,7 @@ export default function App() {
   const [filterVacuna, setFilterVacuna] = useState<string>('All');
   const [filterEscuela, setFilterEscuela] = useState<string>('All');
   const [filterAgeRange, setFilterAgeRange] = useState<string>('All');
+  const [filterGrupoEtario, setFilterGrupoEtario] = useState<string>('All');
   const [filterCentro, setFilterCentro] = useState<string>('All');
   const [collectionCenters, setCollectionCenters] = useState<{ id: string; name: string }[]>([]);
   const [totalCentrosRegistrados, setTotalCentrosRegistrados] = useState(0);
@@ -297,7 +298,10 @@ export default function App() {
       try {
         const parsed = JSON.parse(event.target?.result as string);
         if (Array.isArray(parsed) && parsed.length > 0 && 'nombres' in parsed[0]) {
-          await bulkUpsertPatients(parsed as Paciente[]);
+          await bulkUpsertPatients((parsed as Paciente[]).map((p) => ({
+            ...p,
+            grupoEtario: normalizeGrupoEtario(p.grupoEtario),
+          })));
           await loadPatients();
           showNotification('success', `Importación completada: ${parsed.length} pacientes sincronizados.`);
         } else {
@@ -338,11 +342,15 @@ export default function App() {
       // 5. Age Range
       let matchAge = true;
       if (filterAgeRange !== 'All') {
-        const age = p.edadAnios;
-        if (filterAgeRange === 'Bebes') matchAge = age <= 2;
-        else if (filterAgeRange === 'Preescolar') matchAge = age >= 3 && age <= 5;
-        else if (filterAgeRange === 'Escolar') matchAge = age >= 6 && age <= 12;
-        else if (filterAgeRange === 'Adolescentes') matchAge = age >= 13;
+        if (!pacienteTieneEdad(p)) {
+          matchAge = false;
+        } else {
+          const age = p.edadAnios;
+          if (filterAgeRange === 'Bebes') matchAge = age <= 2;
+          else if (filterAgeRange === 'Preescolar') matchAge = age >= 3 && age <= 5;
+          else if (filterAgeRange === 'Escolar') matchAge = age >= 6 && age <= 12;
+          else if (filterAgeRange === 'Adolescentes') matchAge = age >= 13;
+        }
       }
 
       const matchCentro =
@@ -351,22 +359,27 @@ export default function App() {
         (filterCentro === 'SinCentro' && p.puntoRegistroTipo !== 'medico' && !p.centroAcopioId) ||
         p.centroAcopioId === filterCentro;
 
-      return matchQuery && matchGender && matchVacuna && matchEscuela && matchAge && matchCentro;
+      const matchGrupo =
+        filterGrupoEtario === 'All' || p.grupoEtario === filterGrupoEtario;
+
+      return matchQuery && matchGender && matchVacuna && matchEscuela && matchAge && matchCentro && matchGrupo;
     }).sort((a, b) => {
       // Sorting
       if (sortBy === 'alphabetical') {
         return `${a.nombres} ${a.apellidos}`.localeCompare(`${b.nombres} ${b.apellidos}`);
       }
       if (sortBy === 'age-asc') {
-        return (a.edadAnios * 12 + a.edadMeses) - (b.edadAnios * 12 + b.edadMeses);
+        const months = (p: Paciente) => (pacienteTieneEdad(p) ? p.edadAnios * 12 + p.edadMeses : Number.MAX_SAFE_INTEGER);
+        return months(a) - months(b);
       }
       if (sortBy === 'age-desc') {
-        return (b.edadAnios * 12 + b.edadMeses) - (a.edadAnios * 12 + a.edadMeses);
+        const months = (p: Paciente) => (pacienteTieneEdad(p) ? p.edadAnios * 12 + p.edadMeses : -1);
+        return months(b) - months(a);
       }
       // default: recent (by registration date/id reverse order)
       return b.fechaRegistro.localeCompare(a.fechaRegistro) || b.id.localeCompare(a.id);
     });
-  }, [patients, searchQuery, filterGender, filterVacuna, filterEscuela, filterAgeRange, filterCentro, sortBy]);
+  }, [patients, searchQuery, filterGender, filterVacuna, filterEscuela, filterAgeRange, filterGrupoEtario, filterCentro, sortBy]);
 
   // Bottom navigation active state (app-like mobile tab bar)
   const bottomNavActive: BottomNavKey =
@@ -734,6 +747,21 @@ export default function App() {
                           </select>
                         </div>
 
+                        {/* Age group filter */}
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Clasificación</span>
+                          <select
+                            value={filterGrupoEtario}
+                            onChange={(e) => setFilterGrupoEtario(e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 font-semibold focus:outline-none cursor-pointer"
+                          >
+                            <option value="All">Todas</option>
+                            <option value="nino">Niño/a</option>
+                            <option value="adulto">Adulto</option>
+                            <option value="tercera_edad">Tercera edad</option>
+                          </select>
+                        </div>
+
                         {/* Age range filter */}
                         <div className="space-y-1">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Grupo de Edad</span>
@@ -808,7 +836,7 @@ export default function App() {
                                     {p.nombres} {p.apellidos}
                                   </h3>
                                   <p className="text-xs text-slate-500 mt-1 font-medium">
-                                    {p.edadAnios} {p.edadAnios === 1 ? 'año' : 'años'} y {p.edadMeses} {p.edadMeses === 1 ? 'mes' : 'meses'}
+                                    {edadPacienteTexto(p)}
                                   </p>
                                 </div>
                               </div>

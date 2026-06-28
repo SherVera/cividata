@@ -1,8 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 export interface NotaClinica {
   id: string;
   fecha: string;
@@ -26,6 +21,8 @@ export interface Paciente {
   nacionalidad: string;
   /** Ruta en Supabase Storage (bucket patient-photos). Opcional. */
   fotoPath: string | null;
+  /** Clasificación etaria; útil cuando no hay fecha de nacimiento. */
+  grupoEtario: GrupoEtario;
 
   // 2. Información de Vivienda
   direccion: string;
@@ -89,6 +86,11 @@ export interface CensoStats {
     femenino: number;
     otro: number;
   };
+  gruposEtarios: {
+    nino: number;
+    adulto: number;
+    tercera_edad: number;
+  };
   rangosEdad: {
     bebes: number; // 0-2 años
     preescolar: number; // 3-5 años
@@ -102,6 +104,44 @@ export function puntoRegistroEtiqueta(
 ): string {
   if (p.puntoRegistroTipo === 'medico') return 'Atención por médico';
   return p.centroAcopioNombre;
+}
+
+export type GrupoEtario = 'nino' | 'adulto' | 'tercera_edad';
+
+export const GRUPOS_ETARIOS: GrupoEtario[] = ['nino', 'adulto', 'tercera_edad'];
+
+export function grupoEtarioLabel(grupo: GrupoEtario): string {
+  if (grupo === 'nino') return 'Niño/a';
+  if (grupo === 'adulto') return 'Adulto';
+  return 'Tercera edad';
+}
+
+/** Deriva la clasificación a partir de la edad en años (con fecha de nacimiento). */
+export function grupoEtarioFromAge(years: number): GrupoEtario {
+  if (years < 18) return 'nino';
+  if (years < 60) return 'adulto';
+  return 'tercera_edad';
+}
+
+export function normalizeGrupoEtario(value: unknown): GrupoEtario {
+  if (value === 'adulto' || value === 'tercera_edad') return value;
+  return 'nino';
+}
+
+export function edadPacienteTexto(
+  p: Pick<Paciente, 'fechaNacimiento' | 'edadAnios' | 'edadMeses'>
+): string {
+  if (p.fechaNacimiento) {
+    return `${p.edadAnios} ${p.edadAnios === 1 ? 'año' : 'años'} y ${p.edadMeses} ${p.edadMeses === 1 ? 'mes' : 'meses'}`;
+  }
+  if (p.edadAnios > 0 || p.edadMeses > 0) {
+    return `~${p.edadAnios} ${p.edadAnios === 1 ? 'año' : 'años'} y ${p.edadMeses} ${p.edadMeses === 1 ? 'mes' : 'meses'} (aprox.)`;
+  }
+  return 'Sin registrar';
+}
+
+export function pacienteTieneEdad(p: Pick<Paciente, 'fechaNacimiento' | 'edadAnios' | 'edadMeses'>): boolean {
+  return !!p.fechaNacimiento || p.edadAnios > 0 || p.edadMeses > 0;
 }
 
 /** Datos personales opcionales del personal médico / admin (user_metadata.staff_profile). */

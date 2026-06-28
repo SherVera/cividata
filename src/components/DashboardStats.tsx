@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Paciente, CensoStats } from '../types';
+import { Paciente, CensoStats, grupoEtarioLabel, pacienteTieneEdad } from '../types';
 import type { AppRole } from '../lib/authRoles';
 import { 
   Users, ShieldCheck, GraduationCap, Heart, Smile, Warehouse,
@@ -131,6 +131,9 @@ export default function DashboardStats({
     let preescolar = 0; // 3-5
     let escolar = 0; // 6-12
     let adolescentes = 0; // 13+
+    let ninos = 0;
+    let adultos = 0;
+    let terceraEdad = 0;
 
     list.forEach(p => {
       // Vaccine scheme
@@ -146,12 +149,18 @@ export default function DashboardStats({
       else if (p.genero === 'Femenino') fem++;
       else otro++;
 
-      // Age group
-      const age = p.edadAnios;
-      if (age <= 2) bebes++;
-      else if (age <= 5) preescolar++;
-      else if (age <= 12) escolar++;
-      else adolescentes++;
+      if (p.grupoEtario === 'adulto') adultos++;
+      else if (p.grupoEtario === 'tercera_edad') terceraEdad++;
+      else ninos++;
+
+      // Age group (fecha exacta o edad tentativa)
+      if (pacienteTieneEdad(p)) {
+        const age = p.edadAnios;
+        if (age <= 2) bebes++;
+        else if (age <= 5) preescolar++;
+        else if (age <= 12) escolar++;
+        else adolescentes++;
+      }
     });
 
     return {
@@ -164,6 +173,11 @@ export default function DashboardStats({
         masculino: masc,
         femenino: fem,
         otro: otro
+      },
+      gruposEtarios: {
+        nino: ninos,
+        adulto: adultos,
+        tercera_edad: terceraEdad,
       },
       rangosEdad: {
         bebes,
@@ -278,7 +292,7 @@ export default function DashboardStats({
       </div>
 
       {/* Visual Analytics Charts Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         
         {/* Chart Card 1: Vaccination Scheme Ring Chart */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
@@ -375,11 +389,41 @@ export default function DashboardStats({
           </div>
 
           <div className="text-[9px] text-slate-400 text-center font-medium">
-            Clasificado según pautas de atención pediátrica oficial.
+            Solo pacientes con fecha exacta o edad tentativa registrada.
           </div>
         </div>
 
-        {/* Chart Card 3: School Attendance & Gender Proportion */}
+        {/* Chart Card 3: Clasificación etaria */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
+          <div>
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Clasificación etaria</h4>
+            <p className="text-[10px] text-slate-400">Niño/a, adulto y tercera edad (incluye sin fecha exacta).</p>
+          </div>
+
+          <div className="space-y-3">
+            {([
+              { key: 'nino' as const, color: 'bg-teal-500' },
+              { key: 'adulto' as const, color: 'bg-blue-500' },
+              { key: 'tercera_edad' as const, color: 'bg-violet-500' },
+            ]).map(({ key, color }) => {
+              const val = stats.gruposEtarios[key];
+              const pct = stats.totalPacientes > 0 ? (val / stats.totalPacientes) * 100 : 0;
+              return (
+                <div key={key} className="space-y-1">
+                  <div className="flex justify-between text-[10px] font-bold text-slate-600">
+                    <span>{grupoEtarioLabel(key)}</span>
+                    <span className="font-mono">{val}</span>
+                  </div>
+                  <div className="h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                    <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Chart Card 4: School Attendance & Gender Proportion */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
           <div>
             <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Género &amp; Educación</h4>

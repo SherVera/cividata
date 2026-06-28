@@ -360,6 +360,22 @@ alter table public.patients add column if not exists medication_detail text;
 -- Foto opcional del paciente (ruta en Supabase Storage: bucket patient-photos).
 alter table public.patients add column if not exists photo_path text;
 
+-- Clasificación etaria (niño, adulto, tercera edad). birth_date sigue siendo opcional.
+alter table public.patients add column if not exists age_group text not null default 'nino';
+
+update public.patients
+set age_group = case
+  when birth_date is not null and date_part('year', age(birth_date::timestamp))::int < 18 then 'nino'
+  when birth_date is not null and date_part('year', age(birth_date::timestamp))::int < 60 then 'adulto'
+  when birth_date is not null then 'tercera_edad'
+  else age_group
+end
+where birth_date is not null;
+
+-- Edad tentativa cuando no hay fecha de nacimiento exacta.
+alter table public.patients add column if not exists approx_age_years integer;
+alter table public.patients add column if not exists approx_age_months integer;
+
 alter table public.clinical_notes add column if not exists diagnosis_id uuid references public.diagnoses(id) on delete set null;
 alter table public.clinical_notes add column if not exists treatment_id uuid references public.treatments(id) on delete set null;
 alter table public.clinical_notes drop column if exists diagnosis;

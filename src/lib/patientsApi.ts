@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { Paciente, NotaClinica } from '../types';
+import { Paciente, NotaClinica, normalizeGrupoEtario, grupoEtarioFromAge } from '../types';
 import { joinMultiValue, parseMultiValue } from './multiValue';
 import { deletePatientPhoto } from './patientPhotosApi';
 
@@ -47,7 +47,13 @@ const PATIENT_SELECT = `
 
 function rowToPaciente(row: any): Paciente {
   const birth = row.birth_date || '';
-  const { years, months } = computeAge(birth);
+  const hasBirth = !!birth;
+  const computed = hasBirth ? computeAge(birth) : { years: 0, months: 0 };
+  const years = hasBirth ? computed.years : (row.approx_age_years ?? 0);
+  const months = hasBirth ? computed.months : (row.approx_age_months ?? 0);
+  const grupoEtario = hasBirth
+    ? grupoEtarioFromAge(computed.years)
+    : normalizeGrupoEtario(row.age_group);
   const notes: NotaClinica[] = (row.clinical_notes || [])
     .map((n: any) => ({
       id: n.id,
@@ -71,6 +77,7 @@ function rowToPaciente(row: any): Paciente {
     documentoIdentidad: row.id_document || '',
     nacionalidad: row.nationality?.name || '',
     fotoPath: row.photo_path || null,
+    grupoEtario,
     direccion: row.address || '',
     ciudadMunicipio: row.city?.name || '',
     estadoProvincia: row.state?.name || '',
@@ -246,15 +253,23 @@ export async function savePatient(p: Paciente): Promise<void> {
     ? await resolveCatalogSelection('medications', p.medicamentosEspecificos)
     : { firstId: null, detail: null };
   const guardianId = await getOrCreateGuardian(p);
+  const hasBirthDate = !!(p.fechaNacimiento || '').trim();
+  const computedAge = hasBirthDate ? computeAge(p.fechaNacimiento) : null;
+  const grupoEtario = hasBirthDate
+    ? grupoEtarioFromAge(computedAge!.years)
+    : (p.grupoEtario || 'nino');
 
   const row = {
     id: p.id,
-    first_name: (p.nombres || '').trim(),
-    last_name: (p.apellidos || '').trim(),
-    birth_date: p.fechaNacimiento || null,
+    first_name: (p.nombres || '').trim() || '(Sin nombre)',
+    last_name: (p.apellidos || '').trim() || '(Sin apellido)',
+    birth_date: hasBirthDate ? p.fechaNacimiento : null,
     gender: p.genero || null,
     id_document: (p.documentoIdentidad || '').trim() || null,
     photo_path: p.fotoPath || null,
+    age_group: grupoEtario,
+    approx_age_years: hasBirthDate ? null : (p.edadAnios > 0 ? p.edadAnios : null),
+    approx_age_months: hasBirthDate ? null : (p.edadAnios > 0 || p.edadMeses > 0 ? p.edadMeses : null),
     nationality_id: nationalityId,
     address: (p.direccion || '').trim() || null,
     state_id: stateId,

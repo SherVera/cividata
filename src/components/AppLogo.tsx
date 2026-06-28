@@ -13,8 +13,8 @@ export default function AppLogo({
       src="/logo.svg"
       alt={alt}
       className={className}
-      width={600}
-      height={327}
+      width={2200}
+      height={1200}
       decoding="async"
     />
   );

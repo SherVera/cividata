@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Paciente, NotaClinica, puntoRegistroEtiqueta } from '../types';
+import { Paciente, NotaClinica, puntoRegistroEtiqueta, grupoEtarioLabel, edadPacienteTexto } from '../types';
 import { 
   User, MapPin, ShieldAlert, Heart, GraduationCap, 
   ArrowLeft, Edit3, Printer, Plus, Calendar, Activity, 
@@ -213,7 +213,13 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                 </div>
                 <div>
                   <span className="text-blue-300 block text-[9px] uppercase tracking-wider">Edad Censo</span>
-                  <span className="font-semibold text-white">{patient.edadAnios}a {patient.edadMeses}m</span>
+                  <span className="font-semibold text-white">
+                    {edadPacienteTexto(patient)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-blue-300 block text-[9px] uppercase tracking-wider">Clasificación</span>
+                  <span className="font-semibold text-white">{grupoEtarioLabel(patient.grupoEtario)}</span>
                 </div>
                 <div>
                   <span className="text-blue-300 block text-[9px] uppercase tracking-wider">Nacionalidad</span>
@@ -351,7 +357,7 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                   </div>
                   <div>
                     <span className="text-slate-400 block mb-0.5">Fecha Nacimiento</span>
-                    <span className="font-bold text-slate-700 font-mono">{patient.fechaNacimiento}</span>
+                    <span className="font-bold text-slate-700 font-mono">{patient.fechaNacimiento || 'Sin registrar'}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block mb-0.5">Documento Identidad</span>
@@ -359,7 +365,13 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                   </div>
                   <div>
                     <span className="text-slate-400 block mb-0.5">Edad Registrada</span>
-                    <span className="font-semibold text-slate-700">{patient.edadAnios} años y {patient.edadMeses} meses</span>
+                    <span className="font-semibold text-slate-700">
+                      {edadPacienteTexto(patient)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block mb-0.5">Clasificación etaria</span>
+                    <span className="font-semibold text-slate-700">{grupoEtarioLabel(patient.grupoEtario)}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block mb-0.5">Nacionalidad</span>
