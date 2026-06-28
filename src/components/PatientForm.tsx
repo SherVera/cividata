@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Catalogs, GuardianOption, fetchCatalogs } from '../lib/catalogsApi';
+import { parseMultiValue } from '../lib/multiValue';
+import CatalogMultiPicker from './CatalogMultiPicker';
 
 interface PatientFormProps {
   initialPatient?: Paciente | null;
@@ -200,21 +202,17 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     } else if (sectionNum === 4) {
       if (formData.peso <= 0) errors.peso = "Escriba un peso válido mayor a 0 kg";
       if (formData.estatura <= 0) errors.estatura = "Escriba una estatura válida mayor a 0 cm";
-      if (formData.tieneAlergias && !formData.alergiasEspecificas.trim()) {
-        errors.alergiasEspecificas = "Por favor especifique las alergias";
+      if (formData.tieneAlergias && parseMultiValue(formData.alergiasEspecificas).length === 0) {
+        errors.alergiasEspecificas = "Agregue al menos una alergia";
       }
-      if (formData.tieneCondicionMedica && !formData.condicionMedicaEspecifica.trim()) {
-        errors.condicionMedicaEspecifica = "Por favor especifique la condición médica";
+      if (formData.tieneCondicionMedica && parseMultiValue(formData.condicionMedicaEspecifica).length === 0) {
+        errors.condicionMedicaEspecifica = "Agregue al menos una condición médica";
       }
-      if (formData.tomaMedicamentos && !formData.medicamentosEspecificos.trim()) {
-        errors.medicamentosEspecificos = "Por favor especifique los medicamentos";
+      if (formData.tomaMedicamentos && parseMultiValue(formData.medicamentosEspecificos).length === 0) {
+        errors.medicamentosEspecificos = "Agregue al menos un medicamento";
       }
     } else if (sectionNum === 5) {
-      if (isMinor && formData.asisteEscuela) {
-        if (!formData.nivelEducativo) errors.nivelEducativo = "Seleccione el nivel educativo";
-        if (!formData.gradoAnio.trim()) errors.gradoAnio = "Escriba el grado o año";
-        if (!formData.nombreInstitucion.trim()) errors.nombreInstitucion = "Escriba el nombre del colegio";
-      }
+      // La sección educativa es totalmente opcional: no se valida.
     }
 
     setFormErrors(errors);
@@ -846,24 +844,25 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                     animate={{ opacity: 1, height: 'auto' }}
                     className="mt-3"
                   >
-                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">
-                      Especifique Alergias <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="alergiasEspecificas"
-                      list="catalog-allergies"
+                    <CatalogMultiPicker
+                      id="alergiasEspecificas"
+                      label="Especifique Alergias"
+                      placeholder="Buscar o escribir alergia…"
+                      hint="Busque en el catálogo o escriba una nueva y pulse Enter."
+                      options={catalogs.allergies}
                       value={formData.alergiasEspecificas}
-                      onChange={handleInputChange}
-                      placeholder="Ej. Penicilina, Huevo, Maní"
-                      className={`w-full px-4 py-2 bg-white border rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
-                        formErrors.alergiasEspecificas ? 'border-red-300 ring-2' : 'border-slate-200'
-                      }`}
+                      onChange={(v) => {
+                        setFormData(prev => ({ ...prev, alergiasEspecificas: v }));
+                        if (formErrors.alergiasEspecificas) {
+                          setFormErrors(prev => {
+                            const copy = { ...prev };
+                            delete copy.alergiasEspecificas;
+                            return copy;
+                          });
+                        }
+                      }}
+                      error={formErrors.alergiasEspecificas}
                     />
-                    <datalist id="catalog-allergies">
-                      {catalogs.allergies.map(a => <option key={a} value={a} />)}
-                    </datalist>
-                    {formErrors.alergiasEspecificas && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.alergiasEspecificas}</p>}
                   </motion.div>
                 )}
               </div>
@@ -907,24 +906,25 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                     animate={{ opacity: 1, height: 'auto' }}
                     className="mt-3"
                   >
-                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">
-                      Especifique Condición Médica <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="condicionMedicaEspecifica"
-                      list="catalog-conditions"
+                    <CatalogMultiPicker
+                      id="condicionMedicaEspecifica"
+                      label="Especifique Condición Médica"
+                      placeholder="Buscar o escribir condición…"
+                      hint="Busque en el catálogo o escriba una nueva y pulse Enter."
+                      options={catalogs.conditions}
                       value={formData.condicionMedicaEspecifica}
-                      onChange={handleInputChange}
-                      placeholder="Ej. Asma, Diabetes, Hipertensión"
-                      className={`w-full px-4 py-2 bg-white border rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
-                        formErrors.condicionMedicaEspecifica ? 'border-red-300' : 'border-slate-200'
-                      }`}
+                      onChange={(v) => {
+                        setFormData(prev => ({ ...prev, condicionMedicaEspecifica: v }));
+                        if (formErrors.condicionMedicaEspecifica) {
+                          setFormErrors(prev => {
+                            const copy = { ...prev };
+                            delete copy.condicionMedicaEspecifica;
+                            return copy;
+                          });
+                        }
+                      }}
+                      error={formErrors.condicionMedicaEspecifica}
                     />
-                    <datalist id="catalog-conditions">
-                      {catalogs.conditions.map(c => <option key={c} value={c} />)}
-                    </datalist>
-                    {formErrors.condicionMedicaEspecifica && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.condicionMedicaEspecifica}</p>}
                   </motion.div>
                 )}
               </div>
@@ -968,24 +968,25 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                     animate={{ opacity: 1, height: 'auto' }}
                     className="mt-3"
                   >
-                    <label className="block text-xs font-semibold text-slate-600 uppercase mb-1">
-                      Especifique Medicamentos <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="medicamentosEspecificos"
-                      list="catalog-medications"
+                    <CatalogMultiPicker
+                      id="medicamentosEspecificos"
+                      label="Especifique Medicamentos"
+                      placeholder="Buscar o escribir medicamento…"
+                      hint="Busque en el catálogo o escriba uno nuevo y pulse Enter."
+                      options={catalogs.medications}
                       value={formData.medicamentosEspecificos}
-                      onChange={handleInputChange}
-                      placeholder="Ej. Salbutamol, Insulina, Losartán"
-                      className={`w-full px-4 py-2 bg-white border rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
-                        formErrors.medicamentosEspecificos ? 'border-red-300' : 'border-slate-200'
-                      }`}
+                      onChange={(v) => {
+                        setFormData(prev => ({ ...prev, medicamentosEspecificos: v }));
+                        if (formErrors.medicamentosEspecificos) {
+                          setFormErrors(prev => {
+                            const copy = { ...prev };
+                            delete copy.medicamentosEspecificos;
+                            return copy;
+                          });
+                        }
+                      }}
+                      error={formErrors.medicamentosEspecificos}
                     />
-                    <datalist id="catalog-medications">
-                      {catalogs.medications.map(m => <option key={m} value={m} />)}
-                    </datalist>
-                    {formErrors.medicamentosEspecificos && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.medicamentosEspecificos}</p>}
                   </motion.div>
                 )}
               </div>
@@ -1058,7 +1059,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                   >
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                        Nivel Educativo Actual <span className="text-red-500">*</span>
+                        Nivel Educativo Actual
                       </label>
                       <select
                         name="nivelEducativo"
@@ -1079,7 +1080,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                        Grado o Año que Cursa <span className="text-red-500">*</span>
+                        Grado o Año que Cursa
                       </label>
                       <input
                         type="text"
@@ -1096,7 +1097,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
                     <div className="md:col-span-2">
                       <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                        Nombre de la Institución Educativa <span className="text-red-500">*</span>
+                        Nombre de la Institución Educativa
                       </label>
                       <input
                         type="text"

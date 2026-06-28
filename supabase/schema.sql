@@ -241,10 +241,13 @@ create table if not exists public.patients (
   blood_type_id      uuid references public.blood_types(id) on delete set null,
   has_allergies      boolean not null default false,
   allergy_id         uuid references public.allergies(id) on delete set null,
+  allergies_detail   text,
   has_condition      boolean not null default false,
   condition_id       uuid references public.medical_conditions(id) on delete set null,
+  condition_detail   text,
   takes_medication   boolean not null default false,
   medication_id      uuid references public.medications(id) on delete set null,
+  medication_detail  text,
   vaccination_scheme text,
   attends_school     boolean not null default false,
   education_level    text,
@@ -284,6 +287,11 @@ alter table public.patients drop column if exists blood_type;
 alter table public.patients drop column if exists allergies_detail;
 alter table public.patients drop column if exists condition_detail;
 alter table public.patients drop column if exists medication_detail;
+
+-- Restaurar columnas de detalle para soportar selección múltiple en salud.
+alter table public.patients add column if not exists allergies_detail text;
+alter table public.patients add column if not exists condition_detail text;
+alter table public.patients add column if not exists medication_detail text;
 
 alter table public.clinical_notes add column if not exists diagnosis_id uuid references public.diagnoses(id) on delete set null;
 alter table public.clinical_notes add column if not exists treatment_id uuid references public.treatments(id) on delete set null;

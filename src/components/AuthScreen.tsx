@@ -67,7 +67,7 @@ export default function AuthScreen() {
     // Si contiene "@" se trata como correo; si no, como teléfono en formato E.164.
     const credentials = cleanIdentity.includes('@')
       ? { email: cleanIdentity, password }
-      : { phone: cleanIdentity.replace(/[\s-]/g, ''), password };
+      : { phone: cleanIdentity.replace(/[\s()-]/g, ''), password };
 
     const { error: signInError } = await supabase.auth.signInWithPassword(credentials);
     setIsSubmitting(false);

@@ -817,7 +817,12 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
             >
-              <AdminPanel />
+              <AdminPanel
+                onBack={() => {
+                  setCurrentView('list');
+                  setActiveTab('listado');
+                }}
+              />
             </motion.div>
           )}
 

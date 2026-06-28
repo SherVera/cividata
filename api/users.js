@@ -25,17 +25,29 @@ async function requireManager(req) {
 const rolNormalizado = (r) => (r === 'admin' ? 'admin' : 'registrador');
 const normalizePhone = (value) => String(value || '').trim().replace(/[\s()-]/g, '');
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
-const isPhone = (value) => /^\+\d{8,15}$/.test(value);
 
 function allowedCreateRole(actorRole, requestedRole) {
   if (actorRole === 'super_admin') return rolNormalizado(requestedRole);
   return 'registrador';
 }
 
-function canManageTarget(actorRole, targetRole) {
-  if (targetRole === 'super_admin') return false;
-  if (actorRole === 'super_admin') return ['admin', 'registrador'].includes(targetRole);
-  return targetRole === 'registrador';
+function actionPermissions(actor, target) {
+  const actorRole = userRole(actor);
+  const targetRole = userRole(target);
+  const isSelf = actor.id === target.id;
+  const targetIsVisible = targetRole !== 'super_admin' || isSelf;
+  const canManageVisibleTarget =
+    targetIsVisible &&
+    !isSelf &&
+    (actorRole === 'super_admin' || (actorRole === 'admin' && targetRole === 'registrador'));
+
+  return {
+    visible: targetIsVisible,
+    canEditContact: isSelf || canManageVisibleTarget,
+    canResetPassword: isSelf || canManageVisibleTarget,
+    canToggle: canManageVisibleTarget,
+    canChangeRole: actorRole === 'super_admin' && !isSelf && ['admin', 'registrador'].includes(targetRole),
+  };
 }
 
 async function getTargetUser(id) {
@@ -53,8 +65,9 @@ export default async function handler(req, res) {
     const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
     if (error) return res.status(500).json({ error: error.message });
     const users = data.users
-      .filter((u) => userRole(u) !== 'super_admin')
-      .map((u) => ({
+      .map((u) => ({ user: u, permissions: actionPermissions(me, u) }))
+      .filter(({ permissions }) => permissions.visible)
+      .map(({ user: u, permissions }) => ({
         id: u.id,
         email: u.email || null,
         phone: u.phone || null,
@@ -62,7 +75,8 @@ export default async function handler(req, res) {
         disabled: !!u.banned_until && new Date(u.banned_until) > new Date(),
         created_at: u.created_at,
         last_sign_in_at: u.last_sign_in_at || null,
-        manageable: u.id !== me.id && canManageTarget(actorRole, userRole(u)),
+        manageable: permissions.canEditContact || permissions.canResetPassword || permissions.canToggle || permissions.canChangeRole,
+        ...permissions,
       }));
     return res.json({
       users,
@@ -76,9 +90,6 @@ export default async function handler(req, res) {
     const phone = normalizePhone(req.body?.phone);
     if (!password || (!email && !phone)) {
       return res.status(400).json({ error: 'Se requiere contraseña y correo o teléfono' });
-    }
-    if (phone && !isPhone(phone)) {
-      return res.status(400).json({ error: 'El teléfono debe estar en formato internacional, por ejemplo +584141234567' });
     }
     const newRole = allowedCreateRole(actorRole, role);
     const { data, error } = await admin.auth.admin.createUser({
@@ -96,34 +107,36 @@ export default async function handler(req, res) {
   if (req.method === 'PATCH') {
     const { id, action, password, role, email } = req.body || {};
     if (!id) return res.status(400).json({ error: 'Falta id' });
-    if (id === me.id) return res.status(400).json({ error: 'No puedes modificar tu propia cuenta aquí' });
     const { user: target, error: targetError } = await getTargetUser(id);
     if (targetError || !target) return res.status(404).json({ error: 'Usuario no encontrado' });
-    const targetRole = userRole(target);
-    if (!canManageTarget(actorRole, targetRole)) {
-      return res.status(403).json({ error: 'No tienes permisos para modificar esta cuenta' });
-    }
+    const targetPermissions = actionPermissions(me, target);
+    if (!targetPermissions.visible) return res.status(404).json({ error: 'Usuario no encontrado' });
 
     let attrs;
-    if (action === 'disable') attrs = { ban_duration: '876000h' };
-    else if (action === 'enable') attrs = { ban_duration: 'none' };
-    else if (action === 'reset' && password) attrs = { password };
+    if (action === 'disable') {
+      if (!targetPermissions.canToggle) return res.status(403).json({ error: 'No tienes permisos para modificar esta cuenta' });
+      attrs = { ban_duration: '876000h' };
+    }
+    else if (action === 'enable') {
+      if (!targetPermissions.canToggle) return res.status(403).json({ error: 'No tienes permisos para modificar esta cuenta' });
+      attrs = { ban_duration: 'none' };
+    }
+    else if (action === 'reset' && password) {
+      if (!targetPermissions.canResetPassword) return res.status(403).json({ error: 'No tienes permisos para modificar esta cuenta' });
+      attrs = { password };
+    }
     else if (action === 'role' && role) {
+      if (!targetPermissions.canChangeRole) return res.status(403).json({ error: 'No tienes permisos para modificar esta cuenta' });
       const nextRole = rolNormalizado(role);
-      if (actorRole !== 'super_admin' && nextRole !== 'registrador') {
-        return res.status(403).json({ error: 'Solo el super admin puede asignar rol admin' });
-      }
       attrs = { app_metadata: { role: nextRole } };
     }
     else if (action === 'contact') {
+      if (!targetPermissions.canEditContact) return res.status(403).json({ error: 'No tienes permisos para modificar esta cuenta' });
       attrs = {};
       if (hasOwn(req.body || {}, 'email') && email) { attrs.email = email; attrs.email_confirm = true; }
       if (hasOwn(req.body || {}, 'phone')) {
         const phone = normalizePhone(req.body.phone);
         if (!phone) return res.status(400).json({ error: 'Falta teléfono' });
-        if (!isPhone(phone)) {
-          return res.status(400).json({ error: 'El teléfono debe estar en formato internacional, por ejemplo +584141234567' });
-        }
         attrs.phone = phone;
         attrs.phone_confirm = true;
       }

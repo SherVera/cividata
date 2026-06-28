@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  ArrowLeft,
   Check,
   Edit3,
   Loader2,
@@ -27,6 +28,10 @@ type AdminUser = {
   created_at: string;
   last_sign_in_at: string | null;
   manageable?: boolean;
+  canEditContact?: boolean;
+  canResetPassword?: boolean;
+  canToggle?: boolean;
+  canChangeRole?: boolean;
 };
 
 type Notice = { type: 'success' | 'error' | 'info'; message: string } | null;
@@ -75,7 +80,6 @@ function ContactEditModal({
   const [email, setEmail] = useState(user.email || '');
   const [phone, setPhone] = useState(user.phone || '');
   const cleanPhone = normalizePhone(phone);
-  const isPhoneValid = !cleanPhone || /^\+\d{8,15}$/.test(cleanPhone);
 
   const hasChanges = useMemo(() => {
     return email.trim() !== (user.email || '') || normalizePhone(phone) !== (user.phone || '');
@@ -151,11 +155,6 @@ function ContactEditModal({
               placeholder="+584141234567"
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
             />
-            {cleanPhone && !/^\+\d{8,15}$/.test(cleanPhone) && (
-              <p className="mt-1 text-[10px] font-medium text-amber-700">
-                Use formato internacional, por ejemplo +584141234567.
-              </p>
-            )}
           </label>
 
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
@@ -173,7 +172,7 @@ function ContactEditModal({
           </button>
           <button
             type="submit"
-            disabled={!hasChanges || !isPhoneValid || isSaving}
+            disabled={!hasChanges || isSaving}
             className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-blue-600/15 transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
           >
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
@@ -201,8 +200,7 @@ function CreateUserModal({
   const [password, setPassword] = useState('');
   const [role, setRole] = useState(roles[0] || 'registrador');
   const cleanPhone = normalizePhone(phone);
-  const isPhoneValid = !cleanPhone || /^\+\d{8,15}$/.test(cleanPhone);
-  const canSubmit = password.length >= 6 && (!!email.trim() || !!cleanPhone) && isPhoneValid;
+  const canSubmit = password.length >= 6 && (!!email.trim() || !!cleanPhone);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -268,11 +266,6 @@ function CreateUserModal({
               placeholder="+584141234567"
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
             />
-            {cleanPhone && !isPhoneValid && (
-              <p className="mt-1 text-[10px] font-medium text-amber-700">
-                Use formato internacional, por ejemplo +584141234567.
-              </p>
-            )}
           </label>
 
           <label className="block">
@@ -397,7 +390,11 @@ function PasswordResetModal({
   );
 }
 
-export default function AdminPanel() {
+interface AdminPanelProps {
+  onBack?: () => void;
+}
+
+export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [token, setToken] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole | null>(null);
@@ -457,7 +454,7 @@ export default function AdminPanel() {
     const cleanIdentity = identityInput.trim();
     const credentials = cleanIdentity.includes('@')
       ? { email: cleanIdentity, password }
-      : { phone: cleanIdentity.replace(/[\s-]/g, ''), password };
+      : { phone: cleanIdentity.replace(/[\s()-]/g, ''), password };
 
     const { data, error } = await supabase.auth.signInWithPassword(credentials);
     if (error || !data.session) {
@@ -668,12 +665,25 @@ export default function AdminPanel() {
               : 'Gestiona registradores. Las cuentas admin y super admin están protegidas.'}
           </p>
         </div>
-        <button
-          onClick={handleSignOut}
-          className="rounded-xl border border-white/10 px-4 py-2 text-xs font-bold text-slate-200 transition-colors hover:bg-white/10"
-        >
-          Cerrar sesión admin
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-white/10"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Pantalla principal
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="rounded-xl border border-white/10 px-4 py-2 text-xs font-bold text-slate-200 transition-colors hover:bg-white/10"
+          >
+            Cerrar sesión admin
+          </button>
+        </div>
       </div>
 
       {notice && (
@@ -740,7 +750,7 @@ export default function AdminPanel() {
                       <div className="mt-1 font-mono">{user.phone || 'Sin teléfono'}</div>
                     </td>
                     <td className="px-5 py-4">
-                      {user.manageable && currentRole === 'super_admin' ? (
+                      {user.canChangeRole && currentRole === 'super_admin' ? (
                         <select
                           value={user.role}
                           onChange={(event) => handleRoleChange(user, event.target.value)}
@@ -767,36 +777,42 @@ export default function AdminPanel() {
                     </td>
                     <td className="px-5 py-4 text-xs font-medium text-slate-500">{formatDate(user.last_sign_in_at)}</td>
                     <td className="px-5 py-4">
-                      {user.manageable ? (
+                      {user.canEditContact || user.canResetPassword || user.canToggle ? (
                         <div className="flex flex-wrap gap-2">
-                          <button
-                            onClick={() => setSelectedUser(user)}
-                            className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-md shadow-blue-600/10 transition-colors hover:bg-blue-700"
-                          >
-                            <Edit3 className="h-3.5 w-3.5" />
-                            Contacto
-                          </button>
-                          <button
-                            onClick={() => setResetUser(user)}
-                            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
-                          >
-                            <KeyRound className="h-3.5 w-3.5" />
-                            Clave
-                          </button>
-                          <button
-                            onClick={() => handleToggleUser(user)}
-                            disabled={isSaving}
-                            className={`inline-flex items-center rounded-xl px-3 py-2 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                              user.disabled
-                                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                                : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
-                            }`}
-                          >
-                            {user.disabled ? 'Activar' : 'Deshabilitar'}
-                          </button>
+                          {user.canEditContact && (
+                            <button
+                              onClick={() => setSelectedUser(user)}
+                              className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-md shadow-blue-600/10 transition-colors hover:bg-blue-700"
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                              Contacto
+                            </button>
+                          )}
+                          {user.canResetPassword && (
+                            <button
+                              onClick={() => setResetUser(user)}
+                              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                            >
+                              <KeyRound className="h-3.5 w-3.5" />
+                              Clave
+                            </button>
+                          )}
+                          {user.canToggle && (
+                            <button
+                              onClick={() => handleToggleUser(user)}
+                              disabled={isSaving}
+                              className={`inline-flex items-center rounded-xl px-3 py-2 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                                user.disabled
+                                  ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                              }`}
+                            >
+                              {user.disabled ? 'Activar' : 'Deshabilitar'}
+                            </button>
+                          )}
                         </div>
                       ) : (
-                        <span className="text-xs font-medium text-slate-400">Protegido</span>
+                        <span className="text-xs font-medium text-slate-400">Solo lectura</span>
                       )}
                     </td>
                   </tr>
@@ -809,7 +825,7 @@ export default function AdminPanel() {
 
       <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-500">
         <UserPlus className="mr-1 inline h-4 w-4 text-blue-600" />
-        Los super admin no aparecen en este listado y no pueden ser modificados desde el panel.
+        Otros administradores quedan en solo lectura para un admin. La cuenta super admin solo es visible para sí misma.
       </div>
 
       <AnimatePresence>

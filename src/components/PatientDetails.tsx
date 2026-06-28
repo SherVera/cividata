@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { fetchCatalogs } from '../lib/catalogsApi';
+import { parseMultiValue } from '../lib/multiValue';
 
 interface PatientDetailsProps {
   patient: Paciente;
@@ -108,6 +109,27 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
   };
 
   const progression = getProgression();
+
+  const renderHealthTags = (text: string, tone: 'rose' | 'amber' | 'blue') => {
+    const items = parseMultiValue(text);
+    const tones = {
+      rose: 'bg-rose-50 text-rose-800 border-rose-200',
+      amber: 'bg-amber-50 text-amber-800 border-amber-200',
+      blue: 'bg-blue-50 text-blue-800 border-blue-200',
+    };
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {items.map(item => (
+          <span
+            key={item}
+            className={`inline-flex px-2 py-0.5 rounded-md border text-[11px] font-medium ${tones[tone]}`}
+          >
+            {item}
+          </span>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -406,9 +428,11 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                       <div className="w-2 h-2 rounded-full bg-rose-500"></div>
                       <span className="font-bold text-slate-700 text-xs">Alergias Conocidas</span>
                     </div>
-                    <p className="text-slate-600 font-mono text-[11px] leading-relaxed">
-                      {patient.tieneAlergias ? patient.alergiasEspecificas : "Paciente no presenta alergias conocidas."}
-                    </p>
+                    <div className="text-slate-600 text-[11px] leading-relaxed">
+                      {patient.tieneAlergias
+                        ? renderHealthTags(patient.alergiasEspecificas, 'rose')
+                        : <span className="font-mono">Paciente no presenta alergias conocidas.</span>}
+                    </div>
                   </div>
 
                   <div className="p-3 rounded-xl border border-amber-100 bg-amber-50/20 space-y-2">
@@ -416,9 +440,11 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                       <div className="w-2 h-2 rounded-full bg-amber-500"></div>
                       <span className="font-bold text-slate-700 text-xs">Condición Médica / Enfermedad Crónica</span>
                     </div>
-                    <p className="text-slate-600 font-mono text-[11px] leading-relaxed">
-                      {patient.tieneCondicionMedica ? patient.condicionMedicaEspecifica : "No se reportan condiciones médicas crónicas."}
-                    </p>
+                    <div className="text-slate-600 text-[11px] leading-relaxed">
+                      {patient.tieneCondicionMedica
+                        ? renderHealthTags(patient.condicionMedicaEspecifica, 'amber')
+                        : <span className="font-mono">No se reportan condiciones médicas crónicas.</span>}
+                    </div>
                   </div>
 
                   <div className="p-3 rounded-xl border border-blue-100 bg-blue-50/20 space-y-2">
@@ -426,9 +452,11 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                       <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                       <span className="font-bold text-slate-700 text-xs">Tratamientos Médicos Regulares</span>
                     </div>
-                    <p className="text-slate-600 font-mono text-[11px] leading-relaxed">
-                      {patient.tomaMedicamentos ? patient.medicamentosEspecificos : "No recibe medicación recurrente."}
-                    </p>
+                    <div className="text-slate-600 text-[11px] leading-relaxed">
+                      {patient.tomaMedicamentos
+                        ? renderHealthTags(patient.medicamentosEspecificos, 'blue')
+                        : <span className="font-mono">No recibe medicación recurrente.</span>}
+                    </div>
                   </div>
                 </div>
               </div>

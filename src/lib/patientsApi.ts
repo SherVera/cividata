@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { Paciente, NotaClinica } from '../types';
+import { joinMultiValue, parseMultiValue } from './multiValue';
 
 function ensureClient() {
   if (!supabase) {
@@ -82,11 +83,11 @@ function rowToPaciente(row: any): Paciente {
     peso: row.weight_kg ?? 0,
     grupoSanguineo: row.blood_type?.name || '',
     tieneAlergias: !!row.has_allergies,
-    alergiasEspecificas: row.allergy?.name || '',
+    alergiasEspecificas: row.allergies_detail || row.allergy?.name || '',
     tieneCondicionMedica: !!row.has_condition,
-    condicionMedicaEspecifica: row.condition?.name || '',
+    condicionMedicaEspecifica: row.condition_detail || row.condition?.name || '',
     tomaMedicamentos: !!row.takes_medication,
-    medicamentosEspecificos: row.medication?.name || '',
+    medicamentosEspecificos: row.medication_detail || row.medication?.name || '',
     esquemaVacunacion: (row.vaccination_scheme as Paciente['esquemaVacunacion']) || 'Completo',
     asisteEscuela: !!row.attends_school,
     nivelEducativo: (row.education_level as Paciente['nivelEducativo']) || '',
@@ -112,6 +113,16 @@ async function getOrCreateNamed(table: string, value: string): Promise<string | 
     throw inserted.error;
   }
   return inserted.data.id as string;
+}
+
+async function resolveCatalogSelection(
+  table: string,
+  csv: string
+): Promise<{ firstId: string | null; detail: string | null }> {
+  const names = parseMultiValue(csv);
+  if (names.length === 0) return { firstId: null, detail: null };
+  const ids = await Promise.all(names.map((name) => getOrCreateNamed(table, name)));
+  return { firstId: ids[0], detail: joinMultiValue(names) };
 }
 
 async function getOrCreateCity(name: string, stateId: string | null): Promise<string | null> {
@@ -213,9 +224,15 @@ export async function savePatient(p: Paciente): Promise<void> {
       ? await getOrCreateNamed('institutions', p.nombreInstitucion)
       : null;
   const bloodTypeId = await getOrCreateNamed('blood_types', p.grupoSanguineo);
-  const allergyId = p.tieneAlergias ? await getOrCreateNamed('allergies', p.alergiasEspecificas) : null;
-  const conditionId = p.tieneCondicionMedica ? await getOrCreateNamed('medical_conditions', p.condicionMedicaEspecifica) : null;
-  const medicationId = p.tomaMedicamentos ? await getOrCreateNamed('medications', p.medicamentosEspecificos) : null;
+  const allergy = p.tieneAlergias
+    ? await resolveCatalogSelection('allergies', p.alergiasEspecificas)
+    : { firstId: null, detail: null };
+  const condition = p.tieneCondicionMedica
+    ? await resolveCatalogSelection('medical_conditions', p.condicionMedicaEspecifica)
+    : { firstId: null, detail: null };
+  const medication = p.tomaMedicamentos
+    ? await resolveCatalogSelection('medications', p.medicamentosEspecificos)
+    : { firstId: null, detail: null };
   const guardianId = await getOrCreateGuardian(p);
 
   const row = {
@@ -236,11 +253,14 @@ export async function savePatient(p: Paciente): Promise<void> {
     weight_kg: p.peso || null,
     blood_type_id: bloodTypeId,
     has_allergies: !!p.tieneAlergias,
-    allergy_id: allergyId,
+    allergy_id: allergy.firstId,
+    allergies_detail: allergy.detail,
     has_condition: !!p.tieneCondicionMedica,
-    condition_id: conditionId,
+    condition_id: condition.firstId,
+    condition_detail: condition.detail,
     takes_medication: !!p.tomaMedicamentos,
-    medication_id: medicationId,
+    medication_id: medication.firstId,
+    medication_detail: medication.detail,
     vaccination_scheme: p.esquemaVacunacion || null,
     attends_school: !!p.asisteEscuela,
     education_level: p.nivelEducativo || null,
