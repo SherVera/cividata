@@ -1,6 +1,6 @@
 # Brief para generar logo con IA
 
-Documento de referencia para diseñar el logo de **Kids Alive** con herramientas de IA
+Documento de referencia para diseñar el logo de **Cividata** con herramientas de IA
 
 ---
 
@@ -8,9 +8,9 @@ Documento de referencia para diseñar el logo de **Kids Alive** con herramientas
 
 | Campo | Valor |
 |-------|-------|
-| **Nombre público** | Kids Alive |
-| **Nombre corto** | Kids Alive |
-| **Etiqueta en cabecera** | KIDS ALIVE |
+| **Nombre público** | Cividata |
+| **Nombre corto** | Cividata |
+| **Etiqueta en cabecera** | CIVIDATA |
 | **Nombre del repositorio** | kids-alive |
 | **Qué es** | App web móvil para censo pediátrico comunitario e historia clínica en campo |
 | **Quién la usa** | Personal médico, administradores y equipos de salud en campañas comunitarias |

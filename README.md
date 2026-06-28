@@ -1,6 +1,6 @@
-# Kids Alive
+# Cividata
 
-Aplicación web **Kids Alive** para **registro pediátrico comunitario** e **historia clínica**: registrar niños y niñas en campañas de salud, consultar fichas, dar seguimiento médico y visualizar estadísticas del censo. Pensada para equipos de campo con acceso controlado por roles.
+Aplicación web **Cividata** para **registro pediátrico comunitario** e **historia clínica**: registrar niños y niñas en campañas de salud, consultar fichas, dar seguimiento médico y visualizar estadísticas del censo. Pensada para equipos de campo con acceso controlado por roles.
 
 La interfaz principal está en `src/` (React + Vite + TypeScript). El frontend desplegado se publica en Vercel desde `dist`. Los archivos antiguos en `web/` y el servidor local en `local/` no forman parte del despliegue actual.
 

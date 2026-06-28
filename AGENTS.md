@@ -4,14 +4,14 @@ Guidance for AI coding agents working in this repository.
 
 ## Project Context
 
-- This is **Kids Alive** (`kids-alive`): a React + Vite + TypeScript app for pediatric census and clinical history.
+- This is **Cividata** (`kids-alive`): a React + Vite + TypeScript app for pediatric census and clinical history.
 - The primary UI lives in `src/`; preserve the original React/Tailwind look and behavior.
 - Vercel builds with `npm run build` and publishes `dist`.
 - Older static files may exist under `web/`, but they are not the deployed frontend.
 
 ## Working Rules
 
-- Keep visible copy in Spanish; the public app name is **Kids Alive**.
+- Keep visible copy in Spanish; the public app name is **Cividata**.
 - Preserve patient data integrity and local persistence behavior.
 - Reuse shared models from `src/types.ts` instead of duplicating patient interfaces.
 - Prefer existing dependencies and patterns: React hooks, Tailwind classes, `lucide-react`, and `motion/react`.

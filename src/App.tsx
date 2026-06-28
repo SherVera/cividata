@@ -296,7 +296,7 @@ export default function App() {
     const dataStr = JSON.stringify(patients, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     
-    const exportFileDefaultName = `kids_alive_backup_${new Date().toISOString().split('T')[0]}.json`;
+    const exportFileDefaultName = `cividata_backup_${new Date().toISOString().split('T')[0]}.json`;
     
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
@@ -325,7 +325,7 @@ export default function App() {
           await loadPatients();
           showNotification('success', `Importación completada: ${parsed.length} pacientes sincronizados.`);
         } else {
-          showNotification('error', 'El archivo no tiene el formato de respaldo de Kids Alive.');
+          showNotification('error', 'El archivo no tiene el formato de respaldo de Cividata.');
         }
       } catch (err: any) {
         showNotification('error', 'Error al importar: ' + (err?.message || 'archivo JSON inválido.'));
