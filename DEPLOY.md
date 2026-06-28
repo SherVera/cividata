@@ -62,4 +62,4 @@ entornos: Production, Preview y Development.)
 - **Contraseñas encriptadas**: Supabase Auth las guarda con bcrypt; no se almacenan en claro.
 - **Geolocalización**: requiere HTTPS (Vercel lo da); si el usuario la niega, el registro se guarda igual.
 - **Nada obligatorio**: los campos vacíos se guardan como `NULL`.
-- El `server.js` local (Node + SQLite) sigue siendo solo el respaldo offline; no usa roles ni auditoría.
+- El servidor local (`local/server.js`, Node + SQLite) sigue siendo solo el respaldo offline; no usa roles ni auditoría. Se movió fuera de la raíz para que Vercel no lo confunda con el entrypoint.

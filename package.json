@@ -4,7 +4,7 @@
   "private": true,
   "description": "Ficha de registro / censo de personas con auth, SQLite y geolocalización",
   "scripts": {
-    "start": "node --no-warnings server.js"
+    "start": "node --no-warnings local/server.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2"
