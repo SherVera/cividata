@@ -9,7 +9,7 @@ import {
   User, MapPin, ShieldAlert, Heart, GraduationCap, 
   ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles, Warehouse, Plus
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Catalogs, GuardianOption, fetchCatalogs } from '../lib/catalogsApi';
 import { parseMultiValue } from '../lib/multiValue';
 import CatalogMultiPicker from './CatalogMultiPicker';
@@ -719,24 +719,17 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 </div>
               )}
 
-              {!showNewCenter ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowNewCenter(true);
-                    setCenterNotice('');
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-teal-300 bg-white px-3 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Registrar nuevo centro de acopio
-                </button>
-              ) : (
-                <QuickCenterRegister
-                  onSaved={handleQuickCenterSaved}
-                  onCancel={() => setShowNewCenter(false)}
-                />
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNewCenter(true);
+                  setCenterNotice('');
+                }}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-teal-300 bg-white px-3 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Registrar nuevo centro de acopio
+              </button>
 
               {centerNotice && (
                 <p className="text-[11px] font-medium text-teal-700">{centerNotice}</p>
@@ -1515,6 +1508,15 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
           </div>
         </div>
       </form>
+
+      <AnimatePresence>
+        {showNewCenter && (
+          <QuickCenterRegister
+            onSaved={handleQuickCenterSaved}
+            onCancel={() => setShowNewCenter(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
