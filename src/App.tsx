@@ -22,7 +22,7 @@ import BottomNav, { BottomNavKey } from './components/BottomNav';
 import { supabase } from './lib/supabaseClient';
 import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
 import { listCollectionCenters } from './lib/collectionCentersApi';
-import { defaultHomeTab, isAppAdmin, resolveAppRole, canViewStatsDashboard, isSuperAdmin } from './lib/authRoles';
+import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin } from './lib/authRoles';
 
 export default function App() {
   // Authentication via Supabase
@@ -31,7 +31,6 @@ export default function App() {
   const isAuthenticated = !!session;
   const userRole = resolveAppRole(session?.user);
   const isAppAdministrator = isAppAdmin(userRole);
-  const canViewStats = canViewStatsDashboard(userRole);
   const [homeTabInitialized, setHomeTabInitialized] = useState(false);
 
   // Patient database state (source of truth: Supabase)
@@ -43,7 +42,7 @@ export default function App() {
   const [selectedPatient, setSelectedPatient] = useState<Paciente | null>(null);
   
   // Tabs state in main list: 'listado' | 'estadisticas'
-  const [activeTab, setActiveTab] = useState<'listado' | 'estadisticas'>('listado');
+  const [activeTab, setActiveTab] = useState<'listado' | 'estadisticas'>('estadisticas');
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -129,17 +128,9 @@ export default function App() {
     if (!isAuthenticated || isAppAdministrator) return;
     if (currentView === 'admin' || currentView === 'centros') {
       setCurrentView('list');
-      setActiveTab('listado');
+      setActiveTab('estadisticas');
     }
   }, [isAuthenticated, isAppAdministrator, currentView]);
-
-  // Tablero de estadísticas solo para admin y super admin
-  useEffect(() => {
-    if (!isAuthenticated || canViewStats) return;
-    if (activeTab === 'estadisticas') {
-      setActiveTab('listado');
-    }
-  }, [isAuthenticated, canViewStats, activeTab]);
 
   const refreshCollectionCenters = async () => {
     try {
@@ -386,7 +377,6 @@ export default function App() {
 
   const handleBottomNav = (key: BottomNavKey) => {
     if (key === 'admin' && !isAppAdministrator) return;
-    if (key === 'estadisticas' && !canViewStats) return;
     if (key === 'create') {
       setCurrentView('create');
     } else if (key === 'admin') {
@@ -562,20 +552,9 @@ export default function App() {
                 </button>
               </div>
 
-              {/* View Toggle Bar (Listado vs Estadísticas — solo admin / super admin) */}
-              {canViewStats && (
+              {/* View Toggle Bar — Estadísticas primero para todos los roles */}
               <div className="flex items-center justify-between border-b border-slate-200 pb-1.5 gap-4">
                 <div className="flex bg-slate-100 p-1 rounded-lg">
-                  <button
-                    onClick={() => setActiveTab('listado')}
-                    className={`px-4 py-2 rounded-md font-semibold text-xs md:text-sm transition-all cursor-pointer ${
-                      activeTab === 'listado'
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    Listado de Pacientes ({filteredPatients.length})
-                  </button>
                   <button
                     onClick={() => setActiveTab('estadisticas')}
                     className={`px-4 py-2 rounded-md font-semibold text-xs md:text-sm transition-all cursor-pointer ${
@@ -585,6 +564,18 @@ export default function App() {
                     }`}
                   >
                     Tablero de Estadísticas
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('listado')}
+                    className={`px-4 py-2 rounded-md font-semibold text-xs md:text-sm transition-all cursor-pointer ${
+                      activeTab === 'listado'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {isAppAdministrator
+                      ? `Listado de Pacientes (${filteredPatients.length})`
+                      : `Mis registros (${filteredPatients.length})`}
                   </button>
                 </div>
 
@@ -613,10 +604,9 @@ export default function App() {
                   </div>
                 )}
               </div>
-              )}
 
               {/* LISTADO DE PACIENTES TAB */}
-              {(activeTab === 'listado' || !canViewStats) && (
+              {activeTab === 'listado' && (
                 <div className="space-y-4">
                   
                   {/* Search, Filter, Sort Controls bar */}
@@ -907,7 +897,7 @@ export default function App() {
               )}
 
               {/* TABLERO DE ESTADÍSTICAS TAB */}
-              {activeTab === 'estadisticas' && canViewStats && (
+              {activeTab === 'estadisticas' && (
                 <DashboardStats
                   patients={patients}
                   totalCentrosRegistrados={totalCentrosRegistrados}
@@ -1134,7 +1124,6 @@ export default function App() {
         active={bottomNavActive}
         onSelect={handleBottomNav}
         showAdmin={isAppAdministrator}
-        showStats={canViewStats}
       />
 
     </div>

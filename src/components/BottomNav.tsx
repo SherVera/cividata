@@ -7,23 +7,18 @@ interface BottomNavProps {
   active: BottomNavKey;
   onSelect: (key: BottomNavKey) => void;
   showAdmin?: boolean;
-  showStats?: boolean;
 }
 
-const baseItems: { key: BottomNavKey; label: string; icon: typeof Plus }[] = [
-  { key: 'listado', label: 'Listado', icon: ClipboardList },
-  { key: 'create', label: 'Registrar', icon: Plus },
-];
-
+const listadoItem = { key: 'listado' as const, label: 'Listado', icon: ClipboardList };
 const statsItem = { key: 'estadisticas' as const, label: 'Estadísticas', icon: BarChart3 };
-
+const createItem = { key: 'create' as const, label: 'Registrar', icon: Plus };
 const adminItem = { key: 'admin' as const, label: 'Admin', icon: ShieldCheck };
 
-export default function BottomNav({ active, onSelect, showAdmin = false, showStats = false }: BottomNavProps) {
+export default function BottomNav({ active, onSelect, showAdmin = false }: BottomNavProps) {
   const items = [
-    baseItems[0],
-    ...(showStats ? [statsItem] : []),
-    baseItems[1],
+    statsItem,
+    listadoItem,
+    createItem,
     ...(showAdmin ? [adminItem] : []),
   ];
 

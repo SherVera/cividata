@@ -17,10 +17,6 @@ export function isSuperAdmin(role: AppRole): boolean {
   return role === 'super_admin';
 }
 
-export function canViewStatsDashboard(role: AppRole): boolean {
-  return isAppAdmin(role);
-}
-
-export function defaultHomeTab(role: AppRole): 'listado' | 'estadisticas' {
-  return 'listado';
+export function defaultHomeTab(_role: AppRole): 'listado' | 'estadisticas' {
+  return 'estadisticas';
 }
