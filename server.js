@@ -1,4 +1,4 @@
-// Censo infantil — servidor sin dependencias (Node 22+).
+// Censo / Registro — servidor sin dependencias (Node 22+).
 // Almacenamiento: node:sqlite. Auth: contraseña compartida + cookie de sesión.
 'use strict';
 const http = require('node:http');
@@ -121,4 +121,4 @@ const server = http.createServer(async (req, res) => {
   send(res, 404, 'No encontrado');
 });
 
-server.listen(PORT, () => console.log(`Censo infantil en http://localhost:${PORT}  (contraseña: ${PASSWORD})`));
+server.listen(PORT, () => console.log(`Censo / Registro en http://localhost:${PORT}  (contraseña: ${PASSWORD})`));

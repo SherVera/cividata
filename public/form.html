@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ficha de Registro / Censo Infantil</title>
+<title>Ficha de Registro / Censo</title>
 <style>
   :root{--blue:#2563eb}
   *{box-sizing:border-box}
@@ -27,7 +27,7 @@
 </head>
 <body>
 <header>
-  <strong>🧒 Ficha de Registro / Censo Infantil</strong>
+  <strong>📋 Ficha de Registro / Censo</strong>
   <span><a href="/registros">📋 Ver registros</a> &nbsp;·&nbsp; <a href="/logout">Salir</a></span>
 </header>
 <main>
@@ -36,7 +36,7 @@
   <form id="f">
 
     <fieldset>
-      <legend>1. Datos Personales del Niño/a</legend>
+      <legend>1. Datos Personales</legend>
       <div class="grid">
         <div class="full"><label>Nombres completos</label><input name="nombres"></div>
         <div class="full"><label>Apellidos completos</label><input name="apellidos"></div>
@@ -60,10 +60,10 @@
     </fieldset>
 
     <fieldset>
-      <legend>3. Representante Legal</legend>
+      <legend>3. Representante / Contacto</legend>
       <div class="grid">
-        <div class="full"><label>Nombre completo del representante</label><input name="rep_nombre"></div>
-        <div><label>Parentesco</label><select name="parentesco"><option value="">—</option><option>Madre</option><option>Padre</option><option>Abuelo/a</option><option>Tutor legal</option></select></div>
+        <div class="full"><label>Nombre del representante o contacto</label><input name="rep_nombre"></div>
+        <div><label>Parentesco / Relación</label><select name="parentesco"><option value="">—</option><option>Madre</option><option>Padre</option><option>Abuelo/a</option><option>Cónyuge</option><option>Tutor legal</option><option>Otro</option></select></div>
         <div><label>Documento de Identidad</label><input name="rep_documento"></div>
         <div><label>Ocupación / Profesión</label><input name="rep_ocupacion"></div>
         <div><label>Teléfono principal</label><input name="tel_principal"></div>
@@ -92,7 +92,7 @@
       <legend>5. Datos Educativos</legend>
       <div class="grid">
         <div><label>¿Asiste a institución educativa?</label><div class="radios"><label><input type="radio" name="asiste" value="Sí">Sí</label><label><input type="radio" name="asiste" value="No">No</label></div></div>
-        <div><label>Nivel educativo actual</label><select name="nivel_educativo"><option value="">—</option><option>Maternal</option><option>Preescolar / Inicial</option><option>Primaria</option><option>Secundaria</option></select></div>
+        <div><label>Nivel educativo actual</label><select name="nivel_educativo"><option value="">—</option><option>Maternal</option><option>Preescolar / Inicial</option><option>Primaria</option><option>Secundaria</option><option>Universitario / Técnico</option><option>Ninguno</option></select></div>
         <div><label>Grado o año que cursa</label><input name="grado"></div>
         <div><label>Nombre de la institución</label><input name="institucion"></div>
       </div>

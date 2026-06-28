@@ -1,4 +1,4 @@
-# Base de datos local del server Node (no subir datos de niños)
+# Base de datos local del server Node (no subir datos personales)
 censo.db
 censo.db-*
 

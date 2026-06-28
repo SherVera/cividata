@@ -1,8 +1,8 @@
 {
-  "name": "censo-infantil",
+  "name": "censo-registro",
   "version": "1.0.0",
   "private": true,
-  "description": "Ficha de registro / censo infantil con auth, SQLite y geolocalización",
+  "description": "Ficha de registro / censo de personas con auth, SQLite y geolocalización",
   "scripts": {
     "start": "node --no-warnings server.js"
   },

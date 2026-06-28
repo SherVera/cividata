@@ -1,4 +1,4 @@
--- Censo Infantil — esquema Postgres para Supabase.
+-- Censo / Registro — esquema Postgres para Supabase.
 -- Pegar TODO esto en: Supabase -> SQL Editor -> New query -> Run.
 
 create table if not exists public.registros (

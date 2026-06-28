@@ -1,6 +1,6 @@
-# Censo Infantil
+# Censo / Registro
 
-Web para registrar la *Ficha de Registro / Censo Infantil*. Sin dependencias externas — usa el SQLite y el servidor HTTP integrados de Node 22.
+Web para registrar la *Ficha de Registro / Censo*. Sin dependencias externas — usa el SQLite y el servidor HTTP integrados de Node 22.
 
 ## Requisitos
 - Node.js 22 o superior.

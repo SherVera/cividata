@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(node -e \"const {DatabaseSync}=require\\('node:sqlite'\\);const db=new DatabaseSync\\(':memory:'\\);db.exec\\('CREATE TABLE t\\(x\\)'\\);db.prepare\\('INSERT INTO t VALUES\\(?\\)'\\).run\\(1\\);console.log\\('node:sqlite OK', db.prepare\\('SELECT * FROM t'\\).all\\(\\)\\);\")",
-      "Bash(ACCESS_PASSWORD=kidsalive2026 node --no-warnings server.js)"
+      "Bash(ACCESS_PASSWORD=kidsalive2026 node --no-warnings server.js)",
+      "Bash(node -e \"const fs=require\\('fs'\\);for\\(const f of ['web/index.html','web/registros.html','web/login.html']\\){const s=fs.readFileSync\\(f,'utf8'\\);const m=[...s.matchAll\\(/<script>\\([\\\\s\\\\S]*?\\)<\\\\/script>/g\\)].map\\(x=>x[1]\\).join\\('\\\\n;\\\\n'\\);try{new Function\\('supabase','navigator','location','document','window','alert','FormData',m\\);console.log\\(f,'JS OK'\\)}catch\\(e\\){console.log\\(f,'JS ERROR',e.message\\)}}\")",
+      "Bash(git -c user.name=sherman8 -c user.email=vera8german@gmail.com commit -qm 'Generalizar a censo/registro universal \\(quitar enfoque infantil\\) *)"
     ]
   }
 }
