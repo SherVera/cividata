@@ -38,6 +38,7 @@ export default function App() {
   // Patient database state (source of truth: Supabase)
   const [patients, setPatients] = useState<Paciente[]>([]);
   const [patientsLoading, setPatientsLoading] = useState<boolean>(false);
+  const [dataRefreshing, setDataRefreshing] = useState<boolean>(false);
 
   // Views state: 'list' | 'create' | 'edit' | 'details' | 'admin' | 'centros'
   const [currentView, setCurrentView] = useState<'list' | 'create' | 'edit' | 'details' | 'admin' | 'centros'>('list');
@@ -101,15 +102,16 @@ export default function App() {
   };
 
   // Load patients from Supabase
-  const loadPatients = async () => {
+  const loadPatients = async (options?: { silent?: boolean }) => {
     if (!supabase) return;
-    setPatientsLoading(true);
+    if (!options?.silent) setPatientsLoading(true);
     try {
       setPatients(await listPatients());
     } catch (err: any) {
       showNotification('error', 'No se pudieron cargar los pacientes: ' + (err?.message || err));
+      throw err;
     } finally {
-      setPatientsLoading(false);
+      if (!options?.silent) setPatientsLoading(false);
     }
   };
 
@@ -145,6 +147,21 @@ export default function App() {
     } catch {
       setCollectionCenters([]);
       setTotalCentrosRegistrados(0);
+    }
+  };
+
+  const refreshAllData = async () => {
+    if (dataRefreshing) return;
+    setDataRefreshing(true);
+    try {
+      await loadPatients({ silent: true });
+      await refreshCollectionCenters();
+      await loadSuperAdminStats();
+      showNotification('success', 'Datos actualizados correctamente.');
+    } catch {
+      // loadPatients ya muestra la notificación de error
+    } finally {
+      setDataRefreshing(false);
     }
   };
 
@@ -506,6 +523,16 @@ export default function App() {
                 </button>
               </>
             )}
+
+            <button
+              onClick={refreshAllData}
+              disabled={dataRefreshing}
+              title="Actualizar datos"
+              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <RefreshCw className={`w-4 h-4 ${dataRefreshing ? 'animate-spin' : ''}`} />
+              <span className="text-xs font-semibold hidden md:inline">Actualizar</span>
+            </button>
 
             <button
               onClick={() => setShowSettingsModal(true)}
