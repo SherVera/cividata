@@ -1,0 +1,11 @@
+# Base de datos local del server Node (no subir datos de niños)
+censo.db
+censo.db-*
+
+# Dependencias / artefactos
+node_modules/
+.vercel/
+
+# Secretos
+.env
+.env.*

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Registros — Censo Infantil</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#eef2f7;margin:0;color:#1e293b}
+  header{background:#2563eb;color:#fff;padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
+  header a{color:#fff;text-decoration:none;font-size:.9rem}
+  main{padding:1rem}
+  table{border-collapse:collapse;width:100%;background:#fff;font-size:.82rem}
+  th,td{border:1px solid #e2e8f0;padding:.4rem .6rem;text-align:left;white-space:nowrap}
+  th{background:#f1f5f9;position:sticky;top:0}
+  .wrap{overflow:auto;max-height:80vh;border-radius:10px}
+  a.map{color:#2563eb}
+  .count{color:#475569;margin:.5rem 0}
+</style>
+</head>
+<body>
+<header>
+  <strong>📋 Registros guardados</strong>
+  <span><a href="/">➕ Nuevo registro</a> &nbsp;·&nbsp; <a href="/logout">Salir</a></span>
+</header>
+<main>
+  <p class="count" id="count">Cargando…</p>
+  <div class="wrap"><table id="t"></table></div>
+</main>
+<script>
+  const COLS = [
+    ['id','#'],['created_at','Fecha registro'],['nombres','Nombres'],['apellidos','Apellidos'],
+    ['fecha_nacimiento','F. nac.'],['genero','Género'],['documento','Documento'],['nacionalidad','Nacionalidad'],
+    ['ciudad','Ciudad'],['estado_provincia','Estado'],['rep_nombre','Representante'],['parentesco','Parentesco'],
+    ['tel_principal','Teléfono'],['correo','Correo'],['vacunacion','Vacunas'],['nivel_educativo','Nivel'],
+    ['institucion','Institución'],['geo','Ubicación reg.']
+  ];
+  (async () => {
+    const rows = await (await fetch('/api/registros')).json();
+    document.getElementById('count').textContent = rows.length + ' registro(s)';
+    const t = document.getElementById('t');
+    t.innerHTML = '<tr>' + COLS.map(c => `<th>${c[1]}</th>`).join('') + '</tr>';
+    for (const r of rows) {
+      const cells = COLS.map(([k]) => {
+        if (k === 'geo') {
+          return r.geo_lat != null
+            ? `<td><a class="map" target="_blank" href="https://maps.google.com/?q=${r.geo_lat},${r.geo_lng}">${(+r.geo_lat).toFixed(4)}, ${(+r.geo_lng).toFixed(4)}</a></td>`
+            : '<td>—</td>';
+        }
+        let v = r[k] == null ? '' : String(r[k]);
+        if (k === 'created_at' && v) v = new Date(v).toLocaleString('es');
+        return `<td>${v.replace(/</g,'&lt;')}</td>`;
+      });
+      t.insertAdjacentHTML('beforeend', '<tr>' + cells.join('') + '</tr>');
+    }
+  })();
+</script>
+</body>
+</html>

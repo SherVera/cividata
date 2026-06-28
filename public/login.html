@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acceso — Censo Infantil</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#eef2f7;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0}
+  form{background:#fff;padding:2rem;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.08);width:300px}
+  h1{font-size:1.2rem;margin:0 0 1rem}
+  input{width:100%;padding:.6rem;margin:.4rem 0;border:1px solid #cbd5e1;border-radius:8px;box-sizing:border-box}
+  button{width:100%;padding:.6rem;background:#2563eb;color:#fff;border:0;border-radius:8px;font-size:1rem;cursor:pointer}
+  .err{color:#dc2626;font-size:.85rem}
+</style>
+</head>
+<body>
+<form method="post" action="/login">
+  <h1>🧒 Censo Infantil — Acceso</h1>
+  <input type="password" name="password" placeholder="Contraseña" autofocus required>
+  <button type="submit">Entrar</button>
+  <p class="err" id="e" style="display:none">Contraseña incorrecta</p>
+</form>
+<script>if(new URLSearchParams(location.search).get('e'))document.getElementById('e').style.display='block';</script>
+</body>
+</html>
