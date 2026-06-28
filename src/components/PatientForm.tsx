@@ -7,7 +7,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Paciente } from '../types';
 import { 
   User, MapPin, ShieldAlert, Heart, GraduationCap, 
-  ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles, Warehouse
+  ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles, Warehouse, Plus
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Catalogs, GuardianOption, fetchCatalogs } from '../lib/catalogsApi';
@@ -16,6 +16,8 @@ import CatalogMultiPicker from './CatalogMultiPicker';
 import { CollectionCenter, listCollectionCenters } from '../lib/collectionCentersApi';
 import { DEFAULT_MAP_CENTER, findNearest, formatDistance, GeoNamedPoint } from '../lib/geo';
 import GeoMapPicker, { requestDeviceLocation } from './GeoMapPicker';
+import QuickCenterRegister from './QuickCenterRegister';
+import { getRecentCenterIds, recordRecentCenter } from '../lib/recentCenters';
 
 interface PatientFormProps {
   initialPatient?: Paciente | null;
@@ -95,6 +97,9 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
   const [collectionCenters, setCollectionCenters] = useState<CollectionCenter[]>([]);
   const [centerFilter, setCenterFilter] = useState("");
   const [geoHint, setGeoHint] = useState<string>("");
+  const [recentCenterIds, setRecentCenterIds] = useState<string[]>(() => getRecentCenterIds());
+  const [showNewCenter, setShowNewCenter] = useState(false);
+  const [centerNotice, setCenterNotice] = useState<string>("");
 
   // Catálogos reutilizables (sugerencias para no re-tipear datos repetidos).
   const [catalogs, setCatalogs] = useState<Catalogs>({
@@ -153,6 +158,35 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
         (c.address || '').toLowerCase().includes(q)
     );
   }, [collectionCenters, centerFilter]);
+
+  const recentCenters = useMemo(
+    () =>
+      recentCenterIds
+        .map((id) => collectionCenters.find((c) => c.id === id))
+        .filter((c): c is CollectionCenter => !!c),
+    [recentCenterIds, collectionCenters]
+  );
+
+  const pickCenter = (centerId: string) => {
+    handleCenterSelect(centerId);
+    setCenterFilter('');
+    recordRecentCenter(centerId);
+    setRecentCenterIds(getRecentCenterIds());
+  };
+
+  const handleQuickCenterSaved = (center: CollectionCenter, created: boolean) => {
+    setCollectionCenters((prev) => {
+      if (prev.some((c) => c.id === center.id)) return prev;
+      return [...prev, center].sort((a, b) => a.name.localeCompare(b.name));
+    });
+    pickCenter(center.id);
+    setShowNewCenter(false);
+    setCenterNotice(
+      created
+        ? `Centro "${center.name}" registrado y seleccionado.`
+        : `Ya existía "${center.name}"; se seleccionó el registro previo.`
+    );
+  };
 
   const suggestCenterFromCoords = (lat: number, lng: number, autoSelect = false) => {
     const points: GeoNamedPoint[] = collectionCenters.map((c) => ({
@@ -407,6 +441,9 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
         registrantLat,
         registrantLng,
       });
+      if (formData.centroAcopioId) {
+        recordRecentCenter(formData.centroAcopioId);
+      }
     } else {
       const tabName = tabs.find(t => t.id === firstInvalid)?.label.split('. ')[1] || `Paso ${firstInvalid}`;
       setSubmitError(`Faltan campos requeridos en "${tabName}". Revise los campos marcados.`);
@@ -655,8 +692,55 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 <h4 className="text-sm font-bold text-teal-900">Punto de registro / Centro de acopio</h4>
               </div>
               <p className="text-xs text-teal-800/80 leading-relaxed">
-                Indique el centro de acopio y el punto donde se registra al paciente. Arrastre el marcador en el mapa para confirmar la ubicación aproximada (~100 m).
+                Elija un centro reciente, busque uno existente o regístrelo aquí mismo. Luego ajuste el punto del paciente en el mapa.
               </p>
+
+              {recentCenters.length > 0 && (
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Usados recientemente
+                  </span>
+                  <div className="mt-1.5 flex flex-wrap gap-2">
+                    {recentCenters.map((center) => (
+                      <button
+                        key={center.id}
+                        type="button"
+                        onClick={() => pickCenter(center.id)}
+                        className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                          formData.centroAcopioId === center.id
+                            ? 'border-teal-600 bg-teal-600 text-white'
+                            : 'border-teal-200 bg-white text-teal-800 hover:bg-teal-50'
+                        }`}
+                      >
+                        {center.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!showNewCenter ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNewCenter(true);
+                    setCenterNotice('');
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-teal-300 bg-white px-3 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Registrar nuevo centro de acopio
+                </button>
+              ) : (
+                <QuickCenterRegister
+                  onSaved={handleQuickCenterSaved}
+                  onCancel={() => setShowNewCenter(false)}
+                />
+              )}
+
+              {centerNotice && (
+                <p className="text-[11px] font-medium text-teal-700">{centerNotice}</p>
+              )}
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
@@ -683,10 +767,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                       <button
                         key={center.id}
                         type="button"
-                        onClick={() => {
-                          handleCenterSelect(center.id);
-                          setCenterFilter('');
-                        }}
+                        onClick={() => pickCenter(center.id)}
                         className={`block w-full px-3 py-2 text-left text-xs hover:bg-teal-50 ${
                           formData.centroAcopioId === center.id ? 'bg-teal-50 font-bold text-teal-800' : 'text-slate-700'
                         }`}
