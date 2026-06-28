@@ -14,11 +14,12 @@ import {
   Stethoscope,
   MessageCircle,
   Send,
+  Mail,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 import AppLogo from './AppLogo';
-import { APP_NAME, CONTACT_PHONE, contactWhatsAppUrl } from '../brand';
+import { APP_NAME, CONTACT_EMAIL, CONTACT_PHONE, contactEmailUrl, contactWhatsAppUrl } from '../brand';
 
 const publicInfo = [
   {
@@ -62,25 +63,44 @@ export default function AuthScreen() {
   const [contactHoneypot, setContactHoneypot] = useState('');
 
   const whatsAppHref = contactWhatsAppUrl();
+  const hasEmailContact = Boolean(CONTACT_EMAIL);
+  const hasWhatsAppContact = Boolean(whatsAppHref);
+  const hasContactForm = hasEmailContact || hasWhatsAppContact;
   const canSendContact = contactMessage.trim().length >= 10;
 
-  const handleContactSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (contactHoneypot || !canSendContact) return;
-
-    const lines = [
+  const buildContactLines = () =>
+    [
       `Consulta sobre ${APP_NAME}`,
       contactName.trim() ? `Nombre: ${contactName.trim()}` : null,
       '',
       contactMessage.trim(),
-    ].filter((line) => line !== null);
+    ].filter((line): line is string => line !== null);
 
-    const url = contactWhatsAppUrl(lines.join('\n'));
+  const resetContactForm = () => {
+    setContactMessage('');
+    setContactName('');
+  };
+
+  const handleContactWhatsApp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (contactHoneypot || !canSendContact || !hasWhatsAppContact) return;
+
+    const url = contactWhatsAppUrl(buildContactLines().join('\n'));
     if (!url) return;
 
     window.open(url, '_blank', 'noopener,noreferrer');
-    setContactMessage('');
-    setContactName('');
+    resetContactForm();
+  };
+
+  const handleContactEmail = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (contactHoneypot || !canSendContact || !hasEmailContact) return;
+
+    const url = contactEmailUrl({ name: contactName, message: contactMessage });
+    if (!url) return;
+
+    window.location.href = url;
+    resetContactForm();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -204,7 +224,7 @@ export default function AuthScreen() {
             </div>
           </div>
 
-          {whatsAppHref ? (
+          {hasContactForm ? (
             <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm">
               <div className="flex items-start gap-3">
                 <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600 shrink-0">
@@ -213,12 +233,12 @@ export default function AuthScreen() {
                 <div className="min-w-0 flex-1">
                   <h2 className="text-sm font-bold text-slate-800">Consultas generales</h2>
                   <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                    Use este formulario para dudas sobre acceso o el sistema. No envíe datos clínicos, contraseñas ni información de pacientes por este canal.
+                    Use este formulario para dudas sobre acceso o el sistema. Elija correo o WhatsApp. No envíe datos clínicos, contraseñas ni información de pacientes por estos canales.
                   </p>
                 </div>
               </div>
 
-              <form onSubmit={handleContactSubmit} className="mt-4 space-y-3">
+              <form className="mt-4 space-y-3" onSubmit={(e) => e.preventDefault()}>
                 <input
                   type="text"
                   name="website"
@@ -256,18 +276,38 @@ export default function AuthScreen() {
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all resize-none"
                   />
                 </div>
-                <button
-                  type="submit"
-                  disabled={!canSendContact}
-                  className={`w-full py-2.5 px-4 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
-                    canSendContact
-                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
-                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                  }`}
-                >
-                  <Send className="w-4 h-4" />
-                  Enviar por WhatsApp
-                </button>
+                <div className={`grid gap-2 ${hasEmailContact && hasWhatsAppContact ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
+                  {hasEmailContact && (
+                    <button
+                      type="button"
+                      onClick={handleContactEmail}
+                      disabled={!canSendContact}
+                      className={`w-full py-2.5 px-4 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
+                        canSendContact
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
+                          : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      }`}
+                    >
+                      <Mail className="w-4 h-4" />
+                      Enviar por correo
+                    </button>
+                  )}
+                  {hasWhatsAppContact && (
+                    <button
+                      type="button"
+                      onClick={handleContactWhatsApp}
+                      disabled={!canSendContact}
+                      className={`w-full py-2.5 px-4 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
+                        canSendContact
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
+                          : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      }`}
+                    >
+                      <Send className="w-4 h-4" />
+                      Enviar por WhatsApp
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
           ) : null}
@@ -373,17 +413,30 @@ export default function AuthScreen() {
       </main>
 
       <footer className="text-center z-10 space-y-3">
-        {whatsAppHref ? (
-          <a
-            href={whatsAppHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
-          >
-            <MessageCircle className="w-3.5 h-3.5" />
-            WhatsApp{CONTACT_PHONE ? ` · ${CONTACT_PHONE}` : ''}
-          </a>
-        ) : null}
+        {(hasEmailContact || hasWhatsAppContact) && (
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            {hasEmailContact && (
+              <a
+                href={`mailto:${CONTACT_EMAIL}`}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 hover:text-blue-800 transition-colors"
+              >
+                <Mail className="w-3.5 h-3.5" />
+                {CONTACT_EMAIL}
+              </a>
+            )}
+            {hasWhatsAppContact && (
+              <a
+                href={whatsAppHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                WhatsApp{CONTACT_PHONE ? ` · ${CONTACT_PHONE}` : ''}
+              </a>
+            )}
+          </div>
+        )}
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 font-medium">
           <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
           <span>{APP_NAME} &bull; Acceso seguro &bull; Sin datos críticos en pantalla pública</span>
