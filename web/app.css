@@ -1,0 +1,38 @@
+/* Capa "app-like" compartida. Se carga después de los estilos en línea de cada página. */
+:root { --blue: #2563eb; }
+html { -webkit-text-size-adjust: 100%; }
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Header como barra de título fija */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding-top: calc(1rem + env(safe-area-inset-top));
+}
+
+/* Móvil: inputs grandes (evita el zoom de iOS), más aire */
+@media (max-width: 560px) {
+  input, select, textarea, button { font-size: 16px !important; }
+  input, select { padding: .7rem !important; }
+  main { padding-left: .8rem !important; padding-right: .8rem !important; }
+  /* Oculta los enlaces de texto del header en móvil: se navega por la barra inferior */
+  header span:last-child a:not(#out) { display: none; }
+}
+
+/* Barra de navegación inferior (estilo app) */
+.bottom-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  display: flex; background: #fff; border-top: 1px solid #e2e8f0;
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -2px 12px rgba(0,0,0,.06);
+}
+.bottom-nav a {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: .15rem;
+  padding: .5rem 0 .45rem; text-decoration: none; color: #94a3b8; font-size: .68rem;
+}
+.bottom-nav a .i { font-size: 1.35rem; line-height: 1; }
+.bottom-nav a.active { color: var(--blue); font-weight: 700; }
+
+/* Deja espacio para que la barra no tape el contenido */
+body:has(.bottom-nav) { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }

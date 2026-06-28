@@ -1,0 +1,13 @@
+{
+  "name": "Cividata — Censo / Registro",
+  "short_name": "Cividata",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef2f7",
+  "theme_color": "#2563eb",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
