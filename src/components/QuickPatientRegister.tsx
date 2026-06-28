@@ -10,7 +10,7 @@ import {
   Warehouse,
   Zap,
 } from 'lucide-react';
-import { Paciente, GRUPOS_ETARIOS, grupoEtarioFromAge, grupoEtarioLabel, pacienteTieneEdad } from '../types';
+import { Paciente, GRUPOS_ETARIOS, grupoEtarioFromAge, grupoEtarioLabel, pacienteTieneEdad, pacienteRequiereRepresentante, EMPTY_GUARDIAN_FIELDS } from '../types';
 import { parseFormNumber, validatePatientSection1 } from '../lib/patientValidation';
 import { APP_NAME } from '../brand';
 import { CollectionCenter, listCollectionCenters } from '../lib/collectionCentersApi';
@@ -195,6 +195,23 @@ export default function QuickPatientRegister({
 
   const clasificacionManual = !pacienteTieneEdad(formData);
   const hasCarryOver = !!carryOver;
+  const requiereRepresentante = pacienteRequiereRepresentante(formData);
+
+  useEffect(() => {
+    if (requiereRepresentante) return;
+    setOptionalSections((prev) =>
+      prev.representante ? { ...prev, representante: false } : prev
+    );
+    setFormData((prev) => {
+      const hasGuardianData =
+        prev.nombreRepresentante.trim() ||
+        prev.documentoRepresentante.trim() ||
+        prev.telefonoPrincipal.trim() ||
+        prev.telefonoEmergencias.trim();
+      if (!hasGuardianData) return prev;
+      return { ...prev, ...EMPTY_GUARDIAN_FIELDS };
+    });
+  }, [requiereRepresentante]);
 
   const applyCenter = (center: CollectionCenter, trackRecent = false) => {
     setFormData((prev) => ({
@@ -744,6 +761,7 @@ export default function QuickPatientRegister({
             </div>
           </OptionalSection>
 
+          {requiereRepresentante && (
           <OptionalSection
             title="Representante / contacto"
             hint="Madre, padre o tutor"
@@ -817,6 +835,7 @@ export default function QuickPatientRegister({
               </div>
             </div>
           </OptionalSection>
+          )}
 
           <OptionalSection
             title="Salud"

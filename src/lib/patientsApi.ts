@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { Paciente, NotaClinica, normalizeGrupoEtario, grupoEtarioFromAge, pacienteTieneEdad } from '../types';
+import { Paciente, NotaClinica, normalizeGrupoEtario, grupoEtarioFromAge, pacienteRequiereRepresentante, pacienteTieneEdad } from '../types';
 import { resolveAgeGroupForSave } from './patientValidation';
 import { joinMultiValue, parseMultiValue } from './multiValue';
 import { deletePatientPhoto } from './patientPhotosApi';
@@ -256,7 +256,7 @@ export async function savePatient(p: Paciente): Promise<void> {
   const medication = p.tomaMedicamentos
     ? await resolveCatalogSelection('medications', p.medicamentosEspecificos)
     : { firstId: null, detail: null };
-  const guardianId = await getOrCreateGuardian(p);
+  const guardianId = pacienteRequiereRepresentante(p) ? await getOrCreateGuardian(p) : null;
   const hasBirthDate = !!(p.fechaNacimiento || '').trim();
   const grupoEtario = resolveAgeGroupForSave(p);
 
@@ -277,7 +277,7 @@ export async function savePatient(p: Paciente): Promise<void> {
     city_id: cityId,
     landmark: (p.puntoReferencia || '').trim() || null,
     guardian_id: guardianId,
-    relationship: p.parentesco || null,
+    relationship: guardianId ? (p.parentesco || null) : null,
     height_cm: p.estatura || null,
     weight_kg: p.peso || null,
     blood_type_id: bloodTypeId,

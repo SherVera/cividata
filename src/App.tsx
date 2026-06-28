@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Session } from '@supabase/supabase-js';
-import { Paciente, puntoRegistroEtiqueta, grupoEtarioLabel, normalizeGrupoEtario, edadPacienteTexto, pacienteTieneEdad, resolveGrupoEtario, grupoEtarioFromAge } from './types';
+import { Paciente, puntoRegistroEtiqueta, grupoEtarioLabel, normalizeGrupoEtario, edadPacienteTexto, pacienteTieneEdad, resolveGrupoEtario, grupoEtarioFromAge, pacienteRequiereRepresentante } from './types';
 import AuthScreen from './components/AuthScreen';
 import PatientForm from './components/PatientForm';
 import QuickPatientRegister, { PatientSaveOptions } from './components/QuickPatientRegister';
@@ -930,7 +930,13 @@ export default function App() {
                               </div>
                               <div>
                                 <span className="text-slate-400 block text-[9px] uppercase tracking-wider">Representante</span>
-                                <span className="font-semibold text-slate-700 truncate block">{p.nombreRepresentante.split(' ')[0]} ({p.parentesco})</span>
+                                <span className="font-semibold text-slate-700 truncate block">
+                                  {pacienteRequiereRepresentante(p)
+                                    ? p.nombreRepresentante
+                                      ? `${p.nombreRepresentante.split(' ')[0]} (${p.parentesco})`
+                                      : 'Sin registrar'
+                                    : 'No aplica'}
+                                </span>
                               </div>
                             </div>
                           </div>

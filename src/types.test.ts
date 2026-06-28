@@ -6,6 +6,7 @@ import {
   normalizeGrupoEtario,
   pacienteTieneEdad,
   resolveGrupoEtario,
+  pacienteRequiereRepresentante,
 } from './types';
 
 describe('grupoEtarioFromAge', () => {
@@ -63,6 +64,43 @@ describe('grupoEtarioLabel', () => {
   it('etiqueta valores conocidos y ausentes', () => {
     expect(grupoEtarioLabel('nino')).toBe('Niño/a');
     expect(grupoEtarioLabel(null)).toBe('Sin clasificar');
+  });
+});
+
+describe('pacienteRequiereRepresentante', () => {
+  it('solo aplica a niños/as', () => {
+    expect(
+      pacienteRequiereRepresentante({
+        fechaNacimiento: '',
+        edadAnios: 8,
+        edadMeses: 0,
+        grupoEtario: null,
+      })
+    ).toBe(true);
+    expect(
+      pacienteRequiereRepresentante({
+        fechaNacimiento: '',
+        edadAnios: 25,
+        edadMeses: 0,
+        grupoEtario: null,
+      })
+    ).toBe(false);
+    expect(
+      pacienteRequiereRepresentante({
+        fechaNacimiento: '',
+        edadAnios: 0,
+        edadMeses: 0,
+        grupoEtario: 'adulto',
+      })
+    ).toBe(false);
+    expect(
+      pacienteRequiereRepresentante({
+        fechaNacimiento: '',
+        edadAnios: 0,
+        edadMeses: 0,
+        grupoEtario: 'nino',
+      })
+    ).toBe(true);
   });
 });
 

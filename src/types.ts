@@ -155,6 +155,32 @@ export function resolveGrupoEtario(
   return p.grupoEtario ?? null;
 }
 
+/** Solo niños/as llevan representante legal (padre, madre o tutor). */
+export function pacienteRequiereRepresentante(
+  p: Pick<Paciente, 'fechaNacimiento' | 'edadAnios' | 'edadMeses' | 'grupoEtario'>
+): boolean {
+  return resolveGrupoEtario(p) === 'nino';
+}
+
+export const EMPTY_GUARDIAN_FIELDS: Pick<
+  Paciente,
+  | 'nombreRepresentante'
+  | 'parentesco'
+  | 'documentoRepresentante'
+  | 'ocupacion'
+  | 'telefonoPrincipal'
+  | 'telefonoEmergencias'
+  | 'correo'
+> = {
+  nombreRepresentante: '',
+  parentesco: 'Madre',
+  documentoRepresentante: '',
+  ocupacion: '',
+  telefonoPrincipal: '',
+  telefonoEmergencias: '',
+  correo: '',
+};
+
 /** Datos personales opcionales del personal médico / admin (user_metadata.staff_profile). */
 export interface StaffProfile {
   first_name?: string;

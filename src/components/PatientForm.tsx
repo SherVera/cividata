@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Paciente, GRUPOS_ETARIOS, grupoEtarioLabel, grupoEtarioFromAge, pacienteTieneEdad } from '../types';
+import { Paciente, GRUPOS_ETARIOS, grupoEtarioLabel, grupoEtarioFromAge, pacienteTieneEdad, pacienteRequiereRepresentante, EMPTY_GUARDIAN_FIELDS } from '../types';
 import { parseFormNumber, validatePatientSection1 } from '../lib/patientValidation';
 import { APP_NAME } from '../brand';
 import { 
@@ -463,6 +463,29 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     );
   }, [formData.fechaNacimiento, formData.edadAnios, formData.edadMeses]);
 
+  const requiereRepresentante = pacienteRequiereRepresentante(formData);
+
+  useEffect(() => {
+    if (requiereRepresentante) return;
+    setFormData((prev) => {
+      const hasGuardianData =
+        prev.nombreRepresentante.trim() ||
+        prev.documentoRepresentante.trim() ||
+        prev.telefonoPrincipal.trim() ||
+        prev.telefonoEmergencias.trim() ||
+        prev.correo.trim() ||
+        prev.ocupacion.trim();
+      if (!hasGuardianData) return prev;
+      return { ...prev, ...EMPTY_GUARDIAN_FIELDS };
+    });
+  }, [requiereRepresentante]);
+
+  useEffect(() => {
+    if (!requiereRepresentante && activeTab === 3) {
+      setActiveTab(2);
+    }
+  }, [requiereRepresentante, activeTab]);
+
   const hasExactBirthDate = !!formData.fechaNacimiento;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -498,12 +521,17 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
   };
 
   const handleNext = () => {
-    // Navegación libre entre paneles; los requeridos se validan al guardar.
-    setActiveTab(prev => Math.min(prev + 1, FORM_TAB_COUNT));
+    setActiveTab((prev) => {
+      if (prev === 2 && !requiereRepresentante) return 4;
+      return Math.min(prev + 1, FORM_TAB_COUNT);
+    });
   };
 
   const handlePrev = () => {
-    setActiveTab(prev => Math.max(prev - 1, 1));
+    setActiveTab((prev) => {
+      if (prev === 4 && !requiereRepresentante) return 2;
+      return Math.max(prev - 1, 1);
+    });
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
@@ -563,12 +591,13 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     }
   };
 
-  const tabs = [
+  const allTabs = [
     { id: 1, label: "1. Datos Personales", icon: User },
     { id: 2, label: "2. Ubicación", icon: MapPin },
     { id: 3, label: "3. Representante", icon: ShieldAlert },
     { id: 4, label: "4. Salud y Nutrición", icon: Heart },
   ];
+  const tabs = requiereRepresentante ? allTabs : allTabs.filter((tab) => tab.id !== 3);
 
   return (
     <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
@@ -1183,8 +1212,8 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
           </motion.div>
         )}
 
-        {/* TAB 3: REPRESENTANTE LEGAL */}
-        {activeTab === 3 && (
+        {/* TAB 3: REPRESENTANTE LEGAL (solo niños/as) */}
+        {activeTab === 3 && requiereRepresentante && (
           <motion.div
             initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}

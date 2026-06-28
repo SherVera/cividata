@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Paciente, NotaClinica, puntoRegistroEtiqueta, grupoEtarioLabel, edadPacienteTexto, resolveGrupoEtario } from '../types';
+import { Paciente, NotaClinica, puntoRegistroEtiqueta, grupoEtarioLabel, edadPacienteTexto, resolveGrupoEtario, pacienteRequiereRepresentante } from '../types';
 import { 
   User, MapPin, ShieldAlert, Heart, 
   ArrowLeft, Edit3, Printer, Plus, Calendar, Activity, 
@@ -49,6 +49,8 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
       })
       .catch(() => {/* sin catálogos: texto libre */});
   }, []);
+
+  const requiereRepresentante = pacienteRequiereRepresentante(patient);
 
   const handlePrint = () => {
     window.print();
@@ -295,7 +297,8 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
             </div>
           </div>
 
-          {/* Quick Contacts */}
+          {/* Quick Contacts (solo niños/as con representante) */}
+          {requiereRepresentante && (
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3">
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-widest">
               Contacto de Emergencia
@@ -304,7 +307,7 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
             <div className="text-xs space-y-2.5">
               <div className="flex items-center gap-2 text-slate-600">
                 <Phone className="w-4 h-4 text-slate-400 shrink-0" />
-                <span className="font-mono font-semibold">{patient.telefonoPrincipal}</span>
+                <span className="font-mono font-semibold">{patient.telefonoPrincipal || 'Sin registrar'}</span>
               </div>
               {patient.telefonoEmergencias && (
                 <div className="flex items-center gap-2 text-slate-600">
@@ -321,6 +324,7 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
               )}
             </div>
           </div>
+          )}
         </div>
 
         {/* Right Column: Complete Ficha Censo & Consultation Notes History */}
@@ -470,7 +474,8 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                 </div>
               </div>
 
-              {/* Seccion 3: Representante Legal */}
+              {/* Seccion 3: Representante Legal (solo niños/as) */}
+              {requiereRepresentante && (
               <div className="space-y-3 pt-2">
                 <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5 pb-1.5 border-b border-slate-200">
                   <ShieldAlert className="w-3.5 h-3.5" /> 3. Datos del Representante Legal (Padre, Madre o Tutor)
@@ -478,7 +483,7 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-3 gap-x-4 text-xs">
                   <div className="sm:col-span-2">
                     <span className="text-slate-400 block mb-0.5">Nombre Completo</span>
-                    <span className="font-bold text-slate-700">{patient.nombreRepresentante}</span>
+                    <span className="font-bold text-slate-700">{patient.nombreRepresentante || 'Sin registrar'}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block mb-0.5">Parentesco</span>
@@ -486,7 +491,7 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                   </div>
                   <div>
                     <span className="text-slate-400 block mb-0.5">Documento Identidad</span>
-                    <span className="font-semibold text-slate-700 font-mono">{patient.documentoRepresentante}</span>
+                    <span className="font-semibold text-slate-700 font-mono">{patient.documentoRepresentante || '—'}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block mb-0.5">Ocupación / Profesión</span>
@@ -494,7 +499,7 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                   </div>
                   <div>
                     <span className="text-slate-400 block mb-0.5">Teléfono Principal</span>
-                    <span className="font-semibold text-slate-700 font-mono">{patient.telefonoPrincipal}</span>
+                    <span className="font-semibold text-slate-700 font-mono">{patient.telefonoPrincipal || '—'}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block mb-0.5">Teléfono Alternativo</span>
@@ -506,6 +511,7 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                   </div>
                 </div>
               </div>
+              )}
 
               {/* Seccion 4: Salud, Nutricion y Patologias */}
               <div className="space-y-3 pt-2">
