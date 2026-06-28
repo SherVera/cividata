@@ -12,11 +12,13 @@ import {
   ClipboardCheck,
   HelpCircle,
   Stethoscope,
+  Mail,
+  Phone,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 import AppLogo from './AppLogo';
-import { APP_NAME } from '../brand';
+import { APP_NAME, CONTACT_EMAIL, CONTACT_PHONE } from '../brand';
 
 const publicInfo = [
   {
@@ -39,7 +41,7 @@ const publicInfo = [
 const helpItems = [
   {
     title: 'Registro de pacientes',
-    description: 'Organiza la información pediátrica dentro del sistema protegido.',
+    description: 'Organiza fichas y datos de pacientes dentro del sistema protegido.',
     icon: ClipboardCheck,
   },
   {
@@ -120,15 +122,15 @@ export default function AuthScreen() {
             className="space-y-5"
           >
             <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-blue-700">
-              <Activity className="w-3.5 h-3.5" /> Salud infantil con datos protegidos
+              <Activity className="w-3.5 h-3.5" /> Salud comunitaria con datos protegidos
             </span>
 
             <div className="space-y-4">
               <h1 className="font-sans text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-slate-900 leading-[1.02]">
-                Información útil para cuidar mejor, sin exponer a los niños.
+                Información útil para cuidar mejor, sin exponer datos sensibles.
               </h1>
               <p className="max-w-2xl text-sm md:text-base text-slate-500 leading-relaxed">
-                {APP_NAME} gestiona registro pediátrico e historia clínica. Esta pantalla pública solo explica el propósito del sistema; la información de pacientes permanece dentro del acceso privado.
+                {APP_NAME} gestiona censo de pacientes e historia clínica para equipos de salud en campo. Esta pantalla pública solo explica el propósito del sistema; la información de pacientes permanece dentro del acceso privado.
               </p>
             </div>
           </motion.div>
@@ -277,7 +279,25 @@ export default function AuthScreen() {
         </motion.aside>
       </main>
 
-      <footer className="text-center z-10">
+      <footer className="text-center z-10 space-y-3">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-xs text-slate-500">
+          <a
+            href={`mailto:${CONTACT_EMAIL}`}
+            className="inline-flex items-center gap-1.5 font-medium hover:text-blue-600 transition-colors"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            {CONTACT_EMAIL}
+          </a>
+          {CONTACT_PHONE ? (
+            <a
+              href={`tel:${CONTACT_PHONE.replace(/[\s()-]/g, '')}`}
+              className="inline-flex items-center gap-1.5 font-medium hover:text-blue-600 transition-colors"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              {CONTACT_PHONE}
+            </a>
+          ) : null}
+        </div>
         <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 font-medium">
           <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
           <span>{APP_NAME} &bull; Acceso seguro &bull; Sin datos críticos en pantalla pública</span>
