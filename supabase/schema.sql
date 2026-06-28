@@ -124,3 +124,20 @@ drop trigger if exists trg_audit_citizens on public.citizens;
 create trigger trg_audit_citizens
   after insert or update or delete on public.citizens
   for each row execute function public.log_citizen_change();
+
+-- =========================================================
+-- General statistics for ANY authenticated user.
+-- SECURITY DEFINER: returns only aggregate counts (no individual
+-- rows), so it does not leak other people's data.
+-- =========================================================
+create or replace function public.general_stats()
+returns json language sql security definer set search_path = public stable as $$
+  select json_build_object(
+    'total', (select count(*) from citizens),
+    'today', (select count(*) from citizens where created_at::date = now()::date),
+    'last7', (select count(*) from citizens where created_at > now() - interval '7 days'),
+    'mine',  (select count(*) from citizens where created_by = auth.uid())
+  );
+$$;
+
+grant execute on function public.general_stats() to authenticated;

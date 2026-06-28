@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estadísticas — Censo / Registro</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#eef2f7;margin:0;color:#1e293b}
+  header{background:#2563eb;color:#fff;padding:1rem 1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem}
+  header a{color:#fff;text-decoration:none;font-size:.9rem;cursor:pointer}
+  main{max-width:780px;margin:1.5rem auto;padding:0 1rem}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:1.2rem}
+  .card .n{font-size:2.2rem;font-weight:800;color:#2563eb}
+  .card .l{font-size:.85rem;color:#64748b;margin-top:.2rem}
+  .msg{color:#475569;margin:.5rem 0}
+</style>
+</head>
+<body>
+<header>
+  <strong>📊 Estadísticas generales</strong>
+  <span><a href="index.html">➕ Registrar</a> &nbsp;·&nbsp; <a id="out">Salir</a></span>
+</header>
+<main>
+  <p class="msg" id="msg">Cargando…</p>
+  <div class="cards" id="cards"></div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script>
+  const sb = supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+  const card = (n, l) => `<div class="card"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+  document.getElementById('out').onclick = async () => { await sb.auth.signOut(); location.replace('login.html'); };
+
+  (async () => {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return location.replace('login.html');
+    const { data, error } = await sb.rpc('general_stats');
+    if (error) { document.getElementById('msg').textContent = 'Error: ' + error.message; return; }
+    document.getElementById('msg').textContent = '';
+    document.getElementById('cards').innerHTML =
+      card(data.total, 'Registros totales') +
+      card(data.today, 'Hoy') +
+      card(data.last7, 'Últimos 7 días') +
+      card(data.mine, 'Mis registros');
+  })();
+</script>
+</body>
+</html>
