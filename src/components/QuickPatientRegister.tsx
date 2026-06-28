@@ -164,12 +164,39 @@ export default function QuickPatientRegister({
   }, [formKey, carryOver]);
 
   useEffect(() => {
+    if (!formData.fechaNacimiento) return;
+
+    const birthDate = new Date(formData.fechaNacimiento);
+    const today = new Date();
+    if (isNaN(birthDate.getTime())) return;
+
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+
+    if (today.getDate() < birthDate.getDate()) months--;
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+    if (years < 0) {
+      years = 0;
+      months = 0;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      edadAnios: years,
+      edadMeses: months,
+    }));
+  }, [formData.fechaNacimiento]);
+
+  useEffect(() => {
     if (!pacienteTieneEdad(formData)) return;
     const calculated = grupoEtarioFromAge(formData.edadAnios);
     setFormData((prev) =>
       prev.grupoEtario === calculated ? prev : { ...prev, grupoEtario: calculated }
     );
-  }, [formData.edadAnios, formData.edadMeses]);
+  }, [formData.fechaNacimiento, formData.edadAnios, formData.edadMeses]);
 
   const filteredCenters = useMemo(() => {
     const q = centerFilter.trim().toLowerCase();
@@ -190,6 +217,9 @@ export default function QuickPatientRegister({
   );
 
   const clasificacionManual = !pacienteTieneEdad(formData);
+  const hasExactBirthDate = !!formData.fechaNacimiento;
+  const isChildAgeProfile =
+    formData.grupoEtario !== 'adulto' && formData.grupoEtario !== 'tercera_edad';
   const hasCarryOver = !!carryOver;
   const requiereRepresentante = pacienteRequiereRepresentante(formData);
 
@@ -410,32 +440,67 @@ export default function QuickPatientRegister({
         </div>
 
         <div>
-          <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-600">
-            Edad tentativa
+          <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+            Fecha de nacimiento{' '}
+            <span className="font-normal normal-case text-slate-400">(opcional)</span>
           </label>
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              type="number"
-              min={0}
-              value={formData.edadAnios || ''}
-              onChange={(e) =>
-                setFormData((p) => ({ ...p, edadAnios: parseFormNumber(e.target.value) }))
-              }
-              placeholder="Años"
-              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-            />
-            <input
-              type="number"
-              min={0}
-              max={11}
-              value={formData.edadMeses || ''}
-              onChange={(e) =>
-                setFormData((p) => ({ ...p, edadMeses: parseFormNumber(e.target.value) }))
-              }
-              placeholder="Meses"
-              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-            />
-          </div>
+          <input
+            type="date"
+            value={formData.fechaNacimiento}
+            onChange={(e) =>
+              setFormData((p) => ({ ...p, fechaNacimiento: e.target.value }))
+            }
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+            {hasExactBirthDate ? 'Edad calculada' : 'Edad tentativa'}
+          </label>
+          {hasExactBirthDate ? (
+            <div className={`grid gap-2 ${isChildAgeProfile ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm text-slate-700">
+                <span className="font-mono font-bold text-slate-800">{formData.edadAnios}</span>
+                <span className="text-xs text-slate-500">años</span>
+              </div>
+              {isChildAgeProfile && (
+                <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm text-slate-700">
+                  <span className="font-mono font-bold text-slate-800">{formData.edadMeses}</span>
+                  <span className="text-xs text-slate-500">meses</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                min={0}
+                value={formData.edadAnios || ''}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, edadAnios: parseFormNumber(e.target.value) }))
+                }
+                placeholder="Años"
+                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
+              />
+              <input
+                type="number"
+                min={0}
+                max={11}
+                value={formData.edadMeses || ''}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, edadMeses: parseFormNumber(e.target.value) }))
+                }
+                placeholder="Meses"
+                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
+              />
+            </div>
+          )}
+          <p className="mt-1 text-[10px] text-slate-400">
+            {hasExactBirthDate
+              ? 'Calculada automáticamente desde la fecha de nacimiento.'
+              : 'Estimación aproximada cuando no se conoce la fecha exacta.'}
+          </p>
         </div>
 
         {clasificacionManual && (
