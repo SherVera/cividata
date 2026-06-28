@@ -360,7 +360,7 @@ alter table public.patients add column if not exists medication_detail text;
 -- Foto opcional del paciente (ruta en Supabase Storage: bucket patient-photos).
 alter table public.patients add column if not exists photo_path text;
 
--- Clasificación etaria manual (niño, adulto, tercera edad). No se deriva automáticamente de birth_date.
+-- Clasificación etaria: manual sin edad; calculada cuando hay birth_date o edad tentativa.
 alter table public.patients add column if not exists age_group text not null default 'nino';
 
 -- Migración única: rellenar age_group en registros antiguos que aún no tenían valor explícito.
@@ -471,3 +471,27 @@ drop policy if exists "patient photos delete" on storage.objects;
 create policy "patient photos delete"
   on storage.objects for delete to authenticated
   using (bucket_id = 'patient-photos');
+
+-- Clasificación etaria: nullable sin edad; recalculada cuando hay fecha o edad tentativa.
+alter table public.patients alter column age_group drop not null;
+alter table public.patients alter column age_group drop default;
+
+update public.patients
+set age_group = null
+where birth_date is null
+  and coalesce(approx_age_years, 0) = 0
+  and coalesce(approx_age_months, 0) = 0;
+
+update public.patients
+set age_group = case
+  when birth_date is not null and date_part('year', age(birth_date::timestamp))::int < 18 then 'nino'
+  when birth_date is not null and date_part('year', age(birth_date::timestamp))::int < 60 then 'adulto'
+  when birth_date is not null then 'tercera_edad'
+  when coalesce(approx_age_years, 0) < 18 then 'nino'
+  when coalesce(approx_age_years, 0) < 60 then 'adulto'
+  when coalesce(approx_age_years, 0) > 0 then 'tercera_edad'
+  else age_group
+end
+where birth_date is not null
+   or coalesce(approx_age_years, 0) > 0
+   or coalesce(approx_age_months, 0) > 0;

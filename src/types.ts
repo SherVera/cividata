@@ -21,8 +21,8 @@ export interface Paciente {
   nacionalidad: string;
   /** Ruta en Supabase Storage (bucket patient-photos). Opcional. */
   fotoPath: string | null;
-  /** Clasificación etaria asignada manualmente (niño / adulto / tercera edad). */
-  grupoEtario: GrupoEtario;
+  /** Clasificación etaria: manual sin edad; calculada desde edad cuando hay fecha o tentativa. */
+  grupoEtario: GrupoEtario | null;
 
   // 2. Información de Vivienda
   direccion: string;
@@ -112,22 +112,23 @@ export type GrupoEtario = 'nino' | 'adulto' | 'tercera_edad';
 
 export const GRUPOS_ETARIOS: GrupoEtario[] = ['nino', 'adulto', 'tercera_edad'];
 
-export function grupoEtarioLabel(grupo: GrupoEtario): string {
+export function grupoEtarioLabel(grupo: GrupoEtario | null | undefined): string {
+  if (!grupo) return 'Sin clasificar';
   if (grupo === 'nino') return 'Niño/a';
   if (grupo === 'adulto') return 'Adulto';
   return 'Tercera edad';
 }
 
-/** Referencia de umbrales; la app no asigna clasificación automáticamente. */
+/** Umbrales: <18 niño/a, <60 adulto, 60+ tercera edad. */
 export function grupoEtarioFromAge(years: number): GrupoEtario {
   if (years < 18) return 'nino';
   if (years < 60) return 'adulto';
   return 'tercera_edad';
 }
 
-export function normalizeGrupoEtario(value: unknown): GrupoEtario {
-  if (value === 'adulto' || value === 'tercera_edad') return value;
-  return 'nino';
+export function normalizeGrupoEtario(value: unknown): GrupoEtario | null {
+  if (value === 'nino' || value === 'adulto' || value === 'tercera_edad') return value;
+  return null;
 }
 
 export function edadPacienteTexto(
@@ -144,6 +145,14 @@ export function edadPacienteTexto(
 
 export function pacienteTieneEdad(p: Pick<Paciente, 'fechaNacimiento' | 'edadAnios' | 'edadMeses'>): boolean {
   return !!p.fechaNacimiento || p.edadAnios > 0 || p.edadMeses > 0;
+}
+
+/** Clasificación efectiva: calculada con edad conocida; manual en caso contrario. */
+export function resolveGrupoEtario(
+  p: Pick<Paciente, 'fechaNacimiento' | 'edadAnios' | 'edadMeses' | 'grupoEtario'>
+): GrupoEtario | null {
+  if (pacienteTieneEdad(p)) return grupoEtarioFromAge(p.edadAnios);
+  return p.grupoEtario ?? null;
 }
 
 /** Datos personales opcionales del personal médico / admin (user_metadata.staff_profile). */

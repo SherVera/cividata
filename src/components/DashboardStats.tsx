@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Paciente, CensoStats, grupoEtarioLabel, pacienteTieneEdad } from '../types';
+import { Paciente, CensoStats, grupoEtarioLabel, pacienteTieneEdad, resolveGrupoEtario } from '../types';
 import type { AppRole } from '../lib/authRoles';
 import { 
   Users, ShieldCheck, GraduationCap, Heart, Smile, Warehouse,
@@ -150,11 +150,6 @@ export default function DashboardStats({
       else if (p.genero === 'Femenino') fem++;
       else otro++;
 
-      if (p.grupoEtario === 'adulto') adultos++;
-      else if (p.grupoEtario === 'tercera_edad') terceraEdad++;
-      else ninos++;
-
-      // Age group (fecha exacta o edad tentativa)
       if (pacienteTieneEdad(p)) {
         const age = p.edadAnios;
         if (age <= 2) bebes++;
@@ -164,6 +159,11 @@ export default function DashboardStats({
       } else {
         sinEdad++;
       }
+
+      const grupo = resolveGrupoEtario(p);
+      if (grupo === 'adulto') adultos++;
+      else if (grupo === 'tercera_edad') terceraEdad++;
+      else if (grupo === 'nino') ninos++;
     });
 
     return {
@@ -322,7 +322,7 @@ export default function DashboardStats({
           <div>
             <h3 className="text-sm font-bold text-slate-800">Pacientes por edad o clasificación</h3>
             <p className="text-xs text-slate-500">
-              Cantidad registrada por rangos de edad (fecha o tentativa) o por clasificación etaria asignada manualmente.
+              Cantidad por rangos de edad (fecha o tentativa) o por clasificación etaria (manual sin edad; automática con edad).
             </p>
           </div>
           <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
@@ -410,7 +410,7 @@ export default function DashboardStats({
               })}
             </div>
             <p className="text-xs text-slate-500">
-              Clasificación asignada manualmente en cada ficha (niño/a, adulto, tercera edad).
+              Clasificación manual sin edad conocida; calculada automáticamente cuando hay fecha o edad tentativa.
             </p>
           </>
         )}
@@ -537,7 +537,7 @@ export default function DashboardStats({
             })}
           </div>
           <div className="text-[9px] text-slate-400 text-center font-medium">
-            Clasificación manual en ficha
+            Manual sin edad · automática con edad
           </div>
         </div>
 

@@ -8,6 +8,8 @@ import { Paciente } from '../types';
 import {
   GRUPOS_ETARIOS,
   grupoEtarioLabel,
+  grupoEtarioFromAge,
+  pacienteTieneEdad,
 } from '../types';
 import { 
   User, MapPin, ShieldAlert, Heart, GraduationCap, 
@@ -47,7 +49,7 @@ const emptyPatient: Omit<Paciente, 'id' | 'fechaRegistro' | 'notasClinicas'> = {
   documentoIdentidad: "",
   nacionalidad: "Venezolana",
   fotoPath: null,
-  grupoEtario: "nino",
+  grupoEtario: null,
   
   direccion: "",
   ciudadMunicipio: "",
@@ -95,7 +97,9 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       return {
         ...initialPatient,
         fotoPath: initialPatient.fotoPath ?? null,
-        grupoEtario: initialPatient.grupoEtario ?? 'nino',
+        grupoEtario: pacienteTieneEdad(initialPatient)
+          ? grupoEtarioFromAge(initialPatient.edadAnios)
+          : (initialPatient.grupoEtario ?? null),
         puntoRegistroTipo: initialPatient.puntoRegistroTipo ?? 'centro',
         registroLat: initialPatient.registroLat ?? DEFAULT_MAP_CENTER.lat,
         registroLng: initialPatient.registroLng ?? DEFAULT_MAP_CENTER.lng,
@@ -397,9 +401,9 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     }
   };
 
-  // Secciones pediátricas: sin fecha de nacimiento se asume contexto infantil;
-  // con fecha, solo menores de 18 años.
-  const isPediatricProfile = formData.grupoEtario === 'nino';
+  // Secciones pediátricas: sin clasificación se asume contexto infantil; adulto/tercera edad ocultan campos pediátricos.
+  const isPediatricProfile = formData.grupoEtario !== 'adulto' && formData.grupoEtario !== 'tercera_edad';
+  const clasificacionManual = !pacienteTieneEdad(formData);
 
   // Autorrellena los datos del representante al coincidir con uno existente.
   const applyGuardian = (guardian: GuardianOption) => {
@@ -424,7 +428,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     if (match) applyGuardian(match);
   };
 
-  // Calcular edad solo cuando hay fecha de nacimiento exacta (la clasificación es manual).
+  // Calcular edad desde fecha de nacimiento exacta.
   useEffect(() => {
     if (!formData.fechaNacimiento) return;
 
@@ -451,6 +455,15 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       edadMeses: months,
     }));
   }, [formData.fechaNacimiento]);
+
+  // Con edad conocida: clasificación automática; sin edad: asignación manual en el formulario.
+  useEffect(() => {
+    if (!pacienteTieneEdad(formData)) return;
+    const calculated = grupoEtarioFromAge(formData.edadAnios);
+    setFormData((prev) =>
+      prev.grupoEtario === calculated ? prev : { ...prev, grupoEtario: calculated }
+    );
+  }, [formData.fechaNacimiento, formData.edadAnios, formData.edadMeses]);
 
   const hasExactBirthDate = !!formData.fechaNacimiento;
 
@@ -490,6 +503,9 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
         formData.documentoIdentidad.trim();
       if (!hasIdentity) {
         errors.nombres = 'Indique al menos nombre, apellido o documento del paciente';
+      }
+      if (!pacienteTieneEdad(formData) && !formData.grupoEtario) {
+        errors.grupoEtario = 'Seleccione la clasificación etaria manualmente';
       }
     }
 
@@ -590,7 +606,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             {initialPatient ? "Modificar Ficha de Registro" : "Nueva Ficha de Registro"}
           </h2>
           <p className="text-xs text-slate-300 mt-1 max-w-xl">
-            Complete los datos que tenga disponibles. Fecha, edad tentativa y clasificación etaria son opcionales; la clasificación siempre se asigna manualmente.
+            Complete los datos que tenga disponibles. Sin fecha ni edad tentativa, asigne la clasificación etaria manualmente.
           </p>
         </div>
         <button
@@ -811,26 +827,39 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
               <div className="md:col-span-2">
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">
-                  Clasificación etaria <span className="font-normal normal-case text-slate-400">(manual)</span>
+                  Clasificación etaria{' '}
+                  <span className="font-normal normal-case text-slate-400">
+                    ({clasificacionManual ? 'manual' : 'automática'})
+                  </span>
                 </label>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   {GRUPOS_ETARIOS.map((grupo) => (
                     <button
                       key={grupo}
                       type="button"
+                      disabled={!clasificacionManual}
                       onClick={() => setFormData((prev) => ({ ...prev, grupoEtario: grupo }))}
                       className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-all ${
-                        formData.grupoEtario === grupo
-                          ? 'border-teal-600 bg-teal-50 text-teal-700 ring-2 ring-teal-500/10'
-                          : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                        !clasificacionManual
+                          ? formData.grupoEtario === grupo
+                            ? 'border-teal-300 bg-teal-50/60 text-teal-600 cursor-default'
+                            : 'border-slate-100 bg-slate-50 text-slate-300 cursor-not-allowed'
+                          : formData.grupoEtario === grupo
+                            ? 'border-teal-600 bg-teal-50 text-teal-700 ring-2 ring-teal-500/10'
+                            : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
                       }`}
                     >
                       {grupoEtarioLabel(grupo)}
                     </button>
                   ))}
                 </div>
+                {formErrors.grupoEtario && (
+                  <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.grupoEtario}</p>
+                )}
                 <p className="text-[10px] text-slate-400 mt-1.5">
-                  Asigne niño/a, adulto o tercera edad según su criterio. No se calcula sola desde la fecha ni la edad tentativa.
+                  {clasificacionManual
+                    ? 'Sin fecha ni edad tentativa: seleccione niño/a, adulto o tercera edad según su criterio.'
+                    : 'Calculada desde la edad (<18 niño/a, <60 adulto, 60+ tercera edad). No se puede cambiar manualmente.'}
                 </p>
               </div>
 

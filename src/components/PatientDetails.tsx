@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Paciente, NotaClinica, puntoRegistroEtiqueta, grupoEtarioLabel, edadPacienteTexto } from '../types';
+import { Paciente, NotaClinica, puntoRegistroEtiqueta, grupoEtarioLabel, edadPacienteTexto, resolveGrupoEtario } from '../types';
 import { 
   User, MapPin, ShieldAlert, Heart, GraduationCap, 
   ArrowLeft, Edit3, Printer, Plus, Calendar, Activity, 
@@ -219,7 +219,9 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                 </div>
                 <div>
                   <span className="text-blue-300 block text-[9px] uppercase tracking-wider">Clasificación</span>
-                  <span className="font-semibold text-white">{grupoEtarioLabel(patient.grupoEtario)}</span>
+                  <span className="font-semibold text-white">
+                    {grupoEtarioLabel(resolveGrupoEtario(patient))}
+                  </span>
                 </div>
                 <div>
                   <span className="text-blue-300 block text-[9px] uppercase tracking-wider">Nacionalidad</span>
@@ -371,7 +373,9 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                   </div>
                   <div>
                     <span className="text-slate-400 block mb-0.5">Clasificación etaria</span>
-                    <span className="font-semibold text-slate-700">{grupoEtarioLabel(patient.grupoEtario)}</span>
+                    <span className="font-semibold text-slate-700">
+                      {grupoEtarioLabel(resolveGrupoEtario(patient))}
+                    </span>
                   </div>
                   <div>
                     <span className="text-slate-400 block mb-0.5">Nacionalidad</span>

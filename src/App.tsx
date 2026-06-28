@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Session } from '@supabase/supabase-js';
-import { Paciente, puntoRegistroEtiqueta, grupoEtarioLabel, normalizeGrupoEtario, edadPacienteTexto, pacienteTieneEdad } from './types';
+import { Paciente, puntoRegistroEtiqueta, grupoEtarioLabel, normalizeGrupoEtario, edadPacienteTexto, pacienteTieneEdad, resolveGrupoEtario, grupoEtarioFromAge } from './types';
 import AuthScreen from './components/AuthScreen';
 import PatientForm from './components/PatientForm';
 import PatientDetails from './components/PatientDetails';
@@ -317,7 +317,9 @@ export default function App() {
         if (Array.isArray(parsed) && parsed.length > 0 && 'nombres' in parsed[0]) {
           await bulkUpsertPatients((parsed as Paciente[]).map((p) => ({
             ...p,
-            grupoEtario: normalizeGrupoEtario(p.grupoEtario),
+            grupoEtario: pacienteTieneEdad(p)
+              ? grupoEtarioFromAge(p.edadAnios)
+              : normalizeGrupoEtario(p.grupoEtario),
           })));
           await loadPatients();
           showNotification('success', `Importación completada: ${parsed.length} pacientes sincronizados.`);
@@ -377,7 +379,7 @@ export default function App() {
         p.centroAcopioId === filterCentro;
 
       const matchGrupo =
-        filterGrupoEtario === 'All' || p.grupoEtario === filterGrupoEtario;
+        filterGrupoEtario === 'All' || resolveGrupoEtario(p) === filterGrupoEtario;
 
       return matchQuery && matchGender && matchVacuna && matchEscuela && matchAge && matchCentro && matchGrupo;
     }).sort((a, b) => {
