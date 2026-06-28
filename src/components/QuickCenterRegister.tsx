@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Check, Loader2, MapPin, Search, X } from 'lucide-react';
+import { Check, Loader2, Search, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { CollectionCenter, saveCollectionCenter } from '../lib/collectionCentersApi';
 import { GeocodeResult, searchPlaces } from '../lib/geocodeApi';
 import { DEFAULT_MAP_CENTER } from '../lib/geo';
-import GeoMapPicker, { requestDeviceLocation } from './GeoMapPicker';
+import GeoMapPicker from './GeoMapPicker';
 
 interface QuickCenterRegisterProps {
   onSaved: (center: CollectionCenter, created: boolean) => void;
@@ -19,7 +19,6 @@ export default function QuickCenterRegister({ onSaved, onCancel }: QuickCenterRe
   const [locationQuery, setLocationQuery] = useState('');
   const [geocodeResults, setGeocodeResults] = useState<GeocodeResult[]>([]);
   const [searchingPlace, setSearchingPlace] = useState(false);
-  const [locating, setLocating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [error, setError] = useState('');
@@ -159,27 +158,6 @@ export default function QuickCenterRegister({ onSaved, onCancel }: QuickCenterRe
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={locating}
-              onClick={async () => {
-                setLocating(true);
-                try {
-                  const coords = await requestDeviceLocation();
-                  setLat(coords.lat);
-                  setLng(coords.lng);
-                  setLocationConfirmed(false);
-                } catch {
-                  setError('No se pudo usar la ubicación del dispositivo.');
-                } finally {
-                  setLocating(false);
-                }
-              }}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-bold text-teal-700"
-            >
-              {locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MapPin className="h-3.5 w-3.5" />}
-              Mi ubicación
-            </button>
             <span className="font-mono text-[10px] text-slate-400">
               {lat.toFixed(3)}, {lng.toFixed(3)} (aprox.)
             </span>
@@ -189,6 +167,8 @@ export default function QuickCenterRegister({ onSaved, onCancel }: QuickCenterRe
             lat={lat}
             lng={lng}
             fitToCenters={false}
+            showLocateButton
+            onLocateError={(message) => setError(message)}
             onChange={(coords) => {
               setLat(coords.lat);
               setLng(coords.lng);

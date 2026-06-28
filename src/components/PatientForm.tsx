@@ -15,7 +15,8 @@ import { parseMultiValue } from '../lib/multiValue';
 import CatalogMultiPicker from './CatalogMultiPicker';
 import { CollectionCenter, listCollectionCenters } from '../lib/collectionCentersApi';
 import { DEFAULT_MAP_CENTER, findNearest, formatDistance, GeoNamedPoint } from '../lib/geo';
-import GeoMapPicker, { requestDeviceLocation } from './GeoMapPicker';
+import GeoMapPicker from './GeoMapPicker';
+import { requestDeviceLocation } from '../lib/geo';
 import QuickCenterRegister from './QuickCenterRegister';
 import { getRecentCenterIds, recordRecentCenter } from '../lib/recentCenters';
 
@@ -826,6 +827,8 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                     lng={formData.registroLng}
                     centers={centersForMap}
                     fitToCenters={!!formData.centroAcopioId}
+                    showLocateButton
+                    onLocateError={(message) => setGeoHint(message)}
                     onChange={handleRegistrationCoords}
                     height="240px"
                   />

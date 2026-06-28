@@ -6,16 +6,20 @@ export type BottomNavKey = 'listado' | 'create' | 'estadisticas' | 'admin';
 interface BottomNavProps {
   active: BottomNavKey;
   onSelect: (key: BottomNavKey) => void;
+  showAdmin?: boolean;
 }
 
-const items: { key: BottomNavKey; label: string; icon: typeof Plus }[] = [
+const baseItems: { key: BottomNavKey; label: string; icon: typeof Plus }[] = [
   { key: 'listado', label: 'Listado', icon: ClipboardList },
-  { key: 'estadisticas', label: 'Stats', icon: BarChart3 },
+  { key: 'estadisticas', label: 'Inicio', icon: BarChart3 },
   { key: 'create', label: 'Registrar', icon: Plus },
-  { key: 'admin', label: 'Admin', icon: ShieldCheck },
 ];
 
-export default function BottomNav({ active, onSelect }: BottomNavProps) {
+const adminItem = { key: 'admin' as const, label: 'Admin', icon: ShieldCheck };
+
+export default function BottomNav({ active, onSelect, showAdmin = false }: BottomNavProps) {
+  const items = showAdmin ? [...baseItems, adminItem] : baseItems;
+
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 md:hidden print:hidden">
       <div className="mx-auto max-w-md px-3 pb-safe">

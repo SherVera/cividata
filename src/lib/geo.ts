@@ -50,3 +50,48 @@ export function findNearest<T extends GeoPoint>(
   }
   return best;
 }
+
+export interface DeviceLocationOptions {
+  /** GPS preciso al pulsar un botón; false para captura silenciosa al abrir formularios. */
+  highAccuracy?: boolean;
+  timeoutMs?: number;
+  maximumAgeMs?: number;
+}
+
+export function requestDeviceLocation(
+  options: DeviceLocationOptions = {}
+): Promise<{ lat: number; lng: number }> {
+  const { highAccuracy = false, timeoutMs = highAccuracy ? 15000 : 12000, maximumAgeMs = highAccuracy ? 0 : 60000 } =
+    options;
+
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') {
+      reject(new Error('Geolocalización no disponible.'));
+      return;
+    }
+    if (!window.isSecureContext) {
+      reject(
+        new Error(
+          'La ubicación GPS requiere HTTPS. Abra la app desde la URL segura (https://…) o en localhost.'
+        )
+      );
+      return;
+    }
+    if (!navigator.geolocation) {
+      reject(new Error('Este dispositivo no soporta geolocalización.'));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve(roundGeo(pos.coords.latitude, pos.coords.longitude)),
+      (err) => {
+        const byCode: Record<number, string> = {
+          1: 'Permiso de ubicación denegado. Actívelo en ajustes del navegador o del sistema.',
+          2: 'Ubicación no disponible en este dispositivo.',
+          3: 'Tiempo agotado al obtener la ubicación. Inténtelo de nuevo al aire libre.',
+        };
+        reject(new Error(byCode[err.code] || err.message || 'No se pudo obtener la ubicación.'));
+      },
+      { enableHighAccuracy: highAccuracy, timeout: timeoutMs, maximumAge: maximumAgeMs }
+    );
+  });
+}

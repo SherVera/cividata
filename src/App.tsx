@@ -22,12 +22,16 @@ import BottomNav, { BottomNavKey } from './components/BottomNav';
 import { supabase } from './lib/supabaseClient';
 import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
 import { listCollectionCenters } from './lib/collectionCentersApi';
+import { defaultHomeTab, isAppAdmin, resolveAppRole } from './lib/authRoles';
 
 export default function App() {
   // Authentication via Supabase
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState<boolean>(false);
   const isAuthenticated = !!session;
+  const userRole = resolveAppRole(session?.user);
+  const isAppAdministrator = isAppAdmin(userRole);
+  const [homeTabInitialized, setHomeTabInitialized] = useState(false);
 
   // Patient database state (source of truth: Supabase)
   const [patients, setPatients] = useState<Paciente[]>([]);
@@ -48,6 +52,7 @@ export default function App() {
   const [filterAgeRange, setFilterAgeRange] = useState<string>('All');
   const [filterCentro, setFilterCentro] = useState<string>('All');
   const [collectionCenters, setCollectionCenters] = useState<{ id: string; name: string }[]>([]);
+  const [totalCentrosRegistrados, setTotalCentrosRegistrados] = useState(0);
   const [sortBy, setSortBy] = useState<string>('recent'); // 'recent' | 'alphabetical' | 'age-asc' | 'age-desc'
   const [showFiltersMobile, setShowFiltersMobile] = useState<boolean>(false);
 
@@ -104,16 +109,50 @@ export default function App() {
     }
   };
 
+  // Personal médico: estadísticas como pantalla principal tras login
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setHomeTabInitialized(false);
+      return;
+    }
+    if (!homeTabInitialized) {
+      setActiveTab(defaultHomeTab(userRole));
+      setCurrentView('list');
+      setHomeTabInitialized(true);
+    }
+  }, [isAuthenticated, homeTabInitialized, userRole]);
+
+  // Sin permisos admin: bloquear vistas de administración
+  useEffect(() => {
+    if (!isAuthenticated || isAppAdministrator) return;
+    if (currentView === 'admin' || currentView === 'centros') {
+      setCurrentView('list');
+      setActiveTab('estadisticas');
+    }
+  }, [isAuthenticated, isAppAdministrator, currentView]);
+
+  const refreshCollectionCenters = async () => {
+    try {
+      const centers = await listCollectionCenters(false);
+      setCollectionCenters(
+        centers.filter((c) => c.active).map((c) => ({ id: c.id, name: c.name }))
+      );
+      setTotalCentrosRegistrados(centers.length);
+    } catch {
+      setCollectionCenters([]);
+      setTotalCentrosRegistrados(0);
+    }
+  };
+
   // Reload patients whenever the user becomes authenticated
   useEffect(() => {
     if (isAuthenticated) {
       loadPatients();
-      listCollectionCenters(true)
-        .then((centers) => setCollectionCenters(centers.map((c) => ({ id: c.id, name: c.name }))))
-        .catch(() => setCollectionCenters([]));
+      refreshCollectionCenters();
     } else {
       setPatients([]);
       setCollectionCenters([]);
+      setTotalCentrosRegistrados(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
@@ -301,6 +340,7 @@ export default function App() {
           : 'listado';
 
   const handleBottomNav = (key: BottomNavKey) => {
+    if (key === 'admin' && !isAppAdministrator) return;
     if (key === 'create') {
       setCurrentView('create');
     } else if (key === 'admin') {
@@ -362,7 +402,10 @@ export default function App() {
           {/* Logo and App Title */}
           <div className="flex items-center gap-3">
             <div 
-              onClick={() => { setCurrentView('list'); setActiveTab('listado'); }} 
+              onClick={() => {
+                setCurrentView('list');
+                setActiveTab(defaultHomeTab(userRole));
+              }}
               className="p-2 bg-blue-600 text-white rounded-xl shadow-sm cursor-pointer active:scale-95 transition-transform"
             >
               <HeartPulse className="w-5 h-5" />
@@ -380,31 +423,35 @@ export default function App() {
 
           {/* Quick Actions Header */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentView('centros')}
-              title="Centros de acopio"
-              className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-                currentView === 'centros'
-                  ? 'bg-teal-50 text-teal-700'
-                  : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
-              }`}
-            >
-              <Warehouse className="w-4 h-4" />
-              <span className="text-xs font-semibold hidden md:inline">Centros</span>
-            </button>
+            {isAppAdministrator && (
+              <>
+                <button
+                  onClick={() => setCurrentView('centros')}
+                  title="Centros de acopio"
+                  className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                    currentView === 'centros'
+                      ? 'bg-teal-50 text-teal-700'
+                      : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+                  }`}
+                >
+                  <Warehouse className="w-4 h-4" />
+                  <span className="text-xs font-semibold hidden md:inline">Centros</span>
+                </button>
 
-            <button
-              onClick={() => setCurrentView('admin')}
-              title="Panel de Administración"
-              className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-                currentView === 'admin'
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4" />
-              <span className="text-xs font-semibold hidden md:inline">Admin</span>
-            </button>
+                <button
+                  onClick={() => setCurrentView('admin')}
+                  title="Panel de Administración"
+                  className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                    currentView === 'admin'
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span className="text-xs font-semibold hidden md:inline">Admin</span>
+                </button>
+              </>
+            )}
 
             <button
               onClick={() => setShowSettingsModal(true)}
@@ -472,50 +519,79 @@ export default function App() {
               {/* View Toggle Bar (Listado vs Estadísticas) */}
               <div className="flex items-center justify-between border-b border-slate-200 pb-1.5 gap-4">
                 <div className="flex bg-slate-100 p-1 rounded-lg">
-                  <button
-                    onClick={() => setActiveTab('listado')}
-                    className={`px-4 py-2 rounded-md font-semibold text-xs md:text-sm transition-all cursor-pointer ${
-                      activeTab === 'listado' 
-                        ? 'bg-white text-slate-900 shadow-sm' 
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    Listado de Pacientes ({filteredPatients.length})
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('estadisticas')}
-                    className={`px-4 py-2 rounded-md font-semibold text-xs md:text-sm transition-all cursor-pointer ${
-                      activeTab === 'estadisticas' 
-                        ? 'bg-white text-slate-900 shadow-sm' 
-                        : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                  >
-                    Tablero de Estadísticas
-                  </button>
+                  {isAppAdministrator ? (
+                    <>
+                      <button
+                        onClick={() => setActiveTab('listado')}
+                        className={`px-4 py-2 rounded-md font-semibold text-xs md:text-sm transition-all cursor-pointer ${
+                          activeTab === 'listado'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        Listado de Pacientes ({filteredPatients.length})
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('estadisticas')}
+                        className={`px-4 py-2 rounded-md font-semibold text-xs md:text-sm transition-all cursor-pointer ${
+                          activeTab === 'estadisticas'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        Tablero de Estadísticas
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setActiveTab('estadisticas')}
+                        className={`px-4 py-2 rounded-md font-semibold text-xs md:text-sm transition-all cursor-pointer ${
+                          activeTab === 'estadisticas'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        Inicio / Estadísticas
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('listado')}
+                        className={`px-4 py-2 rounded-md font-semibold text-xs md:text-sm transition-all cursor-pointer ${
+                          activeTab === 'listado'
+                            ? 'bg-white text-slate-900 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        Mis registros ({filteredPatients.length})
+                      </button>
+                    </>
+                  )}
                 </div>
 
-                {/* Database Backup Actions */}
-                <div className="hidden sm:flex items-center gap-2 text-xs">
-                  <button
-                    onClick={handleExportDatabase}
-                    className="flex items-center gap-1.5 text-slate-500 hover:text-blue-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" /> Respaldar
-                  </button>
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-1.5 text-slate-500 hover:text-blue-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
-                  >
-                    <Upload className="w-3.5 h-3.5" /> Restaurar
-                  </button>
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleImportDatabase} 
-                    accept=".json" 
-                    className="hidden" 
-                  />
-                </div>
+                {/* Database Backup Actions (solo admin) */}
+                {isAppAdministrator && (
+                  <div className="hidden sm:flex items-center gap-2 text-xs">
+                    <button
+                      onClick={handleExportDatabase}
+                      className="flex items-center gap-1.5 text-slate-500 hover:text-blue-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Respaldar
+                    </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-1.5 text-slate-500 hover:text-blue-700 font-semibold px-2.5 py-1.5 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
+                    >
+                      <Upload className="w-3.5 h-3.5" /> Restaurar
+                    </button>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleImportDatabase} 
+                      accept=".json" 
+                      className="hidden" 
+                    />
+                  </div>
+                )}
               </div>
 
               {/* LISTADO DE PACIENTES TAB */}
@@ -662,24 +738,26 @@ export default function App() {
 
                   </div>
 
-                  {/* Backup Options specifically for Mobile (hidden on desktop) */}
-                  <div className="flex sm:hidden justify-between items-center bg-white p-3 rounded-xl border border-slate-200 text-xs">
-                    <span className="text-slate-400 font-semibold uppercase text-[10px]">Respaldos</span>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={handleExportDatabase} 
-                        className="text-blue-600 font-bold bg-blue-50 px-2.5 py-1 rounded-lg"
-                      >
-                        Exportar
-                      </button>
-                      <button 
-                        onClick={() => fileInputRef.current?.click()} 
-                        className="text-blue-600 font-bold bg-blue-50 px-2.5 py-1 rounded-lg"
-                      >
-                        Importar
-                      </button>
+                  {/* Backup Options specifically for Mobile (solo admin) */}
+                  {isAppAdministrator && (
+                    <div className="flex sm:hidden justify-between items-center bg-white p-3 rounded-xl border border-slate-200 text-xs">
+                      <span className="text-slate-400 font-semibold uppercase text-[10px]">Respaldos</span>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={handleExportDatabase} 
+                          className="text-blue-600 font-bold bg-blue-50 px-2.5 py-1 rounded-lg"
+                        >
+                          Exportar
+                        </button>
+                        <button 
+                          onClick={() => fileInputRef.current?.click()} 
+                          className="text-blue-600 font-bold bg-blue-50 px-2.5 py-1 rounded-lg"
+                        >
+                          Importar
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Patients List Output (Cards for mobile, sleek grid/table) */}
                   {patientsLoading ? (
@@ -748,12 +826,22 @@ export default function App() {
                             </span>
                             
                             <div className="flex items-center gap-1.5">
+                              {isAppAdministrator && (
+                                <button
+                                  onClick={() => { setShowDeleteConfirm(p); }}
+                                  title="Eliminar Registro"
+                                  className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
                               <button
-                                onClick={() => { setShowDeleteConfirm(p); }}
-                                title="Eliminar Registro"
-                                className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                onClick={() => { setSelectedPatient(p); setCurrentView('edit'); }}
+                                title="Editar ficha"
+                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Edit className="w-3.5 h-3.5" />
                               </button>
                               
                               <button
@@ -799,7 +887,7 @@ export default function App() {
 
               {/* TABLERO DE ESTADÍSTICAS TAB */}
               {activeTab === 'estadisticas' && (
-                <DashboardStats patients={patients} />
+                <DashboardStats patients={patients} totalCentrosRegistrados={totalCentrosRegistrados} />
               )}
 
             </motion.div>
@@ -854,7 +942,7 @@ export default function App() {
           )}
 
           {/* 5. ADMIN PANEL VIEW */}
-          {currentView === 'admin' && (
+          {currentView === 'admin' && isAppAdministrator && (
             <motion.div
               key="admin-view"
               initial={{ opacity: 0, y: 10 }}
@@ -871,7 +959,7 @@ export default function App() {
           )}
 
           {/* 6. COLLECTION CENTERS VIEW */}
-          {currentView === 'centros' && (
+          {currentView === 'centros' && isAppAdministrator && (
             <motion.div
               key="centros-view"
               initial={{ opacity: 0, y: 10 }}
@@ -882,9 +970,7 @@ export default function App() {
                 onBack={() => {
                   setCurrentView('list');
                   setActiveTab('listado');
-                  listCollectionCenters(true)
-                    .then((centers) => setCollectionCenters(centers.map((c) => ({ id: c.id, name: c.name }))))
-                    .catch(() => setCollectionCenters([]));
+                  refreshCollectionCenters();
                 }}
               />
             </motion.div>
@@ -1018,7 +1104,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* APP-LIKE BOTTOM NAVIGATION (mobile) */}
-      <BottomNav active={bottomNavActive} onSelect={handleBottomNav} />
+      <BottomNav active={bottomNavActive} onSelect={handleBottomNav} showAdmin={isAppAdministrator} />
 
     </div>
   );

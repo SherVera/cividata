@@ -6,16 +6,16 @@
 import React from 'react';
 import { Paciente, CensoStats } from '../types';
 import { 
-  Users, ShieldCheck, GraduationCap, Calendar, 
-  TrendingUp, Heart, Award, ArrowUpRight, Smile 
+  Users, ShieldCheck, GraduationCap, Heart, Smile, Warehouse 
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface DashboardStatsProps {
   patients: Paciente[];
+  totalCentrosRegistrados: number;
 }
 
-export default function DashboardStats({ patients }: DashboardStatsProps) {
+export default function DashboardStats({ patients, totalCentrosRegistrados }: DashboardStatsProps) {
   
   // Calculate dynamic stats from patient list
   const computeStats = (list: Paciente[]): CensoStats => {
@@ -95,7 +95,7 @@ export default function DashboardStats({ patients }: DashboardStatsProps) {
     <div className="space-y-6">
       
       {/* Metrics Row (Large Bento Numbers) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         
         {/* Metric 1: Total Pacientes */}
         <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200 shadow-sm flex items-center justify-between">
@@ -152,6 +152,20 @@ export default function DashboardStats({ patients }: DashboardStatsProps) {
           </div>
           <div className="p-3 bg-rose-50 text-rose-600 rounded-lg">
             <Heart className="w-5 h-5 md:w-6 md:h-6" />
+          </div>
+        </div>
+
+        {/* Metric 5: Centros de acopio */}
+        <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider block">Centros</span>
+            <span className="text-2xl md:text-3xl font-bold font-mono text-slate-800 block">{totalCentrosRegistrados}</span>
+            <span className="text-[10px] text-teal-600 font-semibold">
+              Registrados en el sistema
+            </span>
+          </div>
+          <div className="p-3 bg-teal-50 text-teal-600 rounded-lg">
+            <Warehouse className="w-5 h-5 md:w-6 md:h-6" />
           </div>
         </div>
 

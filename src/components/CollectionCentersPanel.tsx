@@ -18,7 +18,7 @@ import {
 } from '../lib/collectionCentersApi';
 import { DEFAULT_MAP_CENTER, formatDistance, haversineMeters } from '../lib/geo';
 import { GeocodeResult, searchPlaces } from '../lib/geocodeApi';
-import GeoMapPicker, { requestDeviceLocation } from './GeoMapPicker';
+import GeoMapPicker from './GeoMapPicker';
 
 interface CollectionCentersPanelProps {
   onBack?: () => void;
@@ -44,7 +44,6 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
   const [centers, setCenters] = useState<CollectionCenter[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [locating, setLocating] = useState(false);
   const [search, setSearch] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -154,20 +153,6 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
   const handleMapCoordsChange = (coords: { lat: number; lng: number }) => {
     setForm((prev) => ({ ...prev, lat: coords.lat, lng: coords.lng }));
     setLocationConfirmed(false);
-  };
-
-  const handleUseLocation = async () => {
-    setLocating(true);
-    try {
-      const coords = await requestDeviceLocation();
-      setForm((prev) => ({ ...prev, lat: coords.lat, lng: coords.lng }));
-      setSearchedPlaceLabel('Ubicación actual del dispositivo');
-      setLocationConfirmed(false);
-    } catch (err: any) {
-      setNotice({ type: 'error', message: err?.message || 'No se pudo usar la ubicación del dispositivo.' });
-    } finally {
-      setLocating(false);
-    }
   };
 
   const handleSave = async (event: React.FormEvent) => {
@@ -461,15 +446,6 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleUseLocation}
-                  disabled={locating}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-xs font-bold text-teal-700 hover:bg-teal-100 disabled:opacity-50"
-                >
-                  {locating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MapPin className="h-3.5 w-3.5" />}
-                  Usar mi ubicación
-                </button>
                 <span className="font-mono text-[10px] text-slate-400">
                   {form.lat.toFixed(3)}, {form.lng.toFixed(3)} (aprox.)
                 </span>
@@ -480,6 +456,9 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
                 lng={form.lng}
                 centers={mapCenters.filter((c) => c.id !== editingId)}
                 fitToCenters={false}
+                showLocateButton
+                onLocateError={(message) => setNotice({ type: 'error', message })}
+                onLocate={() => setSearchedPlaceLabel('Ubicación actual del dispositivo')}
                 onChange={handleMapCoordsChange}
                 height="260px"
               />

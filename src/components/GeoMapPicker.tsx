@@ -1,7 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { DEFAULT_MAP_CENTER, GeoNamedPoint, roundGeo } from '../lib/geo';
+import { Loader2, LocateFixed } from 'lucide-react';
+import { DEFAULT_MAP_CENTER, GeoNamedPoint, requestDeviceLocation, roundGeo } from '../lib/geo';
+
+export { requestDeviceLocation } from '../lib/geo';
 
 export interface GeoMapPickerProps {
   lat: number | null;
@@ -13,6 +16,10 @@ export interface GeoMapPickerProps {
   className?: string;
   /** Pan/zoom map to show all centers (and marker when set). */
   fitToCenters?: boolean;
+  /** Botón flotante para centrar el mapa en la ubicación del dispositivo. */
+  showLocateButton?: boolean;
+  onLocateError?: (message: string) => void;
+  onLocate?: (coords: { lat: number; lng: number }) => void;
 }
 
 const PROXIMITY_RADIUS_M = 800;
@@ -26,16 +33,39 @@ export default function GeoMapPicker({
   readOnly = false,
   className = '',
   fitToCenters = false,
+  showLocateButton = false,
+  onLocateError,
+  onLocate,
 }: GeoMapPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markerRef = useRef<L.Marker | null>(null);
   const centersLayerRef = useRef<L.LayerGroup | null>(null);
   const onChangeRef = useRef(onChange);
+  const onLocateErrorRef = useRef(onLocateError);
+  const onLocateRef = useRef(onLocate);
+  const dragUpdateRef = useRef(false);
+  const [locating, setLocating] = useState(false);
 
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+
+  useEffect(() => {
+    onLocateErrorRef.current = onLocateError;
+  }, [onLocateError]);
+
+  useEffect(() => {
+    onLocateRef.current = onLocate;
+  }, [onLocate]);
+
+  const panToCoords = useCallback((nextLat: number, nextLng: number, zoom?: number) => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.invalidateSize();
+    const targetZoom = zoom ?? Math.max(map.getZoom(), 15);
+    map.flyTo([nextLat, nextLng], targetZoom, { duration: 0.6 });
+  }, []);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -56,7 +86,20 @@ export default function GeoMapPicker({
     centersLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
 
+    const resize = () => map.invalidateSize();
+    const t1 = window.setTimeout(resize, 120);
+    const t2 = window.setTimeout(resize, 400);
+
+    let resizeObserver: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(resize);
+      resizeObserver.observe(containerRef.current);
+    }
+
     return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      resizeObserver?.disconnect();
       map.remove();
       mapRef.current = null;
       markerRef.current = null;
@@ -97,6 +140,7 @@ export default function GeoMapPicker({
       if (map) {
         const bounds = L.latLngBounds(centers.map((c) => [c.lat, c.lng] as [number, number]));
         if (lat != null && lng != null) bounds.extend([lat, lng]);
+        map.invalidateSize();
         map.fitBounds(bounds, { padding: [28, 28], maxZoom: 15, animate: true });
       }
     }
@@ -129,34 +173,61 @@ export default function GeoMapPicker({
     marker.on('dragend', () => {
       const pos = marker.getLatLng();
       const rounded = roundGeo(pos.lat, pos.lng);
+      dragUpdateRef.current = true;
       onChangeRef.current?.(rounded);
     });
 
     markerRef.current = marker;
+
     if (!fitToCenters) {
-      map.setView([lat, lng], map.getZoom(), { animate: true });
+      if (dragUpdateRef.current) {
+        dragUpdateRef.current = false;
+      } else {
+        panToCoords(lat, lng);
+      }
     }
-  }, [lat, lng, readOnly, fitToCenters]);
+  }, [lat, lng, readOnly, fitToCenters, panToCoords]);
+
+  const handleLocate = async () => {
+    if (readOnly || locating) return;
+    setLocating(true);
+    try {
+      const coords = await requestDeviceLocation({ highAccuracy: true });
+      onChangeRef.current?.(coords);
+      onLocateRef.current?.(coords);
+      panToCoords(coords.lat, coords.lng, 16);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'No se pudo usar la ubicación del dispositivo.';
+      onLocateErrorRef.current?.(message);
+    } finally {
+      setLocating(false);
+    }
+  };
 
   return (
-    <div
-      ref={containerRef}
-      className={`geo-map-root relative z-0 overflow-hidden rounded-xl border border-slate-200 ${className}`}
-      style={{ height, width: '100%' }}
-    />
+    <div className={`relative ${className}`} style={{ height, width: '100%' }}>
+      <div
+        ref={containerRef}
+        className="geo-map-root relative z-0 h-full w-full overflow-hidden rounded-xl border border-slate-200"
+      />
+      {showLocateButton && !readOnly && (
+        <button
+          type="button"
+          onClick={handleLocate}
+          disabled={locating}
+          title="Usar mi ubicación"
+          aria-label="Usar mi ubicación"
+          className="absolute bottom-3 right-3 z-[500] inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-xs font-bold text-teal-700 shadow-lg backdrop-blur-sm transition-colors hover:bg-teal-50 disabled:opacity-60"
+        >
+          {locating ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <LocateFixed className="h-3.5 w-3.5" />
+          )}
+          Mi ubicación
+        </button>
+      )}
+    </div>
   );
-}
-
-export function requestDeviceLocation(): Promise<{ lat: number; lng: number }> {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('Este dispositivo no soporta geolocalización.'));
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve(roundGeo(pos.coords.latitude, pos.coords.longitude)),
-      (err) => reject(new Error(err.message || 'No se pudo obtener la ubicación.')),
-      { enableHighAccuracy: false, timeout: 12000, maximumAge: 60000 }
-    );
-  });
 }
