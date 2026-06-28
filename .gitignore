@@ -4,6 +4,7 @@ censo.db-*
 
 # Dependencias / artefactos
 node_modules/
+dist/
 .vercel/
 
 # Secretos

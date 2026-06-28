@@ -5,21 +5,31 @@ Instructions for Claude when working in this repository.
 ## Start Here
 
 - Read `AGENTS.md` first and follow its repository-wide guidance.
-- Inspect the project structure before choosing tools, commands, or implementation patterns.
-- When the repo is empty or missing scripts, avoid inventing a stack without user direction.
+- Treat `src/` as the source of truth for the active app.
+- The app is React + Vite + TypeScript and deploys to Vercel from `dist`.
 
 ## Development Style
 
-- Make the simplest change that satisfies the request.
-- Preserve existing conventions once they exist.
-- Prefer clear names, straightforward control flow, and minimal dependencies.
+- Preserve the original React/Tailwind visual style.
+- Keep UI text in Spanish.
+- Use the existing component structure before creating new abstractions.
+- Reuse `Paciente`, `NotaClinica`, and `CensoStats` from `src/types.ts`.
 - Add comments only when they explain non-obvious decisions.
+
+## Commands
+
+```bash
+npm run dev
+npm run lint
+npm run build
+```
 
 ## Safety
 
 - Never discard user edits unless explicitly asked.
 - Do not run destructive git commands without clear user approval.
 - Do not commit, push, or create pull requests unless requested.
+- Do not add real patient data, secrets, `.env` files, or clinical backups.
 
 ## Handoff
 

@@ -1,7 +1,7 @@
 // Vercel Serverless Function — gestión de usuarios (solo admin).
 // Usa la SERVICE_ROLE key (secreta, solo en el servidor) tras verificar
 // que quien llama tiene rol 'admin'. Nunca expongas esta clave al cliente.
-const { createClient } = require('@supabase/supabase-js');
+import { createClient } from '@supabase/supabase-js';
 
 const admin = createClient(
   process.env.SUPABASE_URL,
@@ -20,7 +20,7 @@ async function requireAdmin(req) {
 
 const rolNormalizado = (r) => (r === 'admin' ? 'admin' : 'registrador');
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   const me = await requireAdmin(req);
   if (!me) return res.status(401).json({ error: 'No autorizado' });
 
@@ -77,4 +77,4 @@ module.exports = async function handler(req, res) {
   }
 
   return res.status(405).json({ error: 'Método no permitido' });
-};
+}

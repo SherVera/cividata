@@ -4,26 +4,27 @@ Guidance for AI coding agents working in this repository.
 
 ## Project Context
 
-- Treat this file as the source of truth for agent behavior.
-- Read existing files before making assumptions about the stack, commands, or architecture.
-- Keep changes small, direct, and aligned with the patterns already present in the repo.
+- This is a React + Vite + TypeScript app for a pediatric census and clinical history system.
+- The primary UI lives in `src/`; preserve the original React/Tailwind look and behavior.
+- Vercel builds with `npm run build` and publishes `dist`.
+- Older static files may exist under `web/`, but they are not the deployed frontend.
 
 ## Working Rules
 
+- Keep visible copy in Spanish.
+- Preserve patient data integrity and local persistence behavior.
+- Reuse shared models from `src/types.ts` instead of duplicating patient interfaces.
+- Prefer existing dependencies and patterns: React hooks, Tailwind classes, `lucide-react`, and `motion/react`.
 - Do not overwrite user changes or revert unrelated work.
-- Prefer editing existing files over introducing new abstractions.
-- Use standard library and existing dependencies before adding new packages.
-- Keep generated code readable, maintainable, and narrowly scoped to the request.
-- Avoid broad refactors unless the user explicitly asks for them.
+- Avoid broad refactors unless explicitly requested.
 
 ## Validation
 
-- Run the smallest relevant checks after changes when project commands are available.
-- If no test, lint, or build command exists yet, state that clearly in the final response.
-- Fix any errors introduced by your own changes before handing work back.
+- Run `npm run lint` after TypeScript/React changes.
+- Run `npm run build` after frontend, dependency, config, or deploy changes.
+- Fix errors introduced by your own changes before handing work back.
 
-## Communication
+## Safety
 
-- Be concise and explicit about what changed.
-- Mention any commands run and whether they passed or failed.
-- Call out assumptions, skipped validation, or follow-up work when relevant.
+- Do not add real patient data, backups, `.env` files, or secrets.
+- Be careful with storage keys such as `censo_pacientes_v1`, `censo_admin_password_v1`, and `censo_is_authenticated`.
