@@ -9,7 +9,7 @@ import { parseFormNumber, validatePatientSection1 } from '../lib/patientValidati
 import { APP_NAME } from '../brand';
 import { 
   User, MapPin, ShieldAlert, Heart, 
-  ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles, Warehouse, Plus, Stethoscope, Camera, X
+  ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles, Warehouse, Plus, Stethoscope, Camera, X, ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Catalogs, GuardianOption, fetchCatalogs } from '../lib/catalogsApi';
@@ -28,6 +28,12 @@ import {
   getPatientPhotoUrl,
   uploadPatientPhoto,
 } from '../lib/patientPhotosApi';
+import OptionalSection from './OptionalSection';
+import {
+  OPTIONAL_SECTION_DEFAULTS,
+  OptionalSectionKey,
+  optionalSectionsFromPatient,
+} from '../lib/optionalPatientSections';
 
 interface PatientFormProps {
   initialPatient?: Paciente | null;
@@ -35,7 +41,7 @@ interface PatientFormProps {
   onCancel: () => void;
 }
 
-const FORM_TAB_COUNT = 4;
+const FORM_TAB_COUNT = 3;
 
 const emptyPatient: Omit<Paciente, 'id' | 'fechaRegistro' | 'notasClinicas'> = {
   nombres: "",
@@ -125,6 +131,13 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
   const [photoRemoved, setPhotoRemoved] = useState(false);
   const [photoError, setPhotoError] = useState("");
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [optionalSections, setOptionalSections] = useState(() =>
+    initialPatient ? optionalSectionsFromPatient(initialPatient) : OPTIONAL_SECTION_DEFAULTS
+  );
+
+  const setSection = (key: OptionalSectionKey, enabled: boolean) => {
+    setOptionalSections((prev) => ({ ...prev, [key]: enabled }));
+  };
 
   // Catálogos reutilizables (sugerencias para no re-tipear datos repetidos).
   const [catalogs, setCatalogs] = useState<Catalogs>({
