@@ -383,7 +383,7 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
 
       {showForm && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
+          className="fixed inset-0 z-[1100] flex items-end justify-center bg-slate-950/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >

@@ -141,7 +141,7 @@ export default function GeoMapPicker({
   return (
     <div
       ref={containerRef}
-      className={`overflow-hidden rounded-xl border border-slate-200 ${className}`}
+      className={`geo-map-root relative z-0 overflow-hidden rounded-xl border border-slate-200 ${className}`}
       style={{ height, width: '100%' }}
     />
   );

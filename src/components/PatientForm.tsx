@@ -167,11 +167,32 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     [recentCenterIds, collectionCenters]
   );
 
-  const pickCenter = (centerId: string) => {
-    handleCenterSelect(centerId);
+  const applyCenter = (center: CollectionCenter, trackRecent = false) => {
+    setFormData((prev) => ({
+      ...prev,
+      centroAcopioId: center.id,
+      centroAcopioNombre: center.name,
+      registroLat: center.geo_lat,
+      registroLng: center.geo_lng,
+    }));
     setCenterFilter('');
-    recordRecentCenter(centerId);
-    setRecentCenterIds(getRecentCenterIds());
+    setGeoHint(`Punto de registro centrado en ${center.name}. Ajuste arrastrando el marcador si hace falta.`);
+    if (formErrors.centroAcopioId) {
+      setFormErrors((prev) => {
+        const copy = { ...prev };
+        delete copy.centroAcopioId;
+        return copy;
+      });
+    }
+    if (trackRecent) {
+      recordRecentCenter(center.id);
+      setRecentCenterIds(getRecentCenterIds());
+    }
+  };
+
+  const pickCenter = (centerId: string) => {
+    const center = collectionCenters.find((c) => c.id === centerId);
+    if (center) applyCenter(center, true);
   };
 
   const handleQuickCenterSaved = (center: CollectionCenter, created: boolean) => {
@@ -179,7 +200,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       if (prev.some((c) => c.id === center.id)) return prev;
       return [...prev, center].sort((a, b) => a.name.localeCompare(b.name));
     });
-    pickCenter(center.id);
+    applyCenter(center, true);
     setShowNewCenter(false);
     setCenterNotice(
       created
@@ -255,21 +276,16 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
   };
 
   const handleCenterSelect = (centerId: string) => {
-    const center = collectionCenters.find((c) => c.id === centerId);
-    setFormData((prev) => ({
-      ...prev,
-      centroAcopioId: centerId,
-      centroAcopioNombre: center?.name || '',
-      registroLat: center?.geo_lat ?? prev.registroLat,
-      registroLng: center?.geo_lng ?? prev.registroLng,
-    }));
-    if (formErrors.centroAcopioId) {
-      setFormErrors((prev) => {
-        const copy = { ...prev };
-        delete copy.centroAcopioId;
-        return copy;
-      });
+    if (!centerId) {
+      setFormData((prev) => ({
+        ...prev,
+        centroAcopioId: '',
+        centroAcopioNombre: '',
+      }));
+      return;
     }
+    const center = collectionCenters.find((c) => c.id === centerId);
+    if (center) applyCenter(center);
   };
 
   const handleRegistrationCoords = (coords: { lat: number; lng: number }) => {
@@ -801,14 +817,24 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
               </div>
               {geoHint && <p className="text-[11px] font-medium text-teal-700">{geoHint}</p>}
 
-              <GeoMapPicker
-                lat={formData.registroLat}
-                lng={formData.registroLng}
-                centers={centersForMap}
-                fitToCenters={centersForMap.length > 0}
-                onChange={handleRegistrationCoords}
-                height="240px"
-              />
+              {!showNewCenter ? (
+                <div
+                  key={`map-${formData.centroAcopioId || 'none'}-${formData.registroLat}-${formData.registroLng}`}
+                >
+                  <GeoMapPicker
+                    lat={formData.registroLat}
+                    lng={formData.registroLng}
+                    centers={centersForMap}
+                    fitToCenters={!!formData.centroAcopioId}
+                    onChange={handleRegistrationCoords}
+                    height="240px"
+                  />
+                </div>
+              ) : (
+                <div className="flex h-[240px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-100/80 px-4 text-center text-xs font-medium text-slate-400">
+                  Mapa del paciente pausado mientras registra el centro de acopio
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 pt-2 pb-2 border-b border-slate-100">
