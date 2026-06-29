@@ -23,6 +23,8 @@ import {
   uploadPatientPhoto,
 } from '../lib/patientPhotosApi';
 import QuickCenterRegister from './QuickCenterRegister';
+import SelectField from './SelectField';
+import { NIVEL_EDUCATIVO_OPTIONS, PARENTESCO_OPTIONS } from '../lib/selectOptions';
 import OptionalSection from './OptionalSection';
 import {
   OPTIONAL_SECTION_DEFAULTS,
@@ -774,21 +776,16 @@ export default function QuickPatientRegister({
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
                     Parentesco
                   </label>
-                  <select
+                  <SelectField
                     value={formData.parentesco}
-                    onChange={(e) =>
+                    onChange={(parentesco) =>
                       setFormData((p) => ({
                         ...p,
-                        parentesco: e.target.value as Paciente['parentesco'],
+                        parentesco: parentesco as Paciente['parentesco'],
                       }))
                     }
-                    className={`${inputClass} cursor-pointer`}
-                  >
-                    <option value="Madre">Madre</option>
-                    <option value="Padre">Padre</option>
-                    <option value="Abuelo/a">Abuelo/a</option>
-                    <option value="Tutor legal">Tutor legal</option>
-                  </select>
+                    options={PARENTESCO_OPTIONS}
+                  />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
@@ -950,22 +947,17 @@ export default function QuickPatientRegister({
                     <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
                       Nivel educativo
                     </label>
-                    <select
+                    <SelectField
                       value={formData.nivelEducativo}
-                      onChange={(e) =>
+                      onChange={(nivelEducativo) =>
                         setFormData((p) => ({
                           ...p,
-                          nivelEducativo: e.target.value as Paciente['nivelEducativo'],
+                          nivelEducativo: nivelEducativo as Paciente['nivelEducativo'],
                         }))
                       }
-                      className={`${inputClass} cursor-pointer`}
-                    >
-                      <option value="">Seleccione...</option>
-                      <option value="Maternal">Maternal</option>
-                      <option value="Preescolar / Inicial">Preescolar / Inicial</option>
-                      <option value="Primaria">Primaria</option>
-                      <option value="Secundaria">Secundaria</option>
-                    </select>
+                      options={NIVEL_EDUCATIVO_OPTIONS}
+                      placeholder="Seleccione..."
+                    />
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
