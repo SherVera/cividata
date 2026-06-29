@@ -52,7 +52,7 @@ const publicInfo = [
   },
   {
     title: 'Acceso con cuenta autorizada',
-    description: 'El registro de pacientes y las fichas clínicas se consultan solo después de iniciar sesión.',
+    description: 'Destinado a personal de salud. Debe solicitar una cuenta al administrador; no hay registro público.',
     icon: ShieldCheck,
   },
   {
@@ -237,7 +237,7 @@ export default function AuthScreen() {
                 Información útil para cuidar mejor, sin exponer datos sensibles.
               </h1>
               <p className="max-w-2xl text-sm md:text-base text-slate-500 leading-relaxed">
-                {APP_NAME} gestiona censo de pacientes e historia clínica para equipos de salud en campo. Esta pantalla pública solo explica el propósito del sistema; la información de pacientes permanece dentro del acceso privado.
+                {APP_NAME} gestiona censo de pacientes e historia clínica para personal de salud en campo. El uso del sistema requiere una cuenta aprobada por el administrador. Esta pantalla pública solo explica el propósito del sistema; la información de pacientes permanece dentro del acceso privado.
               </p>
             </div>
           </motion.div>
@@ -335,13 +335,13 @@ export default function AuthScreen() {
                   <MessageCircle className="w-4 h-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-sm font-bold text-slate-800">Consultas generales</h2>
+                  <h2 className="text-sm font-bold text-slate-800">Consultas y solicitud de acceso</h2>
                   <p className="mt-1 text-xs leading-relaxed text-slate-500">
                     {showContactEmailForm && hasWhatsAppContact
-                      ? 'Use este formulario para dudas sobre acceso o el sistema. Elija correo o WhatsApp. No envíe datos clínicos, contraseñas ni información de pacientes por estos canales.'
+                      ? 'Si es personal de salud y necesita una cuenta, solicítela al administrador por correo o WhatsApp. Indique su nombre, institución y rol. No envíe datos clínicos ni contraseñas por estos canales.'
                       : hasWhatsAppContact
-                        ? 'Use este formulario para dudas sobre acceso o el sistema por WhatsApp. No envíe datos clínicos, contraseñas ni información de pacientes por este canal.'
-                        : 'Use este formulario para dudas sobre acceso o el sistema. No envíe datos clínicos, contraseñas ni información de pacientes por este canal.'}
+                        ? 'Si es personal de salud y necesita una cuenta, solicítela al administrador por WhatsApp. Indique su nombre, institución y rol. No envíe datos clínicos ni contraseñas por este canal.'
+                        : 'Si es personal de salud y necesita una cuenta, solicítela al administrador por correo. Indique su nombre, institución y rol. No envíe datos clínicos ni contraseñas por este canal.'}
                   </p>
                 </div>
               </div>
@@ -377,7 +377,7 @@ export default function AuthScreen() {
                   <textarea
                     value={contactMessage}
                     onChange={(e) => setContactMessage(e.target.value)}
-                    placeholder="Ej. Necesito información para solicitar una cuenta..."
+                    placeholder="Ej. Solicito acceso como personal de salud (médico/enfermería) en [institución]..."
                     rows={3}
                     required
                     minLength={10}
@@ -443,8 +443,21 @@ export default function AuthScreen() {
               Acceso Seguro
             </h2>
             <p className="text-sm text-slate-500 mt-2 max-w-xs">
-              Ingrese sus credenciales para acceder a {APP_NAME}.
+              Solo personal de salud con cuenta aprobada por el administrador.
             </p>
+          </div>
+
+          <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50 p-4 text-left">
+            <div className="flex gap-3">
+              <Stethoscope className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-bold text-blue-900">¿Aún no tiene cuenta?</p>
+                <p className="mt-1 text-xs leading-relaxed text-blue-800/90">
+                  El acceso no es automático. Debe solicitar una cuenta al administrador del sistema e indicar que es personal de salud (médico, enfermería u otro rol autorizado).
+                  {hasContactForm ? ' Use el formulario de contacto en esta página.' : hasEmailContact ? ` Puede escribir a ${CONTACT_EMAIL}.` : ''}
+                </p>
+              </div>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
