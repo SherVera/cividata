@@ -1028,6 +1028,16 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
           </div>
         ) : (
           <div className="overflow-x-auto">
+            <div className="px-5 pt-4">
+              <ListPagination
+                page={usersPagination.page}
+                totalPages={usersPagination.totalPages}
+                totalItems={usersPagination.total}
+                startIndex={usersPagination.startIndex}
+                endIndex={usersPagination.endIndex}
+                onPageChange={setUsersPage}
+              />
+            </div>
             <table className="w-full min-w-[900px] text-left text-sm">
               <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-400">
                 <tr>
@@ -1138,14 +1148,18 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
             </table>
           </div>
         )}
-        <ListPagination
-          page={usersPagination.page}
-          totalPages={usersPagination.totalPages}
-          totalItems={usersPagination.total}
-          startIndex={usersPagination.startIndex}
-          endIndex={usersPagination.endIndex}
-          onPageChange={setUsersPage}
-        />
+        {!isLoading && (
+          <div className="px-5 pb-5">
+            <ListPagination
+              page={usersPagination.page}
+              totalPages={usersPagination.totalPages}
+              totalItems={usersPagination.total}
+              startIndex={usersPagination.startIndex}
+              endIndex={usersPagination.endIndex}
+              onPageChange={setUsersPage}
+            />
+          </div>
+        )}
       </div>
 
       <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -1211,14 +1225,16 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
               </tbody>
             </table>
           </div>
-          <ListPagination
-            page={auditPagination.page}
-            totalPages={auditPagination.totalPages}
-            totalItems={auditPagination.total}
-            startIndex={auditPagination.startIndex}
-            endIndex={auditPagination.endIndex}
-            onPageChange={setAuditPage}
-          />
+          <div className="px-5 pb-5">
+            <ListPagination
+              page={auditPagination.page}
+              totalPages={auditPagination.totalPages}
+              totalItems={auditPagination.total}
+              startIndex={auditPagination.startIndex}
+              endIndex={auditPagination.endIndex}
+              onPageChange={setAuditPage}
+            />
+          </div>
           </div>
         )}
       </div>

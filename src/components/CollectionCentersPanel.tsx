@@ -333,6 +333,14 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
           </div>
         ) : (
           <div className="space-y-4">
+          <ListPagination
+            page={centersPagination.page}
+            totalPages={centersPagination.totalPages}
+            totalItems={centersPagination.total}
+            startIndex={centersPagination.startIndex}
+            endIndex={centersPagination.endIndex}
+            onPageChange={setCentersPage}
+          />
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {centersPagination.pageItems.map((center) => (
               <motion.div

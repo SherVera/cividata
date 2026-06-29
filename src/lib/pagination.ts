@@ -1,4 +1,4 @@
-export const PATIENT_LIST_PAGE_SIZE = 12;
+export const PATIENT_LIST_PAGE_SIZE = 9;
 export const TABLE_LIST_PAGE_SIZE = 10;
 
 export type PaginationResult<T> = {
