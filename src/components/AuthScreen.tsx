@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ShieldCheck,
   Lock,
@@ -15,6 +15,10 @@ import {
   MessageCircle,
   Send,
   Mail,
+  Users,
+  CalendarDays,
+  CalendarRange,
+  MapPin,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
@@ -28,6 +32,17 @@ import {
   contactWhatsAppUrl,
 } from '../brand';
 import { sendContactEmail } from '../lib/contactApi';
+import { fetchLandingStats, type LandingStats } from '../lib/landingStatsApi';
+
+const numberFormatter = new Intl.NumberFormat('es');
+
+const usageStatDefs = [
+  { key: 'totalPatients' as const, label: 'Pacientes registrados', icon: Users },
+  { key: 'registeredToday' as const, label: 'Registros hoy', icon: CalendarDays },
+  { key: 'registeredLast7Days' as const, label: 'Últimos 7 días', icon: CalendarRange },
+  { key: 'clinicalNotes' as const, label: 'Notas clínicas', icon: Stethoscope },
+  { key: 'collectionCenters' as const, label: 'Centros de acopio', icon: MapPin },
+];
 
 const publicInfo = [
   {
@@ -41,8 +56,8 @@ const publicInfo = [
     icon: ShieldCheck,
   },
   {
-    title: 'Tablero interno protegido',
-    description: 'Las estadísticas pertenecen al área privada del sistema.',
+    title: 'Solo cifras agregadas',
+    description: 'En esta landing pueden verse totales de uso; nunca nombres, diagnósticos ni datos personales.',
     icon: BarChart3,
   },
 ];
@@ -72,6 +87,25 @@ export default function AuthScreen() {
   const [contactSending, setContactSending] = useState(false);
   const [contactFeedback, setContactFeedback] = useState('');
   const [contactError, setContactError] = useState('');
+  const [usageStats, setUsageStats] = useState<LandingStats | null>(null);
+  const [usageStatsLoading, setUsageStatsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      setUsageStatsLoading(true);
+      const stats = await fetchLandingStats();
+      if (!cancelled) {
+        setUsageStats(stats);
+        setUsageStatsLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const whatsAppHref = contactWhatsAppUrl();
   const hasEmailContact = Boolean(CONTACT_EMAIL);
@@ -208,6 +242,48 @@ export default function AuthScreen() {
             </div>
           </motion.div>
 
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08, duration: 0.35 }}
+            className="rounded-2xl border border-slate-200 bg-white/90 p-4 md:p-5 shadow-sm backdrop-blur-sm"
+          >
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-sm font-bold text-slate-800">Uso del sistema</h2>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                  Totales generales del censo. Sin datos identificables.
+                </p>
+              </div>
+              <div className="rounded-xl bg-indigo-50 p-2 text-indigo-600 shrink-0">
+                <BarChart3 className="w-4 h-4" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+              {usageStatDefs.map(({ key, label, icon: Icon }) => (
+                <div
+                  key={key}
+                  className="rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-3"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500 leading-tight">
+                      {label}
+                    </span>
+                    <Icon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </div>
+                  {usageStatsLoading ? (
+                    <div className="h-7 w-16 rounded-md bg-slate-200/80 animate-pulse" aria-hidden="true" />
+                  ) : (
+                    <span className="text-xl md:text-2xl font-bold font-mono text-slate-800 tabular-nums">
+                      {numberFormatter.format(usageStats?.[key] ?? 0)}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {publicInfo.map(({ title, description, icon: Icon }, index) => (
               <motion.div
@@ -247,7 +323,7 @@ export default function AuthScreen() {
             <div>
               <h2 className="text-sm font-bold">Uso responsable de la información</h2>
               <p className="mt-1 text-xs leading-relaxed">
-                Las estadísticas identificables, historias clínicas, teléfonos, direcciones, documentos y notas médicas no se publican en esta landing. Para revisar información operativa real, inicie sesión con una cuenta autorizada.
+                Esta landing puede mostrar totales de uso del sistema. Las historias clínicas, teléfonos, direcciones, documentos y notas con datos identificables no se publican aquí. Para revisar información operativa detallada, inicie sesión con una cuenta autorizada.
               </p>
             </div>
           </div>

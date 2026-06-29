@@ -134,14 +134,30 @@ create trigger trg_audit_citizens
 create or replace function public.general_stats()
 returns json language sql security definer set search_path = public stable as $$
   select json_build_object(
-    'total', (select count(*) from citizens),
-    'today', (select count(*) from citizens where created_at::date = now()::date),
-    'last7', (select count(*) from citizens where created_at > now() - interval '7 days'),
-    'mine',  (select count(*) from citizens where created_by = auth.uid())
+    'total', (select count(*) from patients),
+    'today', (select count(*) from patients where created_at::date = now()::date),
+    'last7', (select count(*) from patients where created_at > now() - interval '7 days'),
+    'mine',  (select count(*) from patients where created_by = auth.uid())
   );
 $$;
 
 grant execute on function public.general_stats() to authenticated;
+
+-- =========================================================
+-- Public landing stats (anon): aggregate usage only, no PII.
+-- =========================================================
+create or replace function public.landing_stats()
+returns json language sql security definer set search_path = public stable as $$
+  select json_build_object(
+    'total_patients', (select count(*) from patients),
+    'registered_today', (select count(*) from patients where created_at::date = now()::date),
+    'registered_last_7_days', (select count(*) from patients where created_at > now() - interval '7 days'),
+    'clinical_notes', (select count(*) from clinical_notes),
+    'collection_centers', (select count(*) from collection_centers where active is distinct from false)
+  );
+$$;
+
+grant execute on function public.landing_stats() to anon, authenticated;
 
 -- =========================================================
 -- React app: relational schema (normalized, flat tables).
