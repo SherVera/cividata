@@ -419,12 +419,19 @@ begin
 end $$;
 
 -- =========================================================
--- Auth roles: rename legacy "registrador" -> "personal_medico"
--- Run once in Supabase SQL Editor after deploying the app update.
+-- Auth roles
+-- Valores válidos en app_metadata.role:
+--   super_admin | admin | personal_medico | registrador
+--
+-- registrador: personal no médico autorizado por una entidad o
+-- el equipo clínico para capturar datos en campo (sin evolución clínica).
+--
+-- Migración histórica (solo si aún tiene cuentas legacy "registrador"
+-- que debían ser personal_medico). NO ejecutar en despliegues nuevos:
+-- update auth.users
+-- set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"personal_medico"}'::jsonb
+-- where raw_app_meta_data->>'role' = 'registrador';
 -- =========================================================
-update auth.users
-set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"role":"personal_medico"}'::jsonb
-where raw_app_meta_data->>'role' = 'registrador';
 
 -- =========================================================
 -- Staff audit: user management actions (profile, contact, roles…)

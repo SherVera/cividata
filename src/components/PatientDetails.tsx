@@ -20,12 +20,21 @@ import PatientPhoto from './PatientPhoto';
 
 interface PatientDetailsProps {
   patient: Paciente;
+  canEdit?: boolean;
+  canAddClinicalNotes?: boolean;
   onEdit: (paciente: Paciente) => void;
   onBack: () => void;
   onUpdatePatient: (updatedPatient: Paciente) => void;
 }
 
-export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatient }: PatientDetailsProps) {
+export default function PatientDetails({
+  patient,
+  canEdit = true,
+  canAddClinicalNotes = true,
+  onEdit,
+  onBack,
+  onUpdatePatient,
+}: PatientDetailsProps) {
   const [showAddNote, setShowAddNote] = useState(false);
   const [newNote, setNewNote] = useState({
     fecha: new Date().toISOString().split('T')[0],
@@ -146,12 +155,14 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
         </button>
 
         <div className="flex items-center gap-2">
+          {canEdit && (
           <button
             onClick={() => onEdit(patient)}
             className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-semibold bg-white text-blue-700 hover:bg-blue-50 border border-blue-200 transition-all cursor-pointer active:scale-95"
           >
             <Edit3 className="w-4 h-4" /> Editar Ficha
           </button>
+          )}
           
           <button
             onClick={handlePrint}
@@ -568,10 +579,14 @@ export default function PatientDetails({ patient, onEdit, onBack, onUpdatePatien
                   <FileClock className="w-4 h-4 text-blue-600" />
                   Evolución Médica &amp; Historial de Consultas
                 </h3>
-                <p className="text-[11px] text-slate-500 mt-0.5">Seguimiento cronológico del crecimiento, peso, diagnóstico y tratamiento.</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  {canAddClinicalNotes
+                    ? 'Seguimiento cronológico del crecimiento, peso, diagnóstico y tratamiento.'
+                    : 'Solo lectura. La evolución clínica la registra el personal médico autorizado.'}
+                </p>
               </div>
               
-              {!showAddNote && (
+              {!showAddNote && canAddClinicalNotes && (
                 <button
                   onClick={() => setShowAddNote(true)}
                   className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs bg-blue-600 text-white font-bold hover:bg-blue-700 active:scale-95 transition-all cursor-pointer"

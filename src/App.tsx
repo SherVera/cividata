@@ -23,10 +23,12 @@ import CollectionCentersPanel from './components/CollectionCentersPanel';
 import BottomNav, { BottomNavKey } from './components/BottomNav';
 import AppLogo from './components/AppLogo';
 import PatientPhoto from './components/PatientPhoto';
+import ListPagination from './components/ListPagination';
 import { supabase } from './lib/supabaseClient';
+import { paginate, PATIENT_LIST_PAGE_SIZE } from './lib/pagination';
 import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
 import { listCollectionCenters } from './lib/collectionCentersApi';
-import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin } from './lib/authRoles';
+import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin, canManageClinicalData, isRegistrador } from './lib/authRoles';
 import { APP_NAME, APP_TAGLINE } from './brand';
 
 export default function App() {
@@ -36,6 +38,7 @@ export default function App() {
   const isAuthenticated = !!session;
   const userRole = resolveAppRole(session?.user);
   const isAppAdministrator = isAppAdmin(userRole);
+  const canEditPatients = canManageClinicalData(userRole);
   const [homeTabInitialized, setHomeTabInitialized] = useState(false);
 
   // Patient database state (source of truth: Supabase)
@@ -65,6 +68,7 @@ export default function App() {
   const [totalCentrosRegistrados, setTotalCentrosRegistrados] = useState(0);
   const [superAdminStats, setSuperAdminStats] = useState<SuperAdminDashboardStats | null>(null);
   const [sortBy, setSortBy] = useState<string>('recent'); // 'recent' | 'alphabetical' | 'age-asc' | 'age-desc'
+  const [listPage, setListPage] = useState(1);
   const [showFiltersMobile, setShowFiltersMobile] = useState<boolean>(false);
 
   // Modals state
@@ -202,6 +206,7 @@ export default function App() {
       setSuperAdminStats({
         totalUsuarios: users.length,
         personalMedico: users.filter((u) => u.role === 'personal_medico').length,
+        registradores: users.filter((u) => u.role === 'registrador').length,
         admins: users.filter((u) => u.role === 'admin').length,
         deshabilitadas: users.filter((u) => u.disabled).length,
       });
@@ -416,6 +421,21 @@ export default function App() {
     });
   }, [patients, searchQuery, filterGender, filterVacuna, filterAgeRange, filterGrupoEtario, filterCentro, sortBy]);
 
+  useEffect(() => {
+    setListPage(1);
+  }, [searchQuery, filterGender, filterVacuna, filterAgeRange, filterGrupoEtario, filterCentro, sortBy]);
+
+  const patientListPagination = useMemo(
+    () => paginate(filteredPatients, listPage, PATIENT_LIST_PAGE_SIZE),
+    [filteredPatients, listPage]
+  );
+
+  useEffect(() => {
+    if (listPage > patientListPagination.totalPages) {
+      setListPage(patientListPagination.totalPages);
+    }
+  }, [listPage, patientListPagination.totalPages]);
+
   // Bottom navigation active state (app-like mobile tab bar)
   const bottomNavActive: BottomNavKey =
     currentView === 'admin'
@@ -615,7 +635,9 @@ export default function App() {
                     Gestión integral de pacientes
                   </h2>
                   <p className="text-xs text-slate-500 max-w-xl leading-relaxed">
-                    Registre pacientes, controle esquemas de vacunación, realice el seguimiento pondoestatural de peso/talla y acceda rápidamente a la historia de consultas.
+                    {isRegistrador(userRole)
+                      ? 'Registre pacientes en centros de acopio o jornadas comunitarias. Puede consultar fichas, pero la evolución clínica la realiza el personal médico autorizado.'
+                      : 'Registre pacientes, controle esquemas de vacunación, realice el seguimiento pondoestatural de peso/talla y acceda rápidamente a la historia de consultas.'}
                   </p>
                 </div>
                 
@@ -661,7 +683,9 @@ export default function App() {
                   >
                     {isAppAdministrator
                       ? `Listado de Pacientes (${filteredPatients.length})`
-                      : `Mis registros (${filteredPatients.length})`}
+                      : isRegistrador(userRole)
+                        ? `Registros (${filteredPatients.length})`
+                        : `Mis registros (${filteredPatients.length})`}
                   </button>
                 </div>
 
@@ -864,8 +888,9 @@ export default function App() {
                       <RefreshCw className="w-5 h-5 animate-spin text-blue-600" /> Cargando pacientes...
                     </div>
                   ) : filteredPatients.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {filteredPatients.map((p, idx) => (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {patientListPagination.pageItems.map((p, idx) => (
                         <motion.div
                           key={p.id}
                           initial={{ opacity: 0, y: 10 }}
@@ -952,6 +977,7 @@ export default function App() {
                                 </button>
                               )}
 
+                              {canEditPatients && (
                               <button
                                 onClick={() => { setSelectedPatient(p); setCurrentView('edit'); }}
                                 title="Editar ficha"
@@ -959,6 +985,7 @@ export default function App() {
                               >
                                 <Edit className="w-3.5 h-3.5" />
                               </button>
+                              )}
                               
                               <button
                                 onClick={() => { setSelectedPatient(p); setCurrentView('details'); }}
@@ -970,6 +997,15 @@ export default function App() {
                           </div>
                         </motion.div>
                       ))}
+                      </div>
+                      <ListPagination
+                        page={patientListPagination.page}
+                        totalPages={patientListPagination.totalPages}
+                        totalItems={patientListPagination.total}
+                        startIndex={patientListPagination.startIndex}
+                        endIndex={patientListPagination.endIndex}
+                        onPageChange={setListPage}
+                      />
                     </div>
                   ) : (
                     <div className="text-center py-12 bg-white rounded-xl border border-slate-100 shadow-sm flex flex-col items-center justify-center space-y-3">
@@ -1050,7 +1086,7 @@ export default function App() {
           )}
 
           {/* 4. EDIT PATIENT VIEW */}
-          {currentView === 'edit' && (
+          {currentView === 'edit' && canEditPatients && (
             <motion.div
               key="edit-view"
               initial={{ opacity: 0, scale: 0.98 }}
@@ -1075,6 +1111,8 @@ export default function App() {
             >
               <PatientDetails 
                 patient={selectedPatient}
+                canEdit={canEditPatients}
+                canAddClinicalNotes={canEditPatients}
                 onEdit={(p) => { setSelectedPatient(p); setCurrentView('edit'); }}
                 onBack={() => setCurrentView('list')}
                 onUpdatePatient={handleUpdatePatientDetails}
