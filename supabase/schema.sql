@@ -452,6 +452,47 @@ create policy "admin read staff audit"
   using (public.is_admin());
 
 -- =========================================================
+-- Pre-registro de personal médico (landing pública)
+-- Anon puede insertar; solo admin lee y actualiza.
+-- =========================================================
+create table if not exists public.staff_signup_requests (
+  id              uuid primary key default gen_random_uuid(),
+  first_name      text not null,
+  last_name       text not null default '',
+  contact_phone   text not null,
+  specialty       text not null,
+  workplace       text not null,
+  status          text not null default 'pending'
+                  check (status in ('pending', 'approved', 'rejected')),
+  created_at      timestamptz not null default now(),
+  reviewed_at     timestamptz,
+  reviewed_by     uuid
+);
+
+create index if not exists staff_signup_requests_status_idx
+  on public.staff_signup_requests (status, created_at desc);
+
+create unique index if not exists staff_signup_requests_pending_phone_idx
+  on public.staff_signup_requests (contact_phone)
+  where status = 'pending';
+
+alter table public.staff_signup_requests enable row level security;
+
+drop policy if exists "anon insert signup requests" on public.staff_signup_requests;
+create policy "anon insert signup requests"
+  on public.staff_signup_requests for insert to anon
+  with check (status = 'pending');
+
+drop policy if exists "admin manage signup requests" on public.staff_signup_requests;
+create policy "admin manage signup requests"
+  on public.staff_signup_requests for all to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+grant insert on table public.staff_signup_requests to anon;
+grant select, insert, update on table public.staff_signup_requests to authenticated;
+
+-- =========================================================
 -- Patient photos (optional) — Supabase Storage
 -- =========================================================
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

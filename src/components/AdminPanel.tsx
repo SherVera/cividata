@@ -16,7 +16,8 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
-import type { StaffAuditEntry, StaffProfile } from '../types';
+import type { StaffAuditEntry, StaffProfile, StaffSignupRequest } from '../types';
+import { listPendingSignupRequests, updateSignupRequestStatus } from '../lib/preSignupApi';
 
 type UserRole = 'super_admin' | 'admin' | 'personal_medico';
 
@@ -83,6 +84,14 @@ function auditActionLabel(action: string) {
 
 function formatDate(value: string | null) {
   return value ? new Date(value).toLocaleString('es') : 'Sin acceso reciente';
+}
+
+function signupDisplayName(request: StaffSignupRequest) {
+  return [request.first_name, request.last_name].filter(Boolean).join(' ').trim();
+}
+
+function formatSignupDate(value: string) {
+  return new Date(value).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' });
 }
 
 function normalizePhone(value: string) {
@@ -279,11 +288,13 @@ function UserEditModal({
 function CreateUserModal({
   roles,
   isSaving,
+  initialValues,
   onClose,
   onSave,
 }: {
   roles: string[];
   isSaving: boolean;
+  initialValues?: { phone?: string; profile?: Partial<StaffProfile> };
   onClose: () => void;
   onSave: (payload: {
     email?: string;
@@ -294,10 +305,10 @@ function CreateUserModal({
   }) => void;
 }) {
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(initialValues?.phone || '');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState(roles[0] || 'personal_medico');
-  const [profile, setProfile] = useState<StaffProfile>({});
+  const [profile, setProfile] = useState<StaffProfile>(initialValues?.profile || {});
   const cleanPhone = normalizePhone(phone);
   const canSubmit = password.length >= 6 && (!!email.trim() || !!cleanPhone);
 
@@ -535,6 +546,8 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [resetUser, setResetUser] = useState<AdminUser | null>(null);
   const [showCreateUser, setShowCreateUser] = useState(false);
+  const [signupPrefill, setSignupPrefill] = useState<StaffSignupRequest | null>(null);
+  const [pendingSignups, setPendingSignups] = useState<StaffSignupRequest[]>([]);
   const [notice, setNotice] = useState<Notice>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -544,11 +557,17 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     if (nextNotice) window.setTimeout(() => setNotice(null), 3500);
   };
 
+  const loadPendingSignups = async () => {
+    const requests = await listPendingSignupRequests();
+    setPendingSignups(requests);
+  };
+
   const loadUsers = async (accessToken: string) => {
     setIsLoading(true);
     const [result, auditResult] = await Promise.all([
       requestUsers(accessToken, 'GET'),
       requestAudit(accessToken),
+      loadPendingSignups(),
     ]);
     if (result.error) {
       showNotice({ type: 'error', message: result.error });
@@ -658,6 +677,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     profile?: Partial<StaffProfile>;
   }) => {
     if (!token) return;
+    const signupId = signupPrefill?.id;
     setIsSaving(true);
     const result = await requestUsers(token, 'POST', payload);
     setIsSaving(false);
@@ -667,9 +687,40 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       return;
     }
 
+    if (signupId) {
+      const statusResult = await updateSignupRequestStatus(signupId, 'approved');
+      if (!statusResult.ok) {
+        showNotice({
+          type: 'info',
+          message: 'Usuario creado, pero no se pudo marcar la solicitud como aprobada.',
+        });
+      }
+    }
+
     setShowCreateUser(false);
+    setSignupPrefill(null);
     showNotice({ type: 'success', message: 'Usuario creado correctamente.' });
     await loadUsers(token);
+  };
+
+  const handleRejectSignup = async (request: StaffSignupRequest) => {
+    if (!token) return;
+    setIsSaving(true);
+    const result = await updateSignupRequestStatus(request.id, 'rejected');
+    setIsSaving(false);
+
+    if (!result.ok) {
+      showNotice({ type: 'error', message: result.error || 'No se pudo rechazar la solicitud.' });
+      return;
+    }
+
+    showNotice({ type: 'success', message: 'Solicitud rechazada.' });
+    await loadPendingSignups();
+  };
+
+  const handleApproveSignup = (request: StaffSignupRequest) => {
+    setSignupPrefill(request);
+    setShowCreateUser(true);
   };
 
   const handleResetPassword = async (newPassword: string) => {
@@ -858,6 +909,53 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
         </div>
       )}
 
+      {pendingSignups.length > 0 && (
+        <div className="rounded-3xl border border-amber-200 bg-amber-50/80 shadow-sm">
+          <div className="border-b border-amber-100 px-5 py-4">
+            <h3 className="text-sm font-bold text-amber-950">Solicitudes de acceso</h3>
+            <p className="text-xs text-amber-800/80">
+              {pendingSignups.length} pendiente(s). Apruebe para crear la cuenta; hasta entonces no pueden entrar.
+            </p>
+          </div>
+          <div className="divide-y divide-amber-100">
+            {pendingSignups.map((request) => (
+              <div
+                key={request.id}
+                className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="font-semibold text-slate-900">{signupDisplayName(request)}</p>
+                  <p className="mt-1 text-xs text-slate-600">
+                    {request.specialty} · {request.workplace}
+                  </p>
+                  <p className="mt-1 font-mono text-[11px] text-slate-500">
+                    {request.contact_phone} · {formatSignupDate(request.created_at)}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleApproveSignup(request)}
+                    disabled={isSaving}
+                    className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Aprobar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRejectSignup(request)}
+                    disabled={isSaving}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    Rechazar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <div>
@@ -866,7 +964,10 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowCreateUser(true)}
+              onClick={() => {
+                setSignupPrefill(null);
+                setShowCreateUser(true);
+              }}
               className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-md shadow-blue-600/10 hover:bg-blue-700"
             >
               <UserPlus className="h-3.5 w-3.5" />
@@ -1066,12 +1167,31 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
 
       <AnimatePresence>
         {showCreateUser && (
-          <CreateUserModal
-            roles={canCreateRoles.length > 0 ? canCreateRoles : ['personal_medico']}
-            isSaving={isSaving}
-            onClose={() => setShowCreateUser(false)}
-            onSave={handleCreateUser}
-          />
+          <div key={signupPrefill?.id || 'new-user'}>
+            <CreateUserModal
+              roles={canCreateRoles.length > 0 ? canCreateRoles : ['personal_medico']}
+              isSaving={isSaving}
+              initialValues={
+                signupPrefill
+                  ? {
+                      phone: signupPrefill.contact_phone,
+                      profile: {
+                        first_name: signupPrefill.first_name,
+                        last_name: signupPrefill.last_name,
+                        specialty: signupPrefill.specialty,
+                        workplace: signupPrefill.workplace,
+                        contact_phone: signupPrefill.contact_phone,
+                      },
+                    }
+                  : undefined
+              }
+              onClose={() => {
+                setShowCreateUser(false);
+                setSignupPrefill(null);
+              }}
+              onSave={handleCreateUser}
+            />
+          </div>
         )}
         {selectedUser && (
           <UserEditModal

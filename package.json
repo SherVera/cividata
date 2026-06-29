@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "test": "vitest run",
+    "generate:logos": "node scripts/generate-logos.mjs",
+    "generate:whatsapp-status": "node scripts/generate-whatsapp-status.mjs",
     "generate:og": "node scripts/generate-og-image.mjs",
     "start": "node --no-warnings local/server.js"
   },

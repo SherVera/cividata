@@ -11,7 +11,7 @@ const width = 1200;
 const height = 630;
 const logoWidth = 720;
 
-const logo = await sharp(path.join(root, 'cividata-primary.svg'))
+const logo = await sharp(path.join(root, 'public/logo.svg'))
   .resize(logoWidth)
   .png()
   .toBuffer();
