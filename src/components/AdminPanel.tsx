@@ -1082,6 +1082,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                           options={ROLE_OPTIONS}
                           size="sm"
                           accent="blue"
+                          portaled
                           className="min-w-[9.5rem]"
                         />
                       ) : (
