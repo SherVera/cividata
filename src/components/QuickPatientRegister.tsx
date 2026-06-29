@@ -23,7 +23,9 @@ import {
   uploadPatientPhoto,
 } from '../lib/patientPhotosApi';
 import QuickCenterRegister from './QuickCenterRegister';
+import CenterPicker from './CenterPicker';
 import SelectField from './SelectField';
+import VoicePatientPanel, { type VoiceApplyPayload } from './VoicePatientPanel';
 import { NIVEL_EDUCATIVO_OPTIONS, PARENTESCO_OPTIONS } from '../lib/selectOptions';
 import OptionalSection from './OptionalSection';
 import {
@@ -64,6 +66,7 @@ export default function QuickPatientRegister({
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState('');
   const [optionalSections, setOptionalSections] = useState(OPTIONAL_SECTION_DEFAULTS);
+  const [voiceDictationEnabled, setVoiceDictationEnabled] = useState(false);
 
   const setSection = (key: OptionalSectionKey, enabled: boolean) => {
     setOptionalSections((prev) => ({ ...prev, [key]: enabled }));
@@ -79,6 +82,7 @@ export default function QuickPatientRegister({
     setCenterFilter('');
     setCenterNotice('');
     setOptionalSections(OPTIONAL_SECTION_DEFAULTS);
+    setVoiceDictationEnabled(false);
   }, [formKey, carryOver]);
 
   useEffect(() => {
@@ -144,24 +148,6 @@ export default function QuickPatientRegister({
     );
   }, [formData.fechaNacimiento, formData.edadAnios, formData.edadMeses]);
 
-  const filteredCenters = useMemo(() => {
-    const q = centerFilter.trim().toLowerCase();
-    if (!q) return collectionCenters.filter((c) => c.active);
-    return collectionCenters.filter(
-      (c) =>
-        c.active &&
-        (c.name.toLowerCase().includes(q) || (c.address || '').toLowerCase().includes(q))
-    );
-  }, [collectionCenters, centerFilter]);
-
-  const recentCenters = useMemo(
-    () =>
-      recentCenterIds
-        .map((id) => collectionCenters.find((c) => c.id === id))
-        .filter((c): c is CollectionCenter => !!c),
-    [recentCenterIds, collectionCenters]
-  );
-
   const clasificacionManual = !pacienteTieneEdad(formData);
   const hasExactBirthDate = !!formData.fechaNacimiento;
   const isChildAgeProfile =
@@ -217,6 +203,14 @@ export default function QuickPatientRegister({
     if (!nearest || !autoSelect || nearest.distanceM > 1500) return;
     const center = collectionCenters.find((c) => c.id === nearest.item.id);
     if (center) applyCenter(center);
+  };
+
+  const handleVoiceApply = (payload: VoiceApplyPayload) => {
+    setFormData((prev) => ({ ...prev, ...payload.patch }));
+    if (payload.centerMatch) applyCenter(payload.centerMatch, true);
+    setOptionalSections((prev) => ({ ...prev, ...payload.sections }));
+    setFormErrors({});
+    setSubmitError('');
   };
 
   const handleQuickCenterSaved = (center: CollectionCenter, created: boolean) => {
@@ -335,6 +329,20 @@ export default function QuickPatientRegister({
             )}
           </div>
         )}
+
+        <OptionalSection
+          title="Dictado por voz"
+          hint="Micrófono gratuito + IA para llenar campos (revise antes de guardar)"
+          enabled={voiceDictationEnabled}
+          onToggle={setVoiceDictationEnabled}
+        >
+          <VoicePatientPanel
+            formKey={formKey}
+            currentPatient={formData}
+            collectionCenters={collectionCenters}
+            onApply={handleVoiceApply}
+          />
+        </OptionalSection>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
@@ -536,59 +544,24 @@ export default function QuickPatientRegister({
 
           {formData.puntoRegistroTipo === 'centro' && (
             <>
-              {recentCenters.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {recentCenters.map((center) => (
-                    <button
-                      key={center.id}
-                      type="button"
-                      onClick={() => applyCenter(center, true)}
-                      className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors ${
-                        formData.centroAcopioId === center.id
-                          ? 'border-teal-600 bg-teal-600 text-white'
-                          : 'border-teal-200 bg-white text-teal-800 hover:bg-teal-50'
-                      }`}
-                    >
-                      {center.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <input
-                type="text"
-                value={centerFilter || formData.centroAcopioNombre}
-                onChange={(e) => {
-                  setCenterFilter(e.target.value);
-                  if (!e.target.value.trim()) {
-                    setFormData((p) => ({
-                      ...p,
-                      centroAcopioId: '',
-                      centroAcopioNombre: '',
-                    }));
-                  }
-                }}
+              <CenterPicker
+                collectionCenters={collectionCenters}
+                recentCenterIds={recentCenterIds}
+                selectedCenterId={formData.centroAcopioId}
+                selectedCenterName={formData.centroAcopioNombre}
+                centerFilter={centerFilter}
+                onCenterFilterChange={setCenterFilter}
+                onSelectCenter={(center) => applyCenter(center, true)}
+                onClearSelection={() =>
+                  setFormData((p) => ({
+                    ...p,
+                    centroAcopioId: '',
+                    centroAcopioNombre: '',
+                  }))
+                }
+                inputClass={inputClass}
                 placeholder="Buscar centro..."
-                className={inputClass}
               />
-              {centerFilter.trim() && filteredCenters.length > 0 && (
-                <div className="max-h-32 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-                  {filteredCenters.map((center) => (
-                    <button
-                      key={center.id}
-                      type="button"
-                      onClick={() => applyCenter(center, true)}
-                      className="block w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-teal-50"
-                    >
-                      <span className="font-semibold">{center.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {formData.centroAcopioId && !centerFilter && (
-                <p className="text-xs font-semibold text-teal-700">
-                  Seleccionado: {formData.centroAcopioNombre}
-                </p>
-              )}
               <button
                 type="button"
                 onClick={() => setShowNewCenter(true)}

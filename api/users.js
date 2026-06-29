@@ -53,7 +53,8 @@ function extractProfile(body) {
   const profile = {};
   for (const key of PROFILE_KEYS) {
     if (!hasOwn(body || {}, key)) continue;
-    const value = String(body[key] ?? '').trim();
+    let value = String(body[key] ?? '').trim();
+    if (key === 'specialty' && value) value = normalizeSpecialty(value);
     if (value) profile[key] = value;
   }
   return profile;
@@ -84,6 +85,7 @@ function rolNormalizado(r) {
   return ROLE_PERSONAL_MEDICO;
 }
 const normalizePhone = (value) => String(value || '').trim().replace(/[\s()-]/g, '');
+const normalizeSpecialty = (value) => String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es');
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 
 function allowedCreateRole(actorRole, requestedRole) {
@@ -307,7 +309,7 @@ export default async function handler(req, res) {
         if (!hasOwn(req.body || {}, key)) continue;
         touched = true;
         const value = String(req.body[key] ?? '').trim();
-        if (value) after[key] = value;
+        if (value) after[key] = key === 'specialty' ? normalizeSpecialty(value) : value;
         else delete after[key];
       }
 

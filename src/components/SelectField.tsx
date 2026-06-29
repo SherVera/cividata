@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
+import { cn } from '../lib/cn';
 
 export type SelectOption = {
   value: string;
@@ -16,23 +17,10 @@ type SelectFieldProps = {
   className?: string;
   size?: 'sm' | 'md';
   accent?: 'teal' | 'blue';
+  /** Si false, el menú usa absolute dentro del root (puede recortarse con overflow del padre). */
+  portaled?: boolean;
   id?: string;
   'aria-label'?: string;
-};
-
-const sizeClasses = {
-  sm: 'px-2.5 py-1.5 text-xs font-semibold rounded-lg',
-  md: 'px-4 py-2.5 text-sm rounded-xl',
-};
-
-const accentClasses = {
-  teal: 'focus:border-teal-500 focus:ring-teal-500/10 data-[open=true]:border-teal-500 data-[open=true]:ring-2 data-[open=true]:ring-teal-500/10',
-  blue: 'focus:border-blue-500 focus:ring-blue-500/10 data-[open=true]:border-blue-500 data-[open=true]:ring-2 data-[open=true]:ring-blue-500/10',
-};
-
-const selectedOptionClasses = {
-  teal: 'bg-teal-50 font-semibold text-teal-800',
-  blue: 'bg-blue-50 font-semibold text-blue-800',
 };
 
 export default function SelectField({
@@ -44,48 +32,76 @@ export default function SelectField({
   className = '',
   size = 'md',
   accent = 'teal',
+  portaled = true,
   id,
   'aria-label': ariaLabel,
 }: SelectFieldProps) {
   const autoId = useId();
   const fieldId = id || autoId;
+  const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
 
   const selected = options.find((option) => option.value === value);
+  const variantClass = cn(`ui-select--${size}`, `ui-select--${accent}`);
+  const rootClass = cn('ui-select', variantClass, className);
 
   const updateMenuPosition = () => {
     const rect = buttonRef.current?.getBoundingClientRect();
+    const rootRect = rootRef.current?.getBoundingClientRect();
     if (!rect) return;
+
+    if (portaled) {
+      setMenuStyle({
+        position: 'fixed',
+        top: rect.bottom,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 300,
+      });
+      return;
+    }
+
+    if (!rootRect) return;
     setMenuStyle({
-      position: 'fixed',
-      top: rect.bottom + 6,
-      left: rect.left,
+      position: 'absolute',
+      top: rect.bottom - rootRect.top,
+      left: rect.left - rootRect.left,
       width: rect.width,
-      zIndex: 300,
+      zIndex: 50,
     });
   };
 
   const closeMenu = () => setOpen(false);
 
-  const openMenu = () => {
+  const toggleMenu = () => {
     if (disabled) return;
-    updateMenuPosition();
+    if (open) {
+      closeMenu();
+      return;
+    }
     setOpen(true);
   };
+
+  useEffect(() => {
+    if (!open) return;
+    updateMenuPosition();
+  }, [open, portaled]);
 
   useEffect(() => {
     if (!open) return;
 
     const handlePointer = (event: MouseEvent) => {
       const target = event.target as Node;
-      if (buttonRef.current?.contains(target)) return;
+      if (rootRef.current?.contains(target)) return;
       if ((target as Element).closest?.('[data-select-menu]')) return;
       closeMenu();
     };
 
-    const handleReposition = () => updateMenuPosition();
+    const handleReposition = () => {
+      if (open) updateMenuPosition();
+    };
 
     document.addEventListener('mousedown', handlePointer);
     window.addEventListener('resize', handleReposition);
@@ -96,7 +112,7 @@ export default function SelectField({
       window.removeEventListener('resize', handleReposition);
       window.removeEventListener('scroll', handleReposition, true);
     };
-  }, [open]);
+  }, [open, portaled]);
 
   useEffect(() => {
     if (!open) return;
@@ -107,62 +123,79 @@ export default function SelectField({
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [open]);
 
-  const menu = open
-    ? createPortal(
-        <ul
-          data-select-menu
-          role="listbox"
-          aria-labelledby={fieldId}
-          style={menuStyle}
-          className="max-h-60 overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-xl shadow-slate-300/30"
-        >
-          {options.map((option) => {
-            const isSelected = option.value === value;
-            return (
-              <li key={option.value} role="option" aria-selected={isSelected}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onChange(option.value);
-                    closeMenu();
-                  }}
-                  className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50 ${
-                    isSelected ? selectedOptionClasses[accent] : 'text-slate-700'
-                  }`}
-                >
-                  <span className="truncate">{option.label}</span>
-                  {isSelected && <Check className="h-3.5 w-3.5 shrink-0" />}
-                </button>
-              </li>
-            );
-          })}
-        </ul>,
-        document.body
-      )
-    : null;
+  const controlClass = cn(
+    'ui-select__row',
+    'ui-select__control',
+    open && 'ui-select__control--open',
+  );
+
+  const trailingIcon = (kind: 'chevron' | 'check' | 'spacer') => {
+    if (kind === 'chevron') {
+      return (
+        <ChevronDown
+          className={cn('ui-select__icon', 'ui-select__icon--muted', open && 'ui-select__icon--open')}
+        />
+      );
+    }
+    if (kind === 'check') {
+      return <Check className={cn('ui-select__icon', `ui-select__icon--${accent}`)} />;
+    }
+    return <span className="ui-select__icon" aria-hidden />;
+  };
+
+  const optionsList = (
+    <ul role="listbox" aria-labelledby={fieldId} className="ui-select__list">
+      {options.map((option) => {
+        const isSelected = option.value === value;
+        return (
+          <li key={option.value} role="option" aria-selected={isSelected}>
+            <button
+              type="button"
+              onClick={() => {
+                onChange(option.value);
+                closeMenu();
+              }}
+              className="ui-select__row ui-select__option"
+            >
+              <span className="ui-select__label">{option.label}</span>
+              {trailingIcon(isSelected ? 'check' : 'spacer')}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  const menu = (
+    <div
+      data-select-menu
+      style={menuStyle}
+      className={cn('ui-select__menu', open && 'ui-select__menu--open')}
+    >
+      {optionsList}
+    </div>
+  );
 
   return (
-    <>
+    <div ref={rootRef} className={rootClass}>
       <button
         ref={buttonRef}
         id={fieldId}
         type="button"
         disabled={disabled}
-        data-open={open}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={ariaLabel}
-        onClick={() => (open ? closeMenu() : openMenu())}
-        className={`flex w-full items-center justify-between gap-2 border border-slate-200 bg-slate-50 text-left text-slate-800 transition-colors hover:bg-white focus:bg-white focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50 ${sizeClasses[size]} ${accentClasses[accent]} ${className}`}
+        onClick={toggleMenu}
+        className={controlClass}
       >
-        <span className={`truncate ${selected ? '' : 'text-slate-400'}`}>
+        <span className={cn('ui-select__label', selected ? 'ui-select__label--value' : 'ui-select__label--placeholder')}>
           {selected?.label ?? placeholder}
         </span>
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
-        />
+        {trailingIcon('chevron')}
       </button>
-      {menu}
-    </>
+      {open &&
+        (portaled ? createPortal(<div className={variantClass}>{menu}</div>, document.body) : menu)}
+    </div>
   );
 }

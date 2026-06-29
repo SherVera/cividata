@@ -20,6 +20,7 @@ import { DEFAULT_MAP_CENTER, findNearest, formatDistance, GeoNamedPoint } from '
 import GeoMapPicker from './GeoMapPicker';
 import { requestDeviceLocation } from '../lib/geo';
 import QuickCenterRegister from './QuickCenterRegister';
+import CenterPicker from './CenterPicker';
 import SelectField from './SelectField';
 import { NIVEL_EDUCATIVO_OPTIONS, PARENTESCO_OPTIONS } from '../lib/selectOptions';
 import { getRecentCenterIds, recordRecentCenter } from '../lib/recentCenters';
@@ -240,24 +241,6 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     }));
   }, [collectionCenters, centerFilter, formData.centroAcopioId]);
 
-  const filteredCenters = useMemo(() => {
-    const q = centerFilter.trim().toLowerCase();
-    if (!q) return collectionCenters;
-    return collectionCenters.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        (c.address || '').toLowerCase().includes(q)
-    );
-  }, [collectionCenters, centerFilter]);
-
-  const recentCenters = useMemo(
-    () =>
-      recentCenterIds
-        .map((id) => collectionCenters.find((c) => c.id === id))
-        .filter((c): c is CollectionCenter => !!c),
-    [recentCenterIds, collectionCenters]
-  );
-
   const applyCenter = (center: CollectionCenter, trackRecent = false) => {
     setFormData((prev) => ({
       ...prev,
@@ -282,11 +265,6 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       recordRecentCenter(center.id);
       setRecentCenterIds(getRecentCenterIds());
     }
-  };
-
-  const pickCenter = (centerId: string) => {
-    const center = collectionCenters.find((c) => c.id === centerId);
-    if (center) applyCenter(center, true);
   };
 
   const handleQuickCenterSaved = (center: CollectionCenter, created: boolean) => {
@@ -946,36 +924,12 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
 
               {formData.puntoRegistroTipo === 'centro' ? (
                 <p className="text-xs text-teal-800/80 leading-relaxed">
-                  Elija un centro reciente, busque uno existente o regístrelo aquí mismo. Luego ajuste el punto del paciente en el mapa.
+                  Elija uno de sus centros más usados, busque otro o regístrelo aquí mismo. Luego ajuste el punto del paciente en el mapa.
                 </p>
               ) : (
                 <p className="text-xs font-medium text-indigo-800 leading-relaxed">
                   No se asignará un centro de acopio. El registro quedará como atención médica en campo; marque el punto en el mapa.
                 </p>
-              )}
-
-              {formData.puntoRegistroTipo === 'centro' && recentCenters.length > 0 && (
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    Usados recientemente
-                  </span>
-                  <div className="mt-1.5 flex flex-wrap gap-2">
-                    {recentCenters.map((center) => (
-                      <button
-                        key={center.id}
-                        type="button"
-                        onClick={() => pickCenter(center.id)}
-                        className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors ${
-                          formData.centroAcopioId === center.id
-                            ? 'border-teal-600 bg-teal-600 text-white'
-                            : 'border-teal-200 bg-white text-teal-800 hover:bg-teal-50'
-                        }`}
-                      >
-                        {center.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               )}
 
               {formData.puntoRegistroTipo === 'centro' && (
@@ -1001,48 +955,18 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
                   Centro de acopio <span className="font-normal normal-case text-slate-400">(opcional)</span>
                 </label>
-                <input
-                  type="text"
-                  value={centerFilter || formData.centroAcopioNombre}
-                  onChange={(e) => {
-                    setCenterFilter(e.target.value);
-                    if (!e.target.value.trim()) {
-                      handleCenterSelect('');
-                      setFormData((prev) => ({ ...prev, centroAcopioId: '', centroAcopioNombre: '' }));
-                    }
-                  }}
+                <CenterPicker
+                  collectionCenters={collectionCenters}
+                  recentCenterIds={recentCenterIds}
+                  selectedCenterId={formData.centroAcopioId}
+                  selectedCenterName={formData.centroAcopioNombre}
+                  centerFilter={centerFilter}
+                  onCenterFilterChange={setCenterFilter}
+                  onSelectCenter={(center) => applyCenter(center, true)}
+                  onClearSelection={() => handleCenterSelect('')}
+                  error={formErrors.centroAcopioId}
                   placeholder="Filtrar o buscar centro..."
-                  className={`w-full px-4 py-2.5 bg-white border rounded-xl text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500 transition-all ${
-                    formErrors.centroAcopioId ? 'border-red-300 ring-2 ring-red-500/10' : 'border-slate-200'
-                  }`}
                 />
-                {centerFilter.trim() && filteredCenters.length > 0 && (
-                  <div className="mt-1 max-h-36 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-                    {filteredCenters.map((center) => (
-                      <button
-                        key={center.id}
-                        type="button"
-                        onClick={() => pickCenter(center.id)}
-                        className={`block w-full px-3 py-2 text-left text-xs hover:bg-teal-50 ${
-                          formData.centroAcopioId === center.id ? 'bg-teal-50 font-bold text-teal-800' : 'text-slate-700'
-                        }`}
-                      >
-                        <span className="block font-semibold">{center.name}</span>
-                        {center.address && (
-                          <span className="block text-[10px] text-slate-400 truncate">{center.address}</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {formData.centroAcopioId && !centerFilter && (
-                  <p className="mt-1 text-xs font-semibold text-teal-700">
-                    Seleccionado: {formData.centroAcopioNombre}
-                  </p>
-                )}
-                {formErrors.centroAcopioId && (
-                  <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.centroAcopioId}</p>
-                )}
               </div>
               )}
 

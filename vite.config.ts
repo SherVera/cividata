@@ -1,7 +1,11 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import dotenv from 'dotenv';
 import path from 'path';
 import {defineConfig} from 'vitest/config';
+import {localVercelApiPlugin} from './scripts/vite-local-api-plugin';
+
+dotenv.config();
 
 const SITE_URL_META_START = '<!-- site-url-meta:start -->';
 const SITE_URL_META_END = '<!-- site-url-meta:end -->';
@@ -36,6 +40,9 @@ export default defineConfig(() => {
     plugins: [
       react(),
       tailwindcss(),
+      localVercelApiPlugin({
+        'voice-parse': path.resolve(__dirname, 'api/voice-parse.js'),
+      }),
       {
         name: 'html-site-url',
         transformIndexHtml(html) {

@@ -23,11 +23,21 @@ function normalizePhone(value) {
   return String(value || '').trim().replace(/[\s()-]/g, '');
 }
 
+function normalizeSpecialty(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es');
+}
+
+function formatSpecialty(value) {
+  const normalized = normalizeSpecialty(value);
+  if (!normalized) return '';
+  return normalized.charAt(0).toLocaleUpperCase('es') + normalized.slice(1);
+}
+
 function validateBody(body) {
   const { first_name } = parseFullName(body?.fullName);
   if (first_name.length < 2) return 'Indique su nombre.';
   if (normalizePhone(body?.contactPhone).length < 10) return 'Indique un teléfono válido.';
-  if (String(body?.specialty || '').trim().length < 2) return 'Indique su especialidad o cargo.';
+  if (normalizeSpecialty(body?.specialty).length < 2) return 'Indique su especialidad o cargo.';
   if (String(body?.workplace || '').trim().length < 2) return 'Indique su centro de trabajo.';
   return null;
 }
@@ -49,7 +59,7 @@ async function notifyAdmin(request) {
     '',
     `Nombre: ${fullName}`,
     `Teléfono: ${request.contact_phone}`,
-    `Especialidad: ${request.specialty}`,
+    `Especialidad: ${formatSpecialty(request.specialty)}`,
     `Centro: ${request.workplace}`,
     `ID solicitud: ${request.id}`,
     '',
@@ -110,7 +120,7 @@ export default async function handler(req, res) {
 
   const { first_name, last_name } = parseFullName(body.fullName);
   const contact_phone = normalizePhone(body.contactPhone);
-  const specialty = String(body.specialty).trim();
+  const specialty = normalizeSpecialty(body.specialty);
   const workplace = String(body.workplace).trim();
 
   const { data, error } = await admin
