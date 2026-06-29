@@ -24,8 +24,17 @@ import BottomNav, { BottomNavKey } from './components/BottomNav';
 import AppLogo from './components/AppLogo';
 import PatientPhoto from './components/PatientPhoto';
 import ListPagination from './components/ListPagination';
+import SelectField from './components/SelectField';
 import { supabase } from './lib/supabaseClient';
 import { paginate, PATIENT_LIST_PAGE_SIZE } from './lib/pagination';
+import {
+  centroFilterOptions,
+  FILTER_AGE_RANGE_OPTIONS,
+  FILTER_GENDER_OPTIONS,
+  FILTER_GRUPO_ETARIO_OPTIONS,
+  FILTER_VACUNA_OPTIONS,
+  SORT_OPTIONS,
+} from './lib/selectOptions';
 import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
 import { listCollectionCenters } from './lib/collectionCentersApi';
 import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin, canManageClinicalData, isRegistrador } from './lib/authRoles';
@@ -748,16 +757,14 @@ export default function App() {
                       {/* Sort dropdown */}
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-xs text-slate-400 font-medium hidden md:inline">Ordenar:</span>
-                        <select
+                        <SelectField
                           value={sortBy}
-                          onChange={(e) => setSortBy(e.target.value)}
-                          className="w-full md:w-auto px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 focus:outline-none cursor-pointer"
-                        >
-                          <option value="recent">Más recientes primero</option>
-                          <option value="alphabetical">Alfabético (A-Z)</option>
-                          <option value="age-asc">Edad (Menor a Mayor)</option>
-                          <option value="age-desc">Edad (Mayor a Menor)</option>
-                        </select>
+                          onChange={setSortBy}
+                          options={SORT_OPTIONS}
+                          size="sm"
+                          accent="blue"
+                          className="w-full md:min-w-[12rem]"
+                        />
 
                         {/* Mobile filters toggle button */}
                         <button
@@ -782,78 +789,61 @@ export default function App() {
                         {/* Gender filter */}
                         <div className="space-y-1">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Género</span>
-                          <select
+                          <SelectField
                             value={filterGender}
-                            onChange={(e) => setFilterGender(e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 font-semibold focus:outline-none cursor-pointer"
-                          >
-                            <option value="All">Todos</option>
-                            <option value="Masculino">Masculino</option>
-                            <option value="Femenino">Femenino</option>
-                            <option value="Otro">Otro</option>
-                          </select>
+                            onChange={setFilterGender}
+                            options={FILTER_GENDER_OPTIONS}
+                            size="sm"
+                            accent="blue"
+                          />
                         </div>
 
                         {/* Vaccination filter */}
                         <div className="space-y-1">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Vacunación</span>
-                          <select
+                          <SelectField
                             value={filterVacuna}
-                            onChange={(e) => setFilterVacuna(e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 font-semibold focus:outline-none cursor-pointer"
-                          >
-                            <option value="All">Todos los esquemas</option>
-                            <option value="Completo">Esquema Completo</option>
-                            <option value="Incompleto">Esquema Incompleto</option>
-                          </select>
+                            onChange={setFilterVacuna}
+                            options={FILTER_VACUNA_OPTIONS}
+                            size="sm"
+                            accent="blue"
+                          />
                         </div>
 
                         {/* Collection center filter */}
                         <div className="space-y-1">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Centro de acopio</span>
-                          <select
+                          <SelectField
                             value={filterCentro}
-                            onChange={(e) => setFilterCentro(e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 font-semibold focus:outline-none cursor-pointer"
-                          >
-                            <option value="All">Todos</option>
-                            <option value="SinCentro">Sin centro asignado</option>
-                            <option value="AtencionMedico">Atención por médico</option>
-                            {collectionCenters.map((c) => (
-                              <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                          </select>
+                            onChange={setFilterCentro}
+                            options={centroFilterOptions(collectionCenters)}
+                            size="sm"
+                            accent="blue"
+                          />
                         </div>
 
                         {/* Age group filter */}
                         <div className="space-y-1">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Clasificación</span>
-                          <select
+                          <SelectField
                             value={filterGrupoEtario}
-                            onChange={(e) => setFilterGrupoEtario(e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 font-semibold focus:outline-none cursor-pointer"
-                          >
-                            <option value="All">Todas</option>
-                            <option value="nino">Niño/a</option>
-                            <option value="adulto">Adulto</option>
-                            <option value="tercera_edad">Tercera edad</option>
-                          </select>
+                            onChange={setFilterGrupoEtario}
+                            options={FILTER_GRUPO_ETARIO_OPTIONS}
+                            size="sm"
+                            accent="blue"
+                          />
                         </div>
 
                         {/* Age range filter */}
                         <div className="space-y-1">
                           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Grupo de Edad</span>
-                          <select
+                          <SelectField
                             value={filterAgeRange}
-                            onChange={(e) => setFilterAgeRange(e.target.value)}
-                            className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 font-semibold focus:outline-none cursor-pointer"
-                          >
-                            <option value="All">Todos</option>
-                            <option value="Bebes">Bebés (0 - 2 años)</option>
-                            <option value="Preescolar">Preescolar (3 - 5 años)</option>
-                            <option value="Escolar">Escolar (6 - 12 años)</option>
-                            <option value="Adolescentes">Adolescentes (13+ años)</option>
-                          </select>
+                            onChange={setFilterAgeRange}
+                            options={FILTER_AGE_RANGE_OPTIONS}
+                            size="sm"
+                            accent="blue"
+                          />
                         </div>
 
                       </div>

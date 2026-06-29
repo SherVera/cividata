@@ -19,7 +19,9 @@ import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 import type { StaffAuditEntry, StaffProfile, StaffSignupRequest } from '../types';
 import { listPendingSignupRequests, updateSignupRequestStatus } from '../lib/preSignupApi';
 import ListPagination from './ListPagination';
+import SelectField from './SelectField';
 import { paginate, TABLE_LIST_PAGE_SIZE } from '../lib/pagination';
+import { ROLE_OPTIONS } from '../lib/selectOptions';
 
 type UserRole = 'super_admin' | 'admin' | 'personal_medico' | 'registrador';
 
@@ -407,15 +409,15 @@ function CreateUserModal({
 
               <label className="block">
                 <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-400">Rol</span>
-                <select
+                <SelectField
                   value={role}
-                  onChange={(event) => setRole(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-bold text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-                >
-                  {roles.map((availableRole) => (
-                    <option key={availableRole} value={availableRole}>{roleLabel(availableRole)}</option>
-                  ))}
-                </select>
+                  onChange={setRole}
+                  options={roles.map((availableRole) => ({
+                    value: availableRole,
+                    label: roleLabel(availableRole),
+                  }))}
+                  accent="blue"
+                />
                 {role === 'registrador' && (
                   <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
                     Personal no médico autorizado por una entidad o el equipo clínico para registrar pacientes en campo.
@@ -1073,16 +1075,15 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                     </td>
                     <td className="px-5 py-4">
                       {user.canChangeRole && currentRole === 'super_admin' ? (
-                        <select
+                        <SelectField
                           value={user.role}
-                          onChange={(event) => handleRoleChange(user, event.target.value)}
+                          onChange={(nextRole) => handleRoleChange(user, nextRole)}
                           disabled={isSaving}
-                          className="rounded-xl border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-blue-700 outline-none"
-                        >
-                          <option value="admin">Admin</option>
-                          <option value="personal_medico">Personal médico</option>
-                          <option value="registrador">Registrador</option>
-                        </select>
+                          options={ROLE_OPTIONS}
+                          size="sm"
+                          accent="blue"
+                          className="min-w-[9.5rem]"
+                        />
                       ) : (
                         <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
                           user.role === 'admin'

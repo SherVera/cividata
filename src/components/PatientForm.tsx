@@ -20,6 +20,8 @@ import { DEFAULT_MAP_CENTER, findNearest, formatDistance, GeoNamedPoint } from '
 import GeoMapPicker from './GeoMapPicker';
 import { requestDeviceLocation } from '../lib/geo';
 import QuickCenterRegister from './QuickCenterRegister';
+import SelectField from './SelectField';
+import { NIVEL_EDUCATIVO_OPTIONS, PARENTESCO_OPTIONS } from '../lib/selectOptions';
 import { getRecentCenterIds, recordRecentCenter } from '../lib/recentCenters';
 import PatientPhoto from './PatientPhoto';
 import {
@@ -1332,17 +1334,16 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
                         Parentesco / relación
                       </label>
-                      <select
-                        name="parentesco"
+                      <SelectField
                         value={formData.parentesco}
-                        onChange={handleInputChange}
-                        className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-                      >
-                        <option value="Madre">Madre</option>
-                        <option value="Padre">Padre</option>
-                        <option value="Abuelo/a">Abuelo/a</option>
-                        <option value="Tutor legal">Tutor legal</option>
-                      </select>
+                        onChange={(parentesco) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            parentesco: parentesco as Paciente['parentesco'],
+                          }))
+                        }
+                        options={PARENTESCO_OPTIONS}
+                      />
                     </div>
                     <div>
                       <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
@@ -1691,18 +1692,17 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                           <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
                             Nivel educativo
                           </label>
-                          <select
-                            name="nivelEducativo"
+                          <SelectField
                             value={formData.nivelEducativo}
-                            onChange={handleInputChange}
-                            className="w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-800 focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-                          >
-                            <option value="">Seleccione...</option>
-                            <option value="Maternal">Maternal</option>
-                            <option value="Preescolar / Inicial">Preescolar / Inicial</option>
-                            <option value="Primaria">Primaria</option>
-                            <option value="Secundaria">Secundaria</option>
-                          </select>
+                            onChange={(nivelEducativo) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                nivelEducativo: nivelEducativo as Paciente['nivelEducativo'],
+                              }))
+                            }
+                            options={NIVEL_EDUCATIVO_OPTIONS}
+                            placeholder="Seleccione..."
+                          />
                         </div>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                           <div>
