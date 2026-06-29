@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Paciente, GRUPOS_ETARIOS, grupoEtarioFromAge, grupoEtarioLabel, pacienteTieneEdad, pacienteRequiereRepresentante, EMPTY_GUARDIAN_FIELDS } from '../types';
 import { parseFormNumber, validatePatientSection1 } from '../lib/patientValidation';
-import { APP_NAME } from '../brand';
+import AppLogo from './AppLogo';
 import { CollectionCenter, listCollectionCenters } from '../lib/collectionCentersApi';
 import { createEmptyPatient, PatientCarryOver } from '../lib/patientDefaults';
 import { findNearest, GeoNamedPoint, requestDeviceLocation } from '../lib/geo';
@@ -298,9 +298,7 @@ export default function QuickPatientRegister({
       <div className="flex flex-col gap-4 bg-slate-900 px-6 py-6 text-white sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-amber-400/20 px-2.5 py-0.5 font-mono text-xs font-medium uppercase tracking-wider text-amber-200">
-              {APP_NAME}
-            </span>
+            <AppLogo variant="reverse" className="h-6 w-auto max-w-[130px]" />
             <span className="flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-amber-100">
               <Zap className="h-3 w-3" /> Rápido
             </span>

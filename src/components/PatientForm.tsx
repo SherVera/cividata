@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Paciente, GRUPOS_ETARIOS, grupoEtarioLabel, grupoEtarioFromAge, pacienteTieneEdad, pacienteRequiereRepresentante, EMPTY_GUARDIAN_FIELDS, resolveGrupoEtario, tituloDatosPersonales } from '../types';
 import { parseFormNumber, validatePatientSection1 } from '../lib/patientValidation';
-import { APP_NAME } from '../brand';
+import AppLogo from './AppLogo';
 import { 
   User, MapPin, ShieldAlert, Heart, 
   ArrowLeft, ArrowRight, Save, RotateCcw, HelpCircle, Sparkles, Warehouse, Plus, Stethoscope, Camera, X, ChevronDown
@@ -610,9 +610,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       <div className="bg-slate-900 px-6 py-6 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xs bg-white/20 text-white font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full font-medium">
-              {APP_NAME}
-            </span>
+            <AppLogo variant="reverse" className="h-6 w-auto max-w-[130px]" />
             {initialPatient && (
               <span className="text-xs bg-blue-500/20 text-blue-200 font-mono px-2.5 py-0.5 rounded-full font-medium">
                 Editando Historia

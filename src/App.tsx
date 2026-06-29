@@ -487,7 +487,7 @@ export default function App() {
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm print:hidden pt-safe">
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
           
-          {/* Logo and App Title */}
+          {/* Logo y subtítulo */}
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -500,13 +500,12 @@ export default function App() {
             >
               <AppLogo className="h-9 w-auto max-w-[140px] md:max-w-[180px]" />
             </button>
-            <div>
-              <h1 className="font-sans font-bold text-slate-800 text-sm md:text-base leading-none tracking-tight flex items-center gap-1.5">
-                {APP_NAME}
+            <div className="hidden sm:block min-w-0">
+              <div className="flex items-center gap-1.5">
                 <span className="text-[10px] bg-blue-50 text-blue-700 font-bold border border-blue-100 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
                   v1.2
                 </span>
-              </h1>
+              </div>
               <span className="text-[10px] text-slate-400 block mt-1 font-medium">{APP_TAGLINE}</span>
             </div>
           </div>
