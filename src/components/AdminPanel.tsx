@@ -22,6 +22,11 @@ import ListPagination from './ListPagination';
 import SelectField from './SelectField';
 import { paginate, TABLE_LIST_PAGE_SIZE } from '../lib/pagination';
 import { ROLE_OPTIONS } from '../lib/selectOptions';
+import {
+  normalizeSpecialty,
+  profileSpecialtyForDisplay,
+  profileSpecialtyForSave,
+} from '../lib/specialty';
 
 type UserRole = 'super_admin' | 'admin' | 'personal_medico' | 'registrador';
 
@@ -67,7 +72,7 @@ function identity(user: AdminUser) {
 function profileSummary(user: AdminUser) {
   const parts = [
     user.profile.id_document,
-    user.profile.specialty,
+    user.profile.specialty ? profileSpecialtyForDisplay(user.profile.specialty) : '',
     user.profile.workplace,
   ].filter(Boolean);
   return parts.join(' · ');
@@ -142,14 +147,24 @@ function UserEditModal({
 }) {
   const [email, setEmail] = useState(user.email || '');
   const [phone, setPhone] = useState(user.phone || '');
-  const [profile, setProfile] = useState<StaffProfile>({ ...user.profile });
+  const [profile, setProfile] = useState<StaffProfile>(() => ({
+    ...user.profile,
+    specialty: profileSpecialtyForDisplay(user.profile.specialty) || user.profile.specialty,
+  }));
 
   const contactChanged = useMemo(() => {
     return email.trim() !== (user.email || '') || normalizePhone(phone) !== (user.phone || '');
   }, [email, phone, user.email, user.phone]);
 
   const profileChanged = useMemo(() => {
-    return PROFILE_FIELDS.some(({ key }) => (profile[key] || '') !== (user.profile[key] || ''));
+    return PROFILE_FIELDS.some(({ key }) => {
+      const current = (profile[key] || '').trim();
+      const original = (user.profile[key] || '').trim();
+      if (key === 'specialty') {
+        return normalizeSpecialty(current) !== normalizeSpecialty(original);
+      }
+      return current !== original;
+    });
   }, [profile, user.profile]);
 
   const hasChanges = contactChanged || profileChanged;
@@ -170,7 +185,8 @@ function UserEditModal({
     if (profileChanged) {
       const nextProfile: Partial<StaffProfile> = {};
       for (const { key } of PROFILE_FIELDS) {
-        nextProfile[key] = (profile[key] || '').trim();
+        const raw = (profile[key] || '').trim();
+        nextProfile[key] = key === 'specialty' ? profileSpecialtyForSave(raw) : raw;
       }
       payload.profile = nextProfile;
     }
@@ -313,7 +329,13 @@ function CreateUserModal({
   const [phone, setPhone] = useState(initialValues?.phone || '');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState(roles[0] || 'personal_medico');
-  const [profile, setProfile] = useState<StaffProfile>(initialValues?.profile || {});
+  const [profile, setProfile] = useState<StaffProfile>(() => {
+    const base = initialValues?.profile || {};
+    return {
+      ...base,
+      specialty: base.specialty ? profileSpecialtyForDisplay(base.specialty) : base.specialty,
+    };
+  });
   const cleanPhone = normalizePhone(phone);
   const canSubmit = password.length >= 6 && (!!email.trim() || !!cleanPhone);
 
@@ -324,7 +346,7 @@ function CreateUserModal({
     const nextProfile: Partial<StaffProfile> = {};
     for (const { key } of PROFILE_FIELDS) {
       const value = (profile[key] || '').trim();
-      if (value) nextProfile[key] = value;
+      if (value) nextProfile[key] = key === 'specialty' ? profileSpecialtyForSave(value) : value;
     }
 
     onSave({
@@ -968,7 +990,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                 <div className="min-w-0">
                   <p className="font-semibold text-slate-900">{signupDisplayName(request)}</p>
                   <p className="mt-1 text-xs text-slate-600">
-                    {request.specialty} · {request.workplace}
+                    {profileSpecialtyForDisplay(request.specialty)} · {request.workplace}
                   </p>
                   <p className="mt-1 font-mono text-[11px] text-slate-500">
                     {request.contact_phone} · {formatSignupDate(request.created_at)}
@@ -1082,7 +1104,6 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                           options={ROLE_OPTIONS}
                           size="sm"
                           accent="blue"
-                          portaled
                           className="min-w-[9.5rem]"
                         />
                       ) : (

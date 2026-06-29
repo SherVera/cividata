@@ -1,0 +1,129 @@
+@layer components {
+  /* Select: control en flujo normal; menú flotante superpuesto (sin expandir el layout). */
+  .ui-select {
+    @apply relative;
+  }
+
+  .ui-select__row {
+    @apply flex w-full items-center justify-between gap-2 text-left transition-colors;
+    @apply bg-slate-50 text-slate-800 hover:bg-white;
+  }
+
+  .ui-select--md .ui-select__row {
+    @apply h-[42px] px-4 text-sm font-medium;
+  }
+
+  .ui-select--sm .ui-select__row {
+    @apply h-[34px] px-2.5 text-xs font-semibold;
+  }
+
+  .ui-select__label {
+    @apply truncate;
+  }
+
+  .ui-select__label--placeholder {
+    @apply text-slate-400;
+  }
+
+  .ui-select__label--value {
+    @apply text-slate-800;
+  }
+
+  .ui-select--md .ui-select__icon {
+    @apply h-4 w-4 shrink-0;
+  }
+
+  .ui-select--sm .ui-select__icon {
+    @apply h-3.5 w-3.5 shrink-0;
+  }
+
+  .ui-select__icon--muted {
+    @apply text-slate-400 transition-transform duration-200;
+  }
+
+  .ui-select__icon--open {
+    @apply rotate-180;
+  }
+
+  .ui-select__icon--teal {
+    @apply text-teal-600;
+  }
+
+  .ui-select__icon--blue {
+    @apply text-blue-600;
+  }
+
+  .ui-select__control {
+    @apply w-full border border-slate-200 focus:bg-white focus:outline-none focus:ring-2;
+    @apply disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-slate-50;
+  }
+
+  .ui-select--md .ui-select__control {
+    @apply rounded-xl;
+  }
+
+  .ui-select--sm .ui-select__control {
+    @apply rounded-lg;
+  }
+
+  .ui-select--teal .ui-select__control {
+    @apply focus:border-teal-500 focus:ring-teal-500/10;
+  }
+
+  .ui-select--blue .ui-select__control {
+    @apply focus:border-blue-500 focus:ring-blue-500/10;
+  }
+
+  .ui-select__control--open {
+    @apply relative z-[301] rounded-b-none border-b-transparent bg-white;
+  }
+
+  .ui-select--teal .ui-select__control--open {
+    @apply border-teal-500 ring-2 ring-teal-500/10;
+  }
+
+  .ui-select--blue .ui-select__control--open {
+    @apply border-blue-500 ring-2 ring-blue-500/10;
+  }
+
+  .ui-select__menu {
+    @apply overflow-hidden border border-t-0 border-slate-200 bg-slate-50;
+    @apply shadow-lg shadow-slate-300/25;
+    animation: ui-select-menu-in 150ms ease-out;
+  }
+
+  @keyframes ui-select-menu-in {
+    from {
+      opacity: 0;
+      transform: scaleY(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scaleY(1);
+    }
+  }
+
+  .ui-select--md .ui-select__menu {
+    @apply rounded-b-xl;
+  }
+
+  .ui-select--sm .ui-select__menu {
+    @apply rounded-b-lg;
+  }
+
+  .ui-select--teal .ui-select__menu--open {
+    @apply border-teal-500 ring-2 ring-teal-500/10;
+  }
+
+  .ui-select--blue .ui-select__menu--open {
+    @apply border-blue-500 ring-2 ring-blue-500/10;
+  }
+
+  .ui-select__list {
+    @apply max-h-60 overflow-auto;
+  }
+
+  .ui-select__option {
+    @apply focus:outline-none;
+  }
+}

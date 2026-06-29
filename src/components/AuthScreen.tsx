@@ -17,9 +17,18 @@ import AppLogo from './AppLogo';
 import { APP_NAME, APP_VERSION } from '../brand';
 import { fetchLandingStats, type LandingStats } from '../lib/landingStatsApi';
 import { submitPreSignup } from '../lib/preSignupApi';
+import SelectField from './SelectField';
+import { formatSpecialty, normalizeSpecialty } from '../lib/specialty';
 
 const numberFormatter = new Intl.NumberFormat('es');
 const SPECIALTY_SUGGESTIONS = ['Medicina general', 'Pediatría', 'Enfermería', 'Odontología', 'Ginecología'];
+const SPECIALTY_OPTIONS = [
+  ...SPECIALTY_SUGGESTIONS.map((item) => ({
+    value: normalizeSpecialty(item),
+    label: formatSpecialty(item),
+  })),
+  { value: '__other__', label: 'Otra…' },
+];
 
 type AuthMode = 'login' | 'signup';
 
@@ -36,6 +45,7 @@ export default function AuthScreen() {
   const [fullName, setFullName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [specialty, setSpecialty] = useState('');
+  const [specialtyOther, setSpecialtyOther] = useState('');
   const [workplace, setWorkplace] = useState('');
   const [signupHoneypot, setSignupHoneypot] = useState('');
   const [signupError, setSignupError] = useState('');
@@ -61,10 +71,12 @@ export default function AuthScreen() {
 
   const totalPatients = usageStats?.totalPatients ?? 0;
   const registeredToday = usageStats?.registeredToday ?? 0;
+  const resolvedSpecialty =
+    specialty === '__other__' ? specialtyOther : formatSpecialty(specialty);
   const canSubmitSignup =
     fullName.trim().length >= 3 &&
     contactPhone.trim().length >= 10 &&
-    specialty.trim().length >= 2 &&
+    normalizeSpecialty(resolvedSpecialty).length >= 2 &&
     workplace.trim().length >= 2;
 
   const openSignup = () => {
@@ -108,7 +120,7 @@ export default function AuthScreen() {
     const result = await submitPreSignup({
       fullName,
       contactPhone,
-      specialty,
+      specialty: normalizeSpecialty(resolvedSpecialty),
       workplace,
       website: signupHoneypot,
     });
@@ -124,6 +136,7 @@ export default function AuthScreen() {
     setFullName('');
     setContactPhone('');
     setSpecialty('');
+    setSpecialtyOther('');
     setWorkplace('');
   };
 
@@ -404,19 +417,22 @@ export default function AuthScreen() {
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
                     Especialidad / cargo
                   </label>
-                  <input
-                    type="text"
-                    list="signup-specialties"
+                  <SelectField
                     value={specialty}
-                    onChange={(e) => setSpecialty(e.target.value)}
-                    placeholder="Pediatría, enfermería..."
-                    className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    onChange={setSpecialty}
+                    options={SPECIALTY_OPTIONS}
+                    placeholder="Seleccionar especialidad"
+                    accent="blue"
                   />
-                  <datalist id="signup-specialties">
-                    {SPECIALTY_SUGGESTIONS.map((item) => (
-                      <option key={item} value={item} />
-                    ))}
-                  </datalist>
+                  {specialty === '__other__' && (
+                    <input
+                      type="text"
+                      value={specialtyOther}
+                      onChange={(e) => setSpecialtyOther(e.target.value)}
+                      placeholder="Indique su especialidad o cargo"
+                      className="mt-2 w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    />
+                  )}
                 </div>
 
                 <div>

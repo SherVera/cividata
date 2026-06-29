@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import type { StaffSignupRequest } from '../types';
+import { normalizeSpecialty } from './specialty';
 
 export type PreSignupPayload = {
   fullName: string;
@@ -25,7 +26,7 @@ export function validatePreSignup(payload: PreSignupPayload): string | null {
   const { first_name } = parseFullName(payload.fullName);
   if (first_name.length < 2) return 'Indique su nombre.';
   if (normalizeSignupPhone(payload.contactPhone).length < 10) return 'Indique un teléfono válido.';
-  if (payload.specialty.trim().length < 2) return 'Indique su especialidad o cargo.';
+  if (normalizeSpecialty(payload.specialty).length < 2) return 'Indique su especialidad o cargo.';
   if (payload.workplace.trim().length < 2) return 'Indique su centro de trabajo.';
   return null;
 }
@@ -38,23 +39,28 @@ export async function submitPreSignup(
   const validationError = validatePreSignup(payload);
   if (validationError) return { ok: false, error: validationError };
 
+  const body = {
+    ...payload,
+    specialty: normalizeSpecialty(payload.specialty),
+  };
+
   try {
     const response = await fetch('/api/pre-signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     });
     const data = (await response.json().catch(() => ({}))) as { error?: string };
 
     if (response.ok) return { ok: true };
 
     if (response.status === 404) {
-      return submitPreSignupDirect(payload);
+      return submitPreSignupDirect(body);
     }
 
     return { ok: false, error: data.error || 'No se pudo enviar la solicitud. Intente más tarde.' };
   } catch {
-    return submitPreSignupDirect(payload);
+    return submitPreSignupDirect(body);
   }
 }
 
@@ -70,7 +76,7 @@ async function submitPreSignupDirect(
     first_name,
     last_name,
     contact_phone,
-    specialty: payload.specialty.trim(),
+    specialty: normalizeSpecialty(payload.specialty),
     workplace: payload.workplace.trim(),
     status: 'pending',
   });
