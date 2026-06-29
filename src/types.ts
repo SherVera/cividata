@@ -230,3 +230,18 @@ export interface StaffAuditEntry {
   changes: Record<string, { before: unknown; after: unknown }>;
   created_at: string;
 }
+
+export type StaffSignupStatus = 'pending' | 'approved' | 'rejected';
+
+export interface StaffSignupRequest {
+  id: string;
+  first_name: string;
+  last_name: string;
+  contact_phone: string;
+  specialty: string;
+  workplace: string;
+  status: StaffSignupStatus;
+  created_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+}

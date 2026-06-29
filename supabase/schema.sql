@@ -134,14 +134,30 @@ create trigger trg_audit_citizens
 create or replace function public.general_stats()
 returns json language sql security definer set search_path = public stable as $$
   select json_build_object(
-    'total', (select count(*) from citizens),
-    'today', (select count(*) from citizens where created_at::date = now()::date),
-    'last7', (select count(*) from citizens where created_at > now() - interval '7 days'),
-    'mine',  (select count(*) from citizens where created_by = auth.uid())
+    'total', (select count(*) from patients),
+    'today', (select count(*) from patients where created_at::date = now()::date),
+    'last7', (select count(*) from patients where created_at > now() - interval '7 days'),
+    'mine',  (select count(*) from patients where created_by = auth.uid())
   );
 $$;
 
 grant execute on function public.general_stats() to authenticated;
+
+-- =========================================================
+-- Public landing stats (anon): aggregate usage only, no PII.
+-- =========================================================
+create or replace function public.landing_stats()
+returns json language sql security definer set search_path = public stable as $$
+  select json_build_object(
+    'total_patients', (select count(*) from patients),
+    'registered_today', (select count(*) from patients where created_at::date = now()::date),
+    'registered_last_7_days', (select count(*) from patients where created_at > now() - interval '7 days'),
+    'clinical_notes', (select count(*) from clinical_notes),
+    'collection_centers', (select count(*) from collection_centers where active is distinct from false)
+  );
+$$;
+
+grant execute on function public.landing_stats() to anon, authenticated;
 
 -- =========================================================
 -- React app: relational schema (normalized, flat tables).
@@ -434,6 +450,47 @@ drop policy if exists "admin read staff audit" on public.staff_audit_log;
 create policy "admin read staff audit"
   on public.staff_audit_log for select to authenticated
   using (public.is_admin());
+
+-- =========================================================
+-- Pre-registro de personal médico (landing pública)
+-- Anon puede insertar; solo admin lee y actualiza.
+-- =========================================================
+create table if not exists public.staff_signup_requests (
+  id              uuid primary key default gen_random_uuid(),
+  first_name      text not null,
+  last_name       text not null default '',
+  contact_phone   text not null,
+  specialty       text not null,
+  workplace       text not null,
+  status          text not null default 'pending'
+                  check (status in ('pending', 'approved', 'rejected')),
+  created_at      timestamptz not null default now(),
+  reviewed_at     timestamptz,
+  reviewed_by     uuid
+);
+
+create index if not exists staff_signup_requests_status_idx
+  on public.staff_signup_requests (status, created_at desc);
+
+create unique index if not exists staff_signup_requests_pending_phone_idx
+  on public.staff_signup_requests (contact_phone)
+  where status = 'pending';
+
+alter table public.staff_signup_requests enable row level security;
+
+drop policy if exists "anon insert signup requests" on public.staff_signup_requests;
+create policy "anon insert signup requests"
+  on public.staff_signup_requests for insert to anon
+  with check (status = 'pending');
+
+drop policy if exists "admin manage signup requests" on public.staff_signup_requests;
+create policy "admin manage signup requests"
+  on public.staff_signup_requests for all to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+grant insert on table public.staff_signup_requests to anon;
+grant select, insert, update on table public.staff_signup_requests to authenticated;
 
 -- =========================================================
 -- Patient photos (optional) — Supabase Storage

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ShieldCheck,
   Lock,
@@ -7,129 +7,71 @@ import {
   AtSign,
   Loader2,
   AlertTriangle,
-  Activity,
-  BarChart3,
-  ClipboardCheck,
-  HelpCircle,
   Stethoscope,
-  MessageCircle,
-  Send,
-  Mail,
+  CheckCircle2,
+  UserPlus,
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 import AppLogo from './AppLogo';
-import {
-  APP_NAME,
-  APP_VERSION,
-  CONTACT_EMAIL,
-  CONTACT_EMAIL_FORM_ENABLED,
-  CONTACT_PHONE,
-  contactWhatsAppUrl,
-} from '../brand';
-import { sendContactEmail } from '../lib/contactApi';
+import { APP_NAME, APP_VERSION } from '../brand';
+import { fetchLandingStats, type LandingStats } from '../lib/landingStatsApi';
+import { submitPreSignup } from '../lib/preSignupApi';
 
-const publicInfo = [
-  {
-    title: 'Sin datos de pacientes',
-    description: 'Esta landing no muestra nombres, diagnósticos, teléfonos, direcciones ni documentos.',
-    icon: Lock,
-  },
-  {
-    title: 'Acceso con cuenta autorizada',
-    description: 'El registro de pacientes y las fichas clínicas se consultan solo después de iniciar sesión.',
-    icon: ShieldCheck,
-  },
-  {
-    title: 'Tablero interno protegido',
-    description: 'Las estadísticas pertenecen al área privada del sistema.',
-    icon: BarChart3,
-  },
-];
+const numberFormatter = new Intl.NumberFormat('es');
+const SPECIALTY_SUGGESTIONS = ['Medicina general', 'Pediatría', 'Enfermería', 'Odontología', 'Ginecología'];
 
-const helpItems = [
-  {
-    title: 'Registro de pacientes',
-    description: 'Organiza fichas y datos de pacientes dentro del sistema protegido.',
-    icon: ClipboardCheck,
-  },
-  {
-    title: 'Historia clínica',
-    description: 'Guarda datos médicos y notas de consulta para revisión interna autorizada.',
-    icon: Stethoscope,
-  },
-];
+type AuthMode = 'login' | 'signup';
 
 export default function AuthScreen() {
+  const asideRef = useRef<HTMLElement>(null);
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [identity, setIdentity] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSubmittingState, setIsSubmitting] = useState(false);
-  const [contactName, setContactName] = useState('');
-  const [contactMessage, setContactMessage] = useState('');
-  const [contactHoneypot, setContactHoneypot] = useState('');
-  const [contactSending, setContactSending] = useState(false);
-  const [contactFeedback, setContactFeedback] = useState('');
-  const [contactError, setContactError] = useState('');
+  const [usageStats, setUsageStats] = useState<LandingStats | null>(null);
+  const [usageStatsLoading, setUsageStatsLoading] = useState(true);
+  const [fullName, setFullName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [specialty, setSpecialty] = useState('');
+  const [workplace, setWorkplace] = useState('');
+  const [signupHoneypot, setSignupHoneypot] = useState('');
+  const [signupError, setSignupError] = useState('');
+  const [signupSubmitting, setSignupSubmitting] = useState(false);
+  const [signupDone, setSignupDone] = useState(false);
 
-  const whatsAppHref = contactWhatsAppUrl();
-  const hasEmailContact = Boolean(CONTACT_EMAIL);
-  const showContactEmailForm = hasEmailContact && CONTACT_EMAIL_FORM_ENABLED;
-  const hasWhatsAppContact = Boolean(whatsAppHref);
-  const hasContactForm = showContactEmailForm || hasWhatsAppContact;
-  const canSendContact = contactMessage.trim().length >= 10;
+  useEffect(() => {
+    let cancelled = false;
 
-  const buildContactLines = () =>
-    [
-      `Consulta sobre ${APP_NAME}`,
-      contactName.trim() ? `Nombre: ${contactName.trim()}` : null,
-      '',
-      contactMessage.trim(),
-    ].filter((line): line is string => line !== null);
+    (async () => {
+      setUsageStatsLoading(true);
+      const stats = await fetchLandingStats();
+      if (!cancelled) {
+        setUsageStats(stats);
+        setUsageStatsLoading(false);
+      }
+    })();
 
-  const resetContactForm = () => {
-    setContactMessage('');
-    setContactName('');
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const handleContactWhatsApp = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (contactHoneypot || !canSendContact || !hasWhatsAppContact || contactSending) return;
+  const totalPatients = usageStats?.totalPatients ?? 0;
+  const registeredToday = usageStats?.registeredToday ?? 0;
+  const canSubmitSignup =
+    fullName.trim().length >= 3 &&
+    contactPhone.trim().length >= 10 &&
+    specialty.trim().length >= 2 &&
+    workplace.trim().length >= 2;
 
-    setContactError('');
-    setContactFeedback('');
-
-    const url = contactWhatsAppUrl(buildContactLines().join('\n'));
-    if (!url) return;
-
-    window.open(url, '_blank', 'noopener,noreferrer');
-    resetContactForm();
-    setContactFeedback('Se abrió WhatsApp con su mensaje.');
-  };
-
-  const handleContactEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (contactHoneypot || !canSendContact || !showContactEmailForm || contactSending) return;
-
-    setContactSending(true);
-    setContactError('');
-    setContactFeedback('');
-
-    try {
-      await sendContactEmail({
-        name: contactName,
-        message: contactMessage,
-        website: contactHoneypot,
-      });
-      resetContactForm();
-      setContactFeedback('Correo enviado. Le responderemos pronto.');
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'No se pudo enviar el correo.';
-      setContactError(message);
-    } finally {
-      setContactSending(false);
-    }
+  const openSignup = () => {
+    setAuthMode('signup');
+    setSignupDone(false);
+    setSignupError('');
+    asideRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -142,7 +84,6 @@ export default function AuthScreen() {
     setIsSubmitting(true);
     setError('');
 
-    // Si contiene "@" se trata como correo; si no, como teléfono en formato E.164.
     const credentials = cleanIdentity.includes('@')
       ? { email: cleanIdentity, password }
       : { phone: cleanIdentity.replace(/[\s()-]/g, ''), password };
@@ -155,7 +96,35 @@ export default function AuthScreen() {
       if ('vibrate' in navigator) navigator.vibrate(200);
       setTimeout(() => setError(''), 3500);
     }
-    // Si tiene éxito, App detecta la sesión vía onAuthStateChange.
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmitSignup || signupSubmitting) return;
+
+    setSignupSubmitting(true);
+    setSignupError('');
+
+    const result = await submitPreSignup({
+      fullName,
+      contactPhone,
+      specialty,
+      workplace,
+      website: signupHoneypot,
+    });
+
+    setSignupSubmitting(false);
+
+    if (result.ok === false) {
+      setSignupError(result.error);
+      return;
+    }
+
+    setSignupDone(true);
+    setFullName('');
+    setContactPhone('');
+    setSpecialty('');
+    setWorkplace('');
   };
 
   if (!hasSupabaseConfig) {
@@ -178,310 +147,321 @@ export default function AuthScreen() {
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-100/40 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
 
       <header className="w-full max-w-7xl mx-auto flex items-center justify-between z-10">
-        <div className="flex items-center gap-3">
-          <AppLogo className="h-9 w-auto max-w-[160px] md:max-w-[200px]" />
-        </div>
+        <AppLogo className="h-9 w-auto max-w-[160px] md:max-w-[200px]" />
         <span className="text-xs bg-blue-50 text-blue-700 border border-blue-100 font-mono px-2.5 py-1 rounded-full flex items-center gap-1 font-medium">
-          <Lock className="w-3.5 h-3.5" /> Privacidad primero
+          <Stethoscope className="w-3.5 h-3.5" /> Personal médico
         </span>
       </header>
 
-      <main className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8 lg:gap-10 items-center flex-1 py-8 md:py-12 z-10">
-        <section className="space-y-6">
+      <main className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-10 lg:gap-14 items-center flex-1 py-10 md:py-16 z-10">
+        <section className="flex flex-col justify-center space-y-8 lg:py-6">
           <motion.div
-            initial={{ opacity: 0, y: 18 }}
+            initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: 'easeOut' }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
             className="space-y-5"
           >
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-blue-700">
-              <Activity className="w-3.5 h-3.5" /> Salud comunitaria con datos protegidos
-            </span>
-
-            <div className="space-y-4">
-              <h1 className="font-sans text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-slate-900 leading-[1.02]">
-                Información útil para cuidar mejor, sin exponer datos sensibles.
-              </h1>
-              <p className="max-w-2xl text-sm md:text-base text-slate-500 leading-relaxed">
-                {APP_NAME} gestiona censo de pacientes e historia clínica para equipos de salud en campo. Esta pantalla pública solo explica el propósito del sistema; la información de pacientes permanece dentro del acceso privado.
-              </p>
-            </div>
+            <h1 className="font-sans text-[2.5rem] sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-[1.02]">
+              ¿Cuántos pacientes atendió{' '}
+              <span className="text-blue-600">hoy</span>?
+            </h1>
+            <p className="text-xl md:text-2xl font-semibold text-slate-600 max-w-lg leading-snug">
+              ¿Los tiene todos registrados?
+            </p>
+            <button
+              type="button"
+              onClick={openSignup}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 active:scale-[0.98]"
+            >
+              <UserPlus className="w-4 h-4" />
+              Registrarme — menos de 30 seg
+            </button>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {publicInfo.map(({ title, description, icon: Icon }, index) => (
-              <motion.div
-                key={title}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 + index * 0.06, duration: 0.35 }}
-                className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-sm font-bold text-slate-800">{title}</h2>
-                  </div>
-                  <div className="rounded-xl bg-blue-50 p-2 text-blue-600">
-                    <Icon className="w-4 h-4" />
-                  </div>
-                </div>
-                <p className="mt-3 text-[11px] leading-relaxed text-slate-500">{description}</p>
-              </motion.div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {helpItems.map(({ title, description, icon: Icon }) => (
-              <div key={title} className="rounded-2xl border border-slate-200 bg-white/70 p-4">
-                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white">
-                  <Icon className="w-4 h-4" />
-                </div>
-                <h2 className="text-sm font-bold text-slate-800">{title}</h2>
-                <p className="mt-2 text-xs leading-relaxed text-slate-500">{description}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 flex gap-3">
-            <HelpCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12, duration: 0.45 }}
+            className="flex flex-wrap items-end gap-5"
+          >
             <div>
-              <h2 className="text-sm font-bold">Uso responsable de la información</h2>
-              <p className="mt-1 text-xs leading-relaxed">
-                Las estadísticas identificables, historias clínicas, teléfonos, direcciones, documentos y notas médicas no se publican en esta landing. Para revisar información operativa real, inicie sesión con una cuenta autorizada.
+              {usageStatsLoading ? (
+                <div className="h-14 w-36 rounded-xl bg-slate-200/80 animate-pulse" aria-hidden="true" />
+              ) : (
+                <p className="text-5xl md:text-6xl font-bold font-mono text-slate-900 tabular-nums tracking-tight">
+                  {numberFormatter.format(totalPatients)}
+                </p>
+              )}
+              <p className="mt-2 text-sm font-medium text-slate-500">
+                pacientes en {APP_NAME}
               </p>
             </div>
+            {!usageStatsLoading && registeredToday > 0 && (
+              <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                +{numberFormatter.format(registeredToday)} hoy
+              </span>
+            )}
+          </motion.div>
+        </section>
+
+        <motion.aside
+          ref={asideRef}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+          className="bg-white rounded-2xl p-6 md:p-8 shadow-xl border border-slate-200 lg:shadow-2xl"
+        >
+          <div className="mb-5 flex rounded-xl bg-slate-100 p-1">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('login');
+                setSignupError('');
+              }}
+              className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all ${
+                authMode === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+              }`}
+            >
+              Entrar
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('signup');
+                setSignupDone(false);
+                setSignupError('');
+              }}
+              className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all ${
+                authMode === 'signup' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+              }`}
+            >
+              Solicitar acceso
+            </button>
           </div>
 
-          {hasContactForm ? (
-            <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur-sm">
-              <div className="flex items-start gap-3">
-                <div className="rounded-xl bg-emerald-50 p-2 text-emerald-600 shrink-0">
-                  <MessageCircle className="w-4 h-4" />
+          <AnimatePresence mode="wait">
+            {authMode === 'login' ? (
+              <motion.form
+                key="login"
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 8 }}
+                transition={{ duration: 0.2 }}
+                onSubmit={handleSubmit}
+                className="space-y-4"
+              >
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
+                    Correo o teléfono
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={identity}
+                      onChange={(e) => {
+                        setIdentity(e.target.value);
+                        setError('');
+                      }}
+                      placeholder="correo@ejemplo.com o +58..."
+                      autoComplete="username"
+                      autoFocus
+                      className="w-full px-4 py-3.5 pl-11 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    />
+                    <AtSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-sm font-bold text-slate-800">Consultas generales</h2>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                    {showContactEmailForm && hasWhatsAppContact
-                      ? 'Use este formulario para dudas sobre acceso o el sistema. Elija correo o WhatsApp. No envíe datos clínicos, contraseñas ni información de pacientes por estos canales.'
-                      : hasWhatsAppContact
-                        ? 'Use este formulario para dudas sobre acceso o el sistema por WhatsApp. No envíe datos clínicos, contraseñas ni información de pacientes por este canal.'
-                        : 'Use este formulario para dudas sobre acceso o el sistema. No envíe datos clínicos, contraseñas ni información de pacientes por este canal.'}
-                  </p>
-                </div>
-              </div>
 
-              <form className="mt-4 space-y-3" onSubmit={(e) => e.preventDefault()}>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
+                    Contraseña
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setError('');
+                      }}
+                      placeholder="Ingrese su contraseña..."
+                      autoComplete="current-password"
+                      className="w-full px-4 py-3.5 pl-11 pr-11 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                    />
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {error && (
+                  <p className="p-3 bg-red-50 text-red-700 text-xs font-medium rounded-xl border border-red-100 text-center">
+                    {error}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={!identity.trim() || !password || isSubmittingState}
+                  className={`w-full py-3.5 px-4 font-semibold text-white rounded-lg transition-all flex items-center justify-center gap-2 ${
+                    identity.trim() && password && !isSubmittingState
+                      ? 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98] cursor-pointer'
+                      : 'bg-slate-300 cursor-not-allowed'
+                  }`}
+                >
+                  {isSubmittingState ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                  Entrar
+                </button>
+
+                <p className="text-center text-xs text-slate-500">
+                  ¿Aún no tiene cuenta?{' '}
+                  <button type="button" onClick={openSignup} className="font-semibold text-blue-700 hover:text-blue-800">
+                    Solicítela aquí
+                  </button>
+                </p>
+              </motion.form>
+            ) : signupDone ? (
+              <motion.div
+                key="signup-done"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="py-4 text-center space-y-3"
+              >
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                  <CheckCircle2 className="h-7 w-7" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Solicitud enviada</h3>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  Un administrador revisará su solicitud y le activará el acceso. Hasta entonces no podrá entrar.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('login')}
+                  className="text-sm font-semibold text-blue-700 hover:text-blue-800"
+                >
+                  Volver a entrar
+                </button>
+              </motion.div>
+            ) : (
+              <motion.form
+                key="signup"
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -8 }}
+                transition={{ duration: 0.2 }}
+                onSubmit={handleSignup}
+                className="space-y-3"
+              >
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  4 datos. Menos de 30 segundos. El administrador activa su cuenta.
+                </p>
+
                 <input
                   type="text"
                   name="website"
-                  value={contactHoneypot}
-                  onChange={(e) => setContactHoneypot(e.target.value)}
+                  value={signupHoneypot}
+                  onChange={(e) => setSignupHoneypot(e.target.value)}
                   tabIndex={-1}
                   autoComplete="off"
                   aria-hidden="true"
                   className="hidden"
                 />
+
                 <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">
-                    Su nombre <span className="font-normal normal-case text-slate-400">(opcional)</span>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
+                    Nombre completo
                   </label>
                   <input
                     type="text"
-                    value={contactName}
-                    onChange={(e) => setContactName(e.target.value)}
-                    placeholder="Ej. Dra. García"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="Ej. Dra. María Pérez"
                     autoComplete="name"
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                    autoFocus
+                    className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">
-                    Mensaje
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
+                    Teléfono
                   </label>
-                  <textarea
-                    value={contactMessage}
-                    onChange={(e) => setContactMessage(e.target.value)}
-                    placeholder="Ej. Necesito información para solicitar una cuenta..."
-                    rows={3}
-                    required
-                    minLength={10}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all resize-none"
+                  <input
+                    type="tel"
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
+                    placeholder="+58 412..."
+                    autoComplete="tel"
+                    className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                 </div>
-                <div className={`grid gap-2 ${showContactEmailForm && hasWhatsAppContact ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
-                  {showContactEmailForm && (
-                    <button
-                      type="button"
-                      onClick={handleContactEmail}
-                      disabled={!canSendContact || contactSending}
-                      className={`w-full py-2.5 px-4 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
-                        canSendContact && !contactSending
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'
-                          : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                      }`}
-                    >
-                      {contactSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                      {contactSending ? 'Enviando…' : 'Enviar por correo'}
-                    </button>
-                  )}
-                  {hasWhatsAppContact && (
-                    <button
-                      type="button"
-                      onClick={handleContactWhatsApp}
-                      disabled={!canSendContact || contactSending}
-                      className={`w-full py-2.5 px-4 text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-2 ${
-                        canSendContact && !contactSending
-                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer'
-                          : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                      }`}
-                    >
-                      <Send className="w-4 h-4" />
-                      Enviar por WhatsApp
-                    </button>
-                  )}
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
+                    Especialidad / cargo
+                  </label>
+                  <input
+                    type="text"
+                    list="signup-specialties"
+                    value={specialty}
+                    onChange={(e) => setSpecialty(e.target.value)}
+                    placeholder="Pediatría, enfermería..."
+                    className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  />
+                  <datalist id="signup-specialties">
+                    {SPECIALTY_SUGGESTIONS.map((item) => (
+                      <option key={item} value={item} />
+                    ))}
+                  </datalist>
                 </div>
-                {contactFeedback && (
-                  <p className="text-xs font-medium text-emerald-700">{contactFeedback}</p>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
+                    Centro de trabajo
+                  </label>
+                  <input
+                    type="text"
+                    value={workplace}
+                    onChange={(e) => setWorkplace(e.target.value)}
+                    placeholder="Hospital, ambulatorio..."
+                    className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  />
+                </div>
+
+                {signupError && (
+                  <p className="p-3 bg-red-50 text-red-700 text-xs font-medium rounded-xl border border-red-100 text-center">
+                    {signupError}
+                  </p>
                 )}
-                {contactError && (
-                  <p className="text-xs font-medium text-red-600">{contactError}</p>
-                )}
-              </form>
-            </div>
-          ) : null}
-        </section>
 
-        <motion.aside
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
-          className="bg-white rounded-2xl p-6 md:p-8 shadow-xl border border-slate-200"
-        >
-          <div className="flex flex-col items-center text-center mb-6">
-            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/10 mb-4 relative">
-              <Lock className="w-7 h-7 text-white" />
-              <div className="absolute -top-1 -right-1 w-4 h-4 bg-amber-400 rounded-full border-2 border-white animate-pulse"></div>
-            </div>
-
-            <h2 className="font-sans font-bold text-2xl text-slate-800 tracking-tight leading-tight">
-              Acceso Seguro
-            </h2>
-            <p className="text-sm text-slate-500 mt-2 max-w-xs">
-              Ingrese sus credenciales para acceder a {APP_NAME}.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="relative">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
-                Correo o teléfono
-              </label>
-              <div className="relative rounded-xl shadow-sm">
-                <input
-                  type="text"
-                  value={identity}
-                  onChange={(e) => {
-                    setIdentity(e.target.value);
-                    setError('');
-                  }}
-                  placeholder="correo@ejemplo.com o +58..."
-                  autoComplete="username"
-                  autoFocus
-                  className="w-full px-4 py-3.5 pl-11 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                />
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <AtSign className="w-4 h-4" />
-                </div>
-              </div>
-            </div>
-
-            <div className="relative">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
-                Contraseña
-              </label>
-              <div className="relative rounded-xl shadow-sm">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    setError('');
-                  }}
-                  placeholder="Ingrese su contraseña..."
-                  autoComplete="current-password"
-                  className="w-full px-4 py-3.5 pl-11 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                />
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Lock className="w-4 h-4" />
-                </div>
                 <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                  type="submit"
+                  disabled={!canSubmitSignup || signupSubmitting}
+                  className={`w-full py-3.5 px-4 font-semibold text-white rounded-lg transition-all flex items-center justify-center gap-2 ${
+                    canSubmitSignup && !signupSubmitting
+                      ? 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98] cursor-pointer'
+                      : 'bg-slate-300 cursor-not-allowed'
+                  }`}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {signupSubmitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <UserPlus className="w-4 h-4" />
+                  )}
+                  Enviar solicitud
                 </button>
-              </div>
-            </div>
-
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-3 bg-red-50 text-red-700 text-xs font-medium rounded-xl border border-red-100 text-center"
-              >
-                {error}
-              </motion.div>
+              </motion.form>
             )}
-
-            <button
-              type="submit"
-              disabled={!identity.trim() || !password || isSubmittingState}
-              className={`w-full py-3.5 px-4 font-semibold text-white rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 ${
-                identity.trim() && password && !isSubmittingState
-                  ? 'bg-blue-600 hover:bg-blue-700 active:scale-[0.98] cursor-pointer'
-                  : 'bg-slate-300 shadow-none cursor-not-allowed'
-              }`}
-            >
-              {isSubmittingState ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
-              Acceder al Sistema
-            </button>
-          </form>
+          </AnimatePresence>
         </motion.aside>
       </main>
 
-      <footer className="text-center z-10 space-y-3">
-        {(hasEmailContact || hasWhatsAppContact) && (
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
-            {hasEmailContact && (
-              <a
-                href={`mailto:${CONTACT_EMAIL}`}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 hover:text-blue-800 transition-colors"
-              >
-                <Mail className="w-3.5 h-3.5" />
-                {CONTACT_EMAIL}
-              </a>
-            )}
-            {hasWhatsAppContact && (
-              <a
-                href={whatsAppHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                WhatsApp{CONTACT_PHONE ? ` · ${CONTACT_PHONE}` : ''}
-              </a>
-            )}
-          </div>
-        )}
-        <div className="flex flex-col items-center justify-center gap-1 text-[11px] text-slate-400 font-medium">
-          <div className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-            <span>{APP_NAME} &bull; Acceso seguro &bull; Sin datos críticos en pantalla pública</span>
-          </div>
-          <span className="font-mono text-[10px] text-slate-400/90">v{APP_VERSION}</span>
-        </div>
+      <footer className="text-center z-10 pb-2">
+        <span className="font-mono text-[10px] text-slate-400/90">v{APP_VERSION}</span>
       </footer>
     </div>
   );
