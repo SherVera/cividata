@@ -10,6 +10,7 @@ const admin = createClient(
 );
 
 const ROLE_PERSONAL_MEDICO = 'personal_medico';
+const ROLE_REGISTRADOR = 'registrador';
 
 const PROFILE_KEYS = [
   'first_name',
@@ -25,12 +26,16 @@ const PROFILE_KEYS = [
 function userRole(user) {
   const role = user?.app_metadata?.role;
   if (role === 'super_admin' || role === 'admin') return role;
-  if (role === 'registrador') return ROLE_PERSONAL_MEDICO;
+  if (role === ROLE_REGISTRADOR) return ROLE_REGISTRADOR;
   return role || ROLE_PERSONAL_MEDICO;
 }
 
 function isPersonalMedico(role) {
-  return role === ROLE_PERSONAL_MEDICO || role === 'registrador';
+  return role === ROLE_PERSONAL_MEDICO;
+}
+
+function isFieldStaff(role) {
+  return role === ROLE_PERSONAL_MEDICO || role === ROLE_REGISTRADOR;
 }
 
 function staffProfile(user) {
@@ -73,12 +78,17 @@ async function requireManager(req) {
   return ['super_admin', 'admin'].includes(userRole(data.user)) ? data.user : null;
 }
 
-const rolNormalizado = (r) => (r === 'admin' ? 'admin' : ROLE_PERSONAL_MEDICO);
+function rolNormalizado(r) {
+  if (r === 'admin') return 'admin';
+  if (r === ROLE_REGISTRADOR) return ROLE_REGISTRADOR;
+  return ROLE_PERSONAL_MEDICO;
+}
 const normalizePhone = (value) => String(value || '').trim().replace(/[\s()-]/g, '');
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 
 function allowedCreateRole(actorRole, requestedRole) {
   if (actorRole === 'super_admin') return rolNormalizado(requestedRole);
+  if (requestedRole === ROLE_REGISTRADOR) return ROLE_REGISTRADOR;
   return ROLE_PERSONAL_MEDICO;
 }
 
@@ -90,7 +100,7 @@ function actionPermissions(actor, target) {
   const canManageVisibleTarget =
     targetIsVisible &&
     !isSelf &&
-    (actorRole === 'super_admin' || (actorRole === 'admin' && isPersonalMedico(targetRole)));
+    (actorRole === 'super_admin' || (actorRole === 'admin' && isFieldStaff(targetRole)));
 
   return {
     visible: targetIsVisible,
@@ -98,7 +108,7 @@ function actionPermissions(actor, target) {
     canEditProfile: isSelf || canManageVisibleTarget,
     canResetPassword: isSelf || canManageVisibleTarget,
     canToggle: canManageVisibleTarget,
-    canChangeRole: actorRole === 'super_admin' && !isSelf && (targetRole === 'admin' || isPersonalMedico(targetRole)),
+    canChangeRole: actorRole === 'super_admin' && !isSelf && (targetRole === 'admin' || isFieldStaff(targetRole)),
   };
 }
 
@@ -174,7 +184,9 @@ export default async function handler(req, res) {
     return res.json({
       users,
       role: actorRole,
-      canCreateRoles: actorRole === 'super_admin' ? ['admin', ROLE_PERSONAL_MEDICO] : [ROLE_PERSONAL_MEDICO],
+      canCreateRoles: actorRole === 'super_admin'
+        ? ['admin', ROLE_PERSONAL_MEDICO, ROLE_REGISTRADOR]
+        : [ROLE_PERSONAL_MEDICO, ROLE_REGISTRADOR],
     });
   }
 

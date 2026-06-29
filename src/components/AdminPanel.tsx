@@ -18,8 +18,10 @@ import { AnimatePresence, motion } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 import type { StaffAuditEntry, StaffProfile, StaffSignupRequest } from '../types';
 import { listPendingSignupRequests, updateSignupRequestStatus } from '../lib/preSignupApi';
+import ListPagination from './ListPagination';
+import { paginate, TABLE_LIST_PAGE_SIZE } from '../lib/pagination';
 
-type UserRole = 'super_admin' | 'admin' | 'personal_medico';
+type UserRole = 'super_admin' | 'admin' | 'personal_medico' | 'registrador';
 
 type AdminUser = {
   id: string;
@@ -101,7 +103,8 @@ function normalizePhone(value: string) {
 function roleLabel(role: string) {
   if (role === 'super_admin') return 'Super admin';
   if (role === 'admin') return 'Admin';
-  if (role === 'personal_medico' || role === 'registrador') return 'Personal médico';
+  if (role === 'registrador') return 'Registrador';
+  if (role === 'personal_medico') return 'Personal médico';
   return role;
 }
 
@@ -413,6 +416,11 @@ function CreateUserModal({
                     <option key={availableRole} value={availableRole}>{roleLabel(availableRole)}</option>
                   ))}
                 </select>
+                {role === 'registrador' && (
+                  <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                    Personal no médico autorizado por una entidad o el equipo clínico para registrar pacientes en campo.
+                  </p>
+                )}
               </label>
             </div>
           </section>
@@ -551,6 +559,8 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [notice, setNotice] = useState<Notice>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [usersPage, setUsersPage] = useState(1);
+  const [auditPage, setAuditPage] = useState(1);
 
   const showNotice = (nextNotice: Notice) => {
     setNotice(nextNotice);
@@ -580,6 +590,36 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
     if (!auditResult.error) setAuditLog(auditResult.audit || []);
     setIsLoading(false);
   };
+
+  const usersPagination = useMemo(
+    () => paginate(users, usersPage, TABLE_LIST_PAGE_SIZE),
+    [users, usersPage]
+  );
+
+  const auditPagination = useMemo(
+    () => paginate(auditLog, auditPage, TABLE_LIST_PAGE_SIZE),
+    [auditLog, auditPage]
+  );
+
+  useEffect(() => {
+    setUsersPage(1);
+  }, [users.length]);
+
+  useEffect(() => {
+    if (usersPage > usersPagination.totalPages) {
+      setUsersPage(usersPagination.totalPages);
+    }
+  }, [usersPage, usersPagination.totalPages]);
+
+  useEffect(() => {
+    setAuditPage(1);
+  }, [auditLog.length]);
+
+  useEffect(() => {
+    if (auditPage > auditPagination.totalPages) {
+      setAuditPage(auditPagination.totalPages);
+    }
+  }, [auditPage, auditPagination.totalPages]);
 
   useEffect(() => {
     if (!supabase) {
@@ -988,6 +1028,16 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
           </div>
         ) : (
           <div className="overflow-x-auto">
+            <div className="px-5 pt-4">
+              <ListPagination
+                page={usersPagination.page}
+                totalPages={usersPagination.totalPages}
+                totalItems={usersPagination.total}
+                startIndex={usersPagination.startIndex}
+                endIndex={usersPagination.endIndex}
+                onPageChange={setUsersPage}
+              />
+            </div>
             <table className="w-full min-w-[900px] text-left text-sm">
               <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-400">
                 <tr>
@@ -1001,7 +1051,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {users.map((user) => (
+                {usersPagination.pageItems.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50/70">
                     <td className="px-5 py-4">
                       <div className="font-semibold text-slate-800">{displayName(user)}</div>
@@ -1031,10 +1081,15 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                         >
                           <option value="admin">Admin</option>
                           <option value="personal_medico">Personal médico</option>
+                          <option value="registrador">Registrador</option>
                         </select>
                       ) : (
                         <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                          user.role === 'admin' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-600'
+                          user.role === 'admin'
+                            ? 'bg-blue-50 text-blue-700'
+                            : user.role === 'registrador'
+                              ? 'bg-teal-50 text-teal-700'
+                              : 'bg-slate-100 text-slate-600'
                         }`}>
                           {roleLabel(user.role)}
                         </span>
@@ -1093,6 +1148,18 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
             </table>
           </div>
         )}
+        {!isLoading && (
+          <div className="px-5 pb-5">
+            <ListPagination
+              page={usersPagination.page}
+              totalPages={usersPagination.totalPages}
+              totalItems={usersPagination.total}
+              startIndex={usersPagination.startIndex}
+              endIndex={usersPagination.endIndex}
+              onPageChange={setUsersPage}
+            />
+          </div>
+        )}
       </div>
 
       <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -1116,9 +1183,10 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
             Sin registros de auditoría todavía. Ejecute el SQL nuevo en Supabase si la tabla no existe.
           </div>
         ) : (
-          <div className="max-h-80 overflow-x-auto overflow-y-auto">
+          <div className="space-y-0">
+          <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="sticky top-0 bg-slate-50 text-[10px] uppercase tracking-wider text-slate-400">
+              <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-400">
                 <tr>
                   <th className="px-5 py-3 font-bold">Fecha</th>
                   <th className="px-5 py-3 font-bold">Acción</th>
@@ -1128,7 +1196,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {auditLog.map((entry) => {
+                {auditPagination.pageItems.map((entry) => {
                   const target = users.find((user) => user.id === entry.target_user_id);
                   const changeSummary = Object.entries(entry.changes || {})
                     .map(([field, value]) => {
@@ -1156,6 +1224,17 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                 })}
               </tbody>
             </table>
+          </div>
+          <div className="px-5 pb-5">
+            <ListPagination
+              page={auditPagination.page}
+              totalPages={auditPagination.totalPages}
+              totalItems={auditPagination.total}
+              startIndex={auditPagination.startIndex}
+              endIndex={auditPagination.endIndex}
+              onPageChange={setAuditPage}
+            />
+          </div>
           </div>
         )}
       </div>

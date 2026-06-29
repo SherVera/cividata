@@ -50,8 +50,14 @@ cp .env.example .env
 |----------|-----|
 | `VITE_SUPABASE_URL` | URL del proyecto (expuesta al cliente React) |
 | `VITE_SUPABASE_ANON_KEY` | Clave anónima (expuesta al cliente React) |
-| `SUPABASE_URL` | Misma URL, para funciones servidor (`api/users`) |
+| `VITE_CONTACT_EMAIL` | Correo de contacto en la landing y activación del formulario «Enviar por correo» |
+| `SUPABASE_URL` | Misma URL, para funciones servidor (`api/users`, `api/contact`) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Solo en servidor; nunca en el frontend |
+| `CONTACT_EMAIL` | Destino de consultas del formulario público (puede coincidir con `VITE_CONTACT_EMAIL`) |
+| `SMTP_USER` / `SMTP_PASS` | Credenciales SMTP para `api/contact.js` |
+| `SMTP_HOST` | Opcional; por defecto `smtp.gmail.com` |
+| `SMTP_PORT` | Opcional; por defecto `587` |
+| `SMTP_SECURE` | `true` para puerto 465; por defecto `false` |
 
 En Supabase → SQL Editor, ejecuta el contenido de `supabase/schema.sql` para crear tablas, políticas RLS, catálogos, centros de acopio y funciones de estadísticas.
 
@@ -75,10 +81,10 @@ npm start         # servidor legacy local/ (SQLite, no usado en producción)
 
 ## Deploy en Vercel
 
-Vercel ejecuta el build con las variables de Supabase inyectadas:
+Vercel ejecuta el build con las variables de Supabase y contacto inyectadas:
 
 ```bash
-VITE_SUPABASE_URL=$SUPABASE_URL VITE_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY npm run build
+VITE_SUPABASE_URL=$SUPABASE_URL VITE_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY VITE_CONTACT_EMAIL=$CONTACT_EMAIL npm run build
 ```
 
 Configura en el panel de Vercel:
@@ -86,6 +92,9 @@ Configura en el panel de Vercel:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (necesaria para `api/users.js`)
+- `CONTACT_EMAIL` (destino y valor para `VITE_CONTACT_EMAIL` en build)
+- `SMTP_USER`, `SMTP_PASS` (envío del formulario de contacto en `api/contact.js`)
+- Opcional: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`
 
 La salida publicada es el directorio `dist`.
 

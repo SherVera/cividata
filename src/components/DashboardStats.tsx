@@ -9,12 +9,13 @@ import { APP_NAME } from '../brand';
 import type { AppRole } from '../lib/authRoles';
 import { 
   Users, ShieldCheck, Heart, Smile, Warehouse,
-  CalendarDays, MapPinOff, Stethoscope, UserCog, UserX, Activity
+  CalendarDays, MapPinOff, Stethoscope, UserCog, UserX, Activity, ClipboardList
 } from 'lucide-react';
 
 export type SuperAdminDashboardStats = {
   totalUsuarios: number;
   personalMedico: number;
+  registradores: number;
   admins: number;
   deshabilitadas: number;
 };
@@ -634,7 +635,7 @@ export default function DashboardStats({
           description="Resumen de cuentas y accesos. No heredado por admin ni personal médico."
           badgeClass="border-violet-100 bg-violet-50 text-violet-700"
         >
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
             <MetricCard
               label="Usuarios totales"
               value={superAdminStats.totalUsuarios}
@@ -646,10 +647,18 @@ export default function DashboardStats({
             <MetricCard
               label="Personal médico"
               value={superAdminStats.personalMedico}
-              hint="Captura en campo"
+              hint="Atención clínica"
               hintClass="text-blue-600"
               icon={Stethoscope}
               iconClass="bg-blue-50 text-blue-600"
+            />
+            <MetricCard
+              label="Registradores"
+              value={superAdminStats.registradores ?? 0}
+              hint="Captura en campo"
+              hintClass="text-teal-600"
+              icon={ClipboardList}
+              iconClass="bg-teal-50 text-teal-600"
             />
             <MetricCard
               label="Administradores"

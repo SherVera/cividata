@@ -19,6 +19,8 @@ import {
 import { DEFAULT_MAP_CENTER, formatDistance, haversineMeters } from '../lib/geo';
 import { GeocodeResult, searchPlaces } from '../lib/geocodeApi';
 import GeoMapPicker from './GeoMapPicker';
+import ListPagination from './ListPagination';
+import { paginate, TABLE_LIST_PAGE_SIZE } from '../lib/pagination';
 
 interface CollectionCentersPanelProps {
   onBack?: () => void;
@@ -55,6 +57,7 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
   const [locationConfirmed, setLocationConfirmed] = useState(false);
   const [searchedPlaceLabel, setSearchedPlaceLabel] = useState('');
   const [notice, setNotice] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
+  const [centersPage, setCentersPage] = useState(1);
 
   const resetLocationSearch = () => {
     setLocationQuery('');
@@ -89,6 +92,21 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
       );
     });
   }, [centers, search, showInactive]);
+
+  const centersPagination = useMemo(
+    () => paginate(filtered, centersPage, TABLE_LIST_PAGE_SIZE),
+    [filtered, centersPage]
+  );
+
+  useEffect(() => {
+    setCentersPage(1);
+  }, [search, showInactive]);
+
+  useEffect(() => {
+    if (centersPage > centersPagination.totalPages) {
+      setCentersPage(centersPagination.totalPages);
+    }
+  }, [centersPage, centersPagination.totalPages]);
 
   const mapCenters = useMemo(
     () =>
@@ -314,8 +332,17 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
             </button>
           </div>
         ) : (
+          <div className="space-y-4">
+          <ListPagination
+            page={centersPagination.page}
+            totalPages={centersPagination.totalPages}
+            totalItems={centersPagination.total}
+            startIndex={centersPagination.startIndex}
+            endIndex={centersPagination.endIndex}
+            onPageChange={setCentersPage}
+          />
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            {filtered.map((center) => (
+            {centersPagination.pageItems.map((center) => (
               <motion.div
                 key={center.id}
                 layout
@@ -362,6 +389,15 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
                 </div>
               </motion.div>
             ))}
+          </div>
+          <ListPagination
+            page={centersPagination.page}
+            totalPages={centersPagination.totalPages}
+            totalItems={centersPagination.total}
+            startIndex={centersPagination.startIndex}
+            endIndex={centersPagination.endIndex}
+            onPageChange={setCentersPage}
+          />
           </div>
         )}
       </div>
