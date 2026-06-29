@@ -3,8 +3,8 @@ export const APP_NAME = 'Cividata';
 
 export const APP_TAGLINE = 'Historia clínica y registro de pacientes';
 
-/** Versión visible en la app (línea v1: mayor.menor). */
-export const APP_VERSION = '1.3';
+/** Versión visible en la app. */
+export const APP_VERSION = '2.0';
 
 export const APP_DESCRIPTION =
   'Cividata: historia clínica y censo de pacientes, optimizado para uso en teléfonos.';
@@ -12,9 +12,8 @@ export const APP_DESCRIPTION =
 export const CONTACT_EMAIL =
   (import.meta.env.VITE_CONTACT_EMAIL as string | undefined)?.trim() || '';
 
-/** Actívalo con VITE_ENABLE_CONTACT_EMAIL=true y SMTP en el servidor (opcional). */
-export const CONTACT_EMAIL_FORM_ENABLED =
-  import.meta.env.VITE_ENABLE_CONTACT_EMAIL === 'true' && Boolean(CONTACT_EMAIL);
+/** Activo si VITE_CONTACT_EMAIL está en el build; el envío usa SMTP en /api/contact (Vercel). */
+export const CONTACT_EMAIL_FORM_ENABLED = Boolean(CONTACT_EMAIL);
 
 /** Formato E.164 o legible; vacío oculta WhatsApp en la landing. */
 export const CONTACT_PHONE: string = '+58 412-2027769';
