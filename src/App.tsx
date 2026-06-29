@@ -501,12 +501,7 @@ export default function App() {
               <AppLogo className="h-9 w-auto max-w-[140px] md:max-w-[180px]" />
             </button>
             <div className="hidden sm:block min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] bg-blue-50 text-blue-700 font-bold border border-blue-100 px-1.5 py-0.5 rounded-full uppercase tracking-wider font-mono">
-                  v1.2
-                </span>
-              </div>
-              <span className="text-[10px] text-slate-400 block mt-1 font-medium">{APP_TAGLINE}</span>
+              <span className="text-[10px] text-slate-400 block font-medium">{APP_TAGLINE}</span>
             </div>
           </div>
 

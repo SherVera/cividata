@@ -21,6 +21,7 @@ import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 import AppLogo from './AppLogo';
 import {
   APP_NAME,
+  APP_VERSION,
   CONTACT_EMAIL,
   CONTACT_EMAIL_FORM_ENABLED,
   CONTACT_PHONE,
@@ -474,9 +475,12 @@ export default function AuthScreen() {
             )}
           </div>
         )}
-        <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-400 font-medium">
-          <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-          <span>{APP_NAME} &bull; Acceso seguro &bull; Sin datos críticos en pantalla pública</span>
+        <div className="flex flex-col items-center justify-center gap-1 text-[11px] text-slate-400 font-medium">
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
+            <span>{APP_NAME} &bull; Acceso seguro &bull; Sin datos críticos en pantalla pública</span>
+          </div>
+          <span className="font-mono text-[10px] text-slate-400/90">v{APP_VERSION}</span>
         </div>
       </footer>
     </div>

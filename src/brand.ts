@@ -3,6 +3,9 @@ export const APP_NAME = 'Cividata';
 
 export const APP_TAGLINE = 'Historia clínica y registro de pacientes';
 
+/** Versión visible en la app (línea v1: mayor.menor). */
+export const APP_VERSION = '1.3';
+
 export const APP_DESCRIPTION =
   'Cividata: historia clínica y censo de pacientes, optimizado para uso en teléfonos.';
 
