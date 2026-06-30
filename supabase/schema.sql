@@ -59,7 +59,10 @@ create table if not exists public.citizens (
 -- =========================================================
 create or replace function public.is_admin() returns boolean
 language sql stable as $$
-  select coalesce((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin', false);
+  select coalesce(
+    (auth.jwt() -> 'app_metadata' ->> 'role') in ('admin', 'super_admin'),
+    false
+  );
 $$;
 
 -- =========================================================

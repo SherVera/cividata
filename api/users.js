@@ -198,6 +198,16 @@ export default async function handler(req, res) {
       return res.json({ audit: data || [] });
     }
 
+    if (req.query?.signups === '1') {
+      const { data, error } = await admin
+        .from('staff_signup_requests')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      if (error) return res.status(500).json({ error: error.message });
+      return res.json({ signups: data || [] });
+    }
+
     const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
     if (error) return res.status(500).json({ error: error.message });
     const users = data.users
@@ -265,7 +275,24 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    const { id, action, password, role, email } = req.body || {};
+    const { id, action, password, role, email, status } = req.body || {};
+
+    if (action === 'signup_status') {
+      if (!id || !['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({ error: 'Solicitud o estado inválido' });
+      }
+      const { error } = await admin
+        .from('staff_signup_requests')
+        .update({
+          status,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: me.id,
+        })
+        .eq('id', id);
+      if (error) return res.status(500).json({ error: error.message });
+      return res.json({ ok: true });
+    }
+
     if (!id) return res.status(400).json({ error: 'Falta id' });
     const { user: target, error: targetError } = await getTargetUser(id);
     if (targetError || !target) return res.status(404).json({ error: 'Usuario no encontrado' });

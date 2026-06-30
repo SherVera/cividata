@@ -122,8 +122,28 @@ async function submitPreSignupDirect(
   return { ok: true };
 }
 
-export async function listPendingSignupRequests(): Promise<StaffSignupRequest[]> {
-  if (!supabase) return [];
+export async function listPendingSignupRequests(
+  accessToken?: string,
+): Promise<{ signups: StaffSignupRequest[]; error?: string }> {
+  if (accessToken) {
+    try {
+      const response = await fetch('/api/users?signups=1', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        signups?: StaffSignupRequest[];
+        error?: string;
+      };
+      if (response.ok) return { signups: data.signups || [] };
+      if (response.status !== 404) {
+        return { signups: [], error: data.error || 'No se pudieron cargar las solicitudes.' };
+      }
+    } catch {
+      // fallback to direct Supabase below
+    }
+  }
+
+  if (!supabase) return { signups: [], error: 'Servicio no disponible.' };
 
   const { data, error } = await supabase
     .from('staff_signup_requests')
@@ -131,14 +151,35 @@ export async function listPendingSignupRequests(): Promise<StaffSignupRequest[]>
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
 
-  if (error) return [];
-  return (data || []) as StaffSignupRequest[];
+  if (error) return { signups: [], error: error.message };
+  return { signups: (data || []) as StaffSignupRequest[] };
 }
 
 export async function updateSignupRequestStatus(
   id: string,
   status: 'approved' | 'rejected',
+  accessToken?: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  if (accessToken) {
+    try {
+      const response = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ id, action: 'signup_status', status }),
+      });
+      const data = (await response.json().catch(() => ({}))) as { error?: string };
+      if (response.ok) return { ok: true };
+      if (response.status !== 404) {
+        return { ok: false, error: data.error || 'No se pudo actualizar la solicitud.' };
+      }
+    } catch {
+      // fallback to direct Supabase below
+    }
+  }
+
   if (!supabase) return { ok: false, error: 'Servicio no disponible.' };
 
   const { error } = await supabase
