@@ -50,4 +50,9 @@ describe('centerPicker', () => {
     const list = buildCenterSearchList(centers, ['c2', 'c1'], '');
     expect(list.map((c) => c.id)).toEqual(['c2', 'c1']);
   });
+
+  it('sin búsqueda ni recientes muestra todos los activos', () => {
+    const list = buildCenterSearchList(centers, [], '');
+    expect(list.map((c) => c.id)).toEqual(['c1', 'c2', 'c3']);
+  });
 });

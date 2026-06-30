@@ -21,6 +21,7 @@ import {
 import CenterPicker from './CenterPicker';
 import SelectField from './SelectField';
 import SupplyCategoryField from './SupplyCategoryField';
+import { getRecentCenterIds, recordRecentCenter } from '../lib/recentCenters';
 
 export type QuickSupplyRegisterModalProps = {
   open: boolean;
@@ -50,13 +51,16 @@ export default function QuickSupplyRegisterModal({
 
   const [selectedCenterId, setSelectedCenterId] = useState('');
   const [centerFilter, setCenterFilter] = useState('');
+  const [recentCenterIds, setRecentCenterIds] = useState<string[]>(() => getRecentCenterIds());
   const [categoryName, setCategoryName] = useState('');
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [entryDate, setEntryDate] = useState(todayIsoDate());
   const [openNeeds, setOpenNeeds] = useState<SupplyItemBalance[]>([]);
   const [loadingNeeds, setLoadingNeeds] = useState(false);
-  const [selectedNeedKey, setSelectedNeedKey] = useState('');
+  const [selectedNeedKey, setSelectedNeedKey] = useState(
+    initialEntryType === 'recepcion' && !presetNeedKey ? MANUAL_SUPPLY_NEED_KEY : ''
+  );
   const [saveResult, setSaveResult] = useState<{
     itemLabel: string;
     surplus: number;
@@ -82,7 +86,9 @@ export default function QuickSupplyRegisterModal({
     setQuantity('1');
     setEntryDate(todayIsoDate());
     setOpenNeeds([]);
-    setSelectedNeedKey(presetNeedKey || '');
+    setSelectedNeedKey(
+      presetNeedKey || (type === 'recepcion' ? MANUAL_SUPPLY_NEED_KEY : '')
+    );
     setSaveResult(null);
     setError('');
   };
@@ -90,6 +96,7 @@ export default function QuickSupplyRegisterModal({
   useEffect(() => {
     if (!open) return;
     resetFields(initialEntryType);
+    setRecentCenterIds(getRecentCenterIds());
     setLoading(true);
     Promise.all([listCollectionCenters(true), listSupplyCategories()])
       .then(([ctrs, cats]) => {
@@ -109,7 +116,11 @@ export default function QuickSupplyRegisterModal({
   useEffect(() => {
     if (!open || entryType !== 'recepcion' || !activeCenterId) {
       setOpenNeeds([]);
-      if (!presetNeedKey) setSelectedNeedKey('');
+      if (!presetNeedKey && entryType === 'recepcion') {
+        setSelectedNeedKey(MANUAL_SUPPLY_NEED_KEY);
+      } else if (!presetNeedKey) {
+        setSelectedNeedKey('');
+      }
       return;
     }
 
@@ -125,7 +136,7 @@ export default function QuickSupplyRegisterModal({
           if (prev && needs.some((n) => supplyItemKey(n.categoryId, n.itemName) === prev)) {
             return prev;
           }
-          return needs.length === 1 ? supplyItemKey(needs[0].categoryId, needs[0].itemName) : '';
+          return MANUAL_SUPPLY_NEED_KEY;
         });
         if (presetNeedKey) {
           const match = needs.find((n) => supplyItemKey(n.categoryId, n.itemName) === presetNeedKey);
@@ -142,6 +153,27 @@ export default function QuickSupplyRegisterModal({
   }, [openNeeds, selectedNeedKey]);
 
   const linkedToNeed = entryType === 'recepcion' && selectedNeed !== null;
+  const isManualReception = selectedNeedKey === MANUAL_SUPPLY_NEED_KEY;
+
+  const setReceptionManual = () => {
+    setSelectedNeedKey(MANUAL_SUPPLY_NEED_KEY);
+    setItemName('');
+  };
+
+  const setReceptionLinked = () => {
+    if (openNeeds.length === 0) return;
+    if (openNeeds.length === 1) {
+      const need = openNeeds[0];
+      setSelectedNeedKey(supplyItemKey(need.categoryId, need.itemName));
+      return;
+    }
+    setSelectedNeedKey((prev) => {
+      if (prev !== MANUAL_SUPPLY_NEED_KEY && openNeeds.some((n) => supplyItemKey(n.categoryId, n.itemName) === prev)) {
+        return prev;
+      }
+      return '';
+    });
+  };
 
   useEffect(() => {
     if (!selectedNeed) return;
@@ -157,14 +189,13 @@ export default function QuickSupplyRegisterModal({
     return projectReception(selectedNeed, receptionQty);
   }, [entryType, selectedNeed, receptionQty]);
 
-  const needOptions = useMemo(
+  const linkedNeedOptions = useMemo(
     () => [
-      { value: '', label: 'Seleccione la necesidad a suplir…' },
+      { value: '', label: 'Elija la necesidad a suplir…' },
       ...openNeeds.map((need) => ({
         value: supplyItemKey(need.categoryId, need.itemName),
         label: `${need.categoryName} · ${need.itemName} (faltan ${formatQty(need.balance)})`,
       })),
-      { value: MANUAL_SUPPLY_NEED_KEY, label: 'Otro ítem (sin necesidad registrada)' },
     ],
     [openNeeds]
   );
@@ -181,8 +212,8 @@ export default function QuickSupplyRegisterModal({
       setError('Seleccione un centro de acopio.');
       return;
     }
-    if (entryType === 'recepcion' && !selectedNeedKey) {
-      setError('Indique qué necesidad va a suplir o elija otro ítem.');
+    if (entryType === 'recepcion' && !isManualReception && !selectedNeedKey) {
+      setError('Seleccione la necesidad abierta a suplir.');
       return;
     }
 
@@ -307,7 +338,10 @@ export default function QuickSupplyRegisterModal({
             </button>
             <button
               type="button"
-              onClick={() => setEntryType('recepcion')}
+              onClick={() => {
+                setEntryType('recepcion');
+                if (!presetNeedKey) setSelectedNeedKey(MANUAL_SUPPLY_NEED_KEY);
+              }}
               className={`flex-1 rounded-lg py-2 text-xs font-bold transition-colors ${
                 !isNeed ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-500'
               }`}
@@ -330,12 +364,16 @@ export default function QuickSupplyRegisterModal({
                   </label>
                   <CenterPicker
                     collectionCenters={centers}
-                    recentCenterIds={[]}
+                    recentCenterIds={recentCenterIds}
                     selectedCenterId={selectedCenterId}
                     selectedCenterName={selectedCenterName}
                     centerFilter={centerFilter}
                     onCenterFilterChange={setCenterFilter}
-                    onSelectCenter={(c) => setSelectedCenterId(c.id)}
+                    onSelectCenter={(c) => {
+                      setSelectedCenterId(c.id);
+                      recordRecentCenter(c.id);
+                      setRecentCenterIds(getRecentCenterIds());
+                    }}
                     onClearSelection={() => setSelectedCenterId('')}
                   />
                 </div>
@@ -359,16 +397,61 @@ export default function QuickSupplyRegisterModal({
                     </div>
                   ) : (
                     <>
-                      <SelectField
-                        value={selectedNeedKey}
-                        onChange={setSelectedNeedKey}
-                        options={needOptions}
-                        disabled={saving}
-                        menuZIndex={1400}
-                      />
-                      {openNeeds.length === 0 && selectedNeedKey !== MANUAL_SUPPLY_NEED_KEY && (
-                        <p className="mt-1 text-[10px] text-amber-700">
-                          No hay necesidades pendientes en este centro. Puede registrar otro ítem.
+                      <div className="flex rounded-xl bg-slate-100 p-1">
+                        <button
+                          type="button"
+                          onClick={setReceptionManual}
+                          className={`flex-1 rounded-lg py-2 text-xs font-bold transition-colors ${
+                            isManualReception
+                              ? 'bg-white text-emerald-800 shadow-sm'
+                              : 'text-slate-500'
+                          }`}
+                        >
+                          Otro ítem
+                        </button>
+                        <button
+                          type="button"
+                          onClick={setReceptionLinked}
+                          disabled={openNeeds.length === 0}
+                          className={`flex-1 rounded-lg py-2 text-xs font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                            !isManualReception
+                              ? 'bg-white text-emerald-800 shadow-sm'
+                              : 'text-slate-500'
+                          }`}
+                        >
+                          Necesidad abierta
+                          {openNeeds.length > 0 && (
+                            <span className="ml-1 text-[10px] font-semibold text-emerald-600">
+                              ({openNeeds.length})
+                            </span>
+                          )}
+                        </button>
+                      </div>
+
+                      {isManualReception ? (
+                        <p className="mt-1.5 text-[10px] text-slate-500">
+                          Ingrese clasificación e ítem directamente, sin vincular a una necesidad registrada.
+                        </p>
+                      ) : openNeeds.length > 1 ? (
+                        <div className="mt-2">
+                          <SelectField
+                            value={selectedNeedKey}
+                            onChange={setSelectedNeedKey}
+                            options={linkedNeedOptions}
+                            disabled={saving}
+                            menuZIndex={1400}
+                          />
+                        </div>
+                      ) : selectedNeed ? (
+                        <p className="mt-1.5 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900">
+                          {selectedNeed.categoryName} · {selectedNeed.itemName} (faltan{' '}
+                          {formatQty(selectedNeed.balance)})
+                        </p>
+                      ) : null}
+
+                      {openNeeds.length === 0 && (
+                        <p className="mt-1.5 text-[10px] text-amber-700">
+                          No hay necesidades pendientes en este centro.
                         </p>
                       )}
                     </>
@@ -494,7 +577,7 @@ export default function QuickSupplyRegisterModal({
               !entryDate ||
               !categoryName.trim() ||
               (!presetCenter && !selectedCenterId) ||
-              (!isNeed && !selectedNeedKey)
+              (!isNeed && !isManualReception && !selectedNeedKey)
             }
             className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50 ${
               isNeed ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'

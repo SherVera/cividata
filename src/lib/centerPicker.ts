@@ -19,7 +19,8 @@ export function buildCenterSearchList(
   const q = query.trim().toLowerCase();
 
   if (!q) {
-    return resolveRecentCenters(recentIds, active);
+    const recent = resolveRecentCenters(recentIds, active);
+    return recent.length > 0 ? recent : active;
   }
 
   const matches = active.filter(
