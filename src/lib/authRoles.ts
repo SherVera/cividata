@@ -26,6 +26,29 @@ export function isPersonalMedico(role: AppRole): boolean {
   return role === 'personal_medico';
 }
 
+export type SignupProfileType = 'personal_medico' | 'registrador';
+
+export const SIGNUP_PROFILE_OPTIONS: { value: SignupProfileType; label: string; description: string }[] = [
+  {
+    value: 'personal_medico',
+    label: 'Personal médico',
+    description: 'Médicos, enfermería y personal clínico autorizado.',
+  },
+  {
+    value: 'registrador',
+    label: 'Asistente',
+    description: 'Apoyo en campo: triaje y captura de datos, sin evolución clínica.',
+  },
+];
+
+export function appRoleLabel(role: string): string {
+  if (role === 'super_admin') return 'Super admin';
+  if (role === 'admin') return 'Admin';
+  if (role === 'registrador') return 'Asistente';
+  if (role === 'personal_medico') return 'Personal médico';
+  return role;
+}
+
 /** Puede editar fichas de paciente y registrar evolución clínica. */
 export function canManageClinicalData(role: AppRole): boolean {
   return isPersonalMedico(role) || isAppAdmin(role);

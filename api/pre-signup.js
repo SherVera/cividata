@@ -3,6 +3,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import nodemailer from 'nodemailer';
+import { isValidAuthPhone, normalizeAuthPhone } from '../lib/authPhone.js';
 
 const APP_NAME = 'Cividata';
 
@@ -19,9 +20,7 @@ function parseFullName(fullName) {
   return { first_name: parts[0], last_name: parts.slice(1).join(' ') };
 }
 
-function normalizePhone(value) {
-  return String(value || '').trim().replace(/[\s()-]/g, '');
-}
+const normalizePhone = normalizeAuthPhone;
 
 function normalizeSpecialty(value) {
   return String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es');
@@ -36,10 +35,27 @@ function formatSpecialty(value) {
 function validateBody(body) {
   const { first_name } = parseFullName(body?.fullName);
   if (first_name.length < 2) return 'Indique su nombre.';
-  if (normalizePhone(body?.contactPhone).length < 10) return 'Indique un teléfono válido.';
-  if (normalizeSpecialty(body?.specialty).length < 2) return 'Indique su especialidad o cargo.';
+  if (!isValidAuthPhone(body?.contactPhone)) return 'Indique un teléfono válido.';
+  const requestedRole = body?.requestedRole === 'registrador' ? 'registrador' : 'personal_medico';
+  if (requestedRole === 'personal_medico' && normalizeSpecialty(body?.specialty).length < 2) {
+    return 'Indique su especialidad o cargo.';
+  }
   if (String(body?.workplace || '').trim().length < 2) return 'Indique su centro de trabajo.';
   return null;
+}
+
+function resolveRequestedRole(body) {
+  return body?.requestedRole === 'registrador' ? 'registrador' : 'personal_medico';
+}
+
+function resolveSignupSpecialty(body) {
+  if (resolveRequestedRole(body) === 'registrador') return 'asistente';
+  return normalizeSpecialty(body?.specialty);
+}
+
+function roleLabelForNotify(role) {
+  if (role === 'registrador') return 'Asistente';
+  return 'Personal médico';
 }
 
 function siteUrl() {
@@ -59,6 +75,7 @@ async function notifyAdmin(request) {
     '',
     `Nombre: ${fullName}`,
     `Teléfono: ${request.contact_phone}`,
+    `Perfil: ${roleLabelForNotify(request.requested_role || 'personal_medico')}`,
     `Especialidad: ${formatSpecialty(request.specialty)}`,
     `Centro: ${request.workplace}`,
     `ID solicitud: ${request.id}`,
@@ -120,7 +137,8 @@ export default async function handler(req, res) {
 
   const { first_name, last_name } = parseFullName(body.fullName);
   const contact_phone = normalizePhone(body.contactPhone);
-  const specialty = normalizeSpecialty(body.specialty);
+  const requested_role = resolveRequestedRole(body);
+  const specialty = resolveSignupSpecialty(body);
   const workplace = String(body.workplace).trim();
 
   const { data, error } = await admin
@@ -131,9 +149,10 @@ export default async function handler(req, res) {
       contact_phone,
       specialty,
       workplace,
+      requested_role,
       status: 'pending',
     })
-    .select('id, first_name, last_name, contact_phone, specialty, workplace')
+    .select('id, first_name, last_name, contact_phone, specialty, workplace, requested_role')
     .single();
 
   if (error) {

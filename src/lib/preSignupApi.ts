@@ -1,14 +1,28 @@
 import { supabase } from './supabaseClient';
 import type { StaffSignupRequest } from '../types';
+import type { SignupProfileType } from './authRoles';
 import { normalizeSpecialty } from './specialty';
+import { isValidAuthPhone, normalizeAuthPhone } from './authPhone';
 
 export type PreSignupPayload = {
   fullName: string;
   contactPhone: string;
   specialty: string;
   workplace: string;
+  requestedRole?: SignupProfileType;
   website?: string;
 };
+
+export function resolveSignupRequestedRole(payload: PreSignupPayload): SignupProfileType {
+  return payload.requestedRole === 'registrador' ? 'registrador' : 'personal_medico';
+}
+
+export function resolveSignupSpecialty(payload: PreSignupPayload): string {
+  if (resolveSignupRequestedRole(payload) === 'registrador') {
+    return 'asistente';
+  }
+  return normalizeSpecialty(payload.specialty);
+}
 
 export function parseFullName(fullName: string): { first_name: string; last_name: string } {
   const parts = fullName.trim().split(/\s+/).filter(Boolean);
@@ -18,15 +32,17 @@ export function parseFullName(fullName: string): { first_name: string; last_name
 }
 
 export function normalizeSignupPhone(value: string): string {
-  return value.trim().replace(/[\s()-]/g, '');
+  return normalizeAuthPhone(value);
 }
 
 export function validatePreSignup(payload: PreSignupPayload): string | null {
   if (payload.website?.trim()) return null;
   const { first_name } = parseFullName(payload.fullName);
   if (first_name.length < 2) return 'Indique su nombre.';
-  if (normalizeSignupPhone(payload.contactPhone).length < 10) return 'Indique un teléfono válido.';
-  if (normalizeSpecialty(payload.specialty).length < 2) return 'Indique su especialidad o cargo.';
+  if (!isValidAuthPhone(payload.contactPhone)) return 'Indique un teléfono válido.';
+  if (resolveSignupRequestedRole(payload) === 'personal_medico' && normalizeSpecialty(payload.specialty).length < 2) {
+    return 'Indique su especialidad o cargo.';
+  }
   if (payload.workplace.trim().length < 2) return 'Indique su centro de trabajo.';
   return null;
 }
@@ -41,7 +57,8 @@ export async function submitPreSignup(
 
   const body = {
     ...payload,
-    specialty: normalizeSpecialty(payload.specialty),
+    specialty: resolveSignupSpecialty(payload),
+    requestedRole: resolveSignupRequestedRole(payload),
   };
 
   try {
@@ -76,8 +93,9 @@ async function submitPreSignupDirect(
     first_name,
     last_name,
     contact_phone,
-    specialty: normalizeSpecialty(payload.specialty),
+    specialty: resolveSignupSpecialty(payload),
     workplace: payload.workplace.trim(),
+    requested_role: resolveSignupRequestedRole(payload),
     status: 'pending',
   });
 

@@ -12,11 +12,16 @@ import {
   KeyRound,
   UserPlus,
   Users,
+  UserRound,
   X,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 import type { StaffAuditEntry, StaffProfile, StaffSignupRequest } from '../types';
+import { isValidAuthPhone, normalizeAuthPhone } from '../lib/authPhone';
+import { isValidUsername, normalizeUsername, suggestUsername } from '../lib/authUsername';
+import { signInWithIdentity } from '../lib/authSignIn';
+import { appRoleLabel } from '../lib/authRoles';
 import { listPendingSignupRequests, updateSignupRequestStatus } from '../lib/preSignupApi';
 import ListPagination from './ListPagination';
 import SelectField from './SelectField';
@@ -34,6 +39,7 @@ type UserRole = 'super_admin' | 'admin' | 'personal_medico' | 'registrador';
 type AdminUser = {
   id: string;
   email: string | null;
+  username: string | null;
   phone: string | null;
   profile: StaffProfile;
   role: UserRole | string;
@@ -54,7 +60,7 @@ const PROFILE_FIELDS: { key: keyof StaffProfile; label: string; placeholder: str
   { key: 'id_document', label: 'Documento de identidad', placeholder: 'V-12345678' },
   { key: 'specialty', label: 'Especialidad / cargo', placeholder: 'Pediatría, enfermería…' },
   { key: 'workplace', label: 'Centro de trabajo', placeholder: 'Hospital, ambulatorio…' },
-  { key: 'contact_phone', label: 'Teléfono de contacto', placeholder: '+584141234567' },
+  { key: 'contact_phone', label: 'Teléfono de contacto', placeholder: '0414-1234567' },
   { key: 'address', label: 'Dirección', placeholder: 'Opcional' },
   { key: 'professional_license', label: 'Cédula profesional', placeholder: 'Opcional' },
 ];
@@ -63,7 +69,7 @@ type Notice = { type: 'success' | 'error' | 'info'; message: string } | null;
 
 function displayName(user: AdminUser) {
   const full = [user.profile.first_name, user.profile.last_name].filter(Boolean).join(' ').trim();
-  return full || user.email || user.phone || user.id.slice(0, 8);
+  return full || user.username || user.email || user.phone || user.id.slice(0, 8);
 }
 
 function identity(user: AdminUser) {
@@ -82,6 +88,7 @@ function profileSummary(user: AdminUser) {
 function auditActionLabel(action: string) {
   const labels: Record<string, string> = {
     create: 'Alta de usuario',
+    username_update: 'Cambio de usuario',
     contact_update: 'Contacto de acceso',
     profile_update: 'Datos personales',
     role_change: 'Cambio de rol',
@@ -104,16 +111,8 @@ function formatSignupDate(value: string) {
   return new Date(value).toLocaleString('es', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-function normalizePhone(value: string) {
-  return value.trim().replace(/[\s()-]/g, '');
-}
-
 function roleLabel(role: string) {
-  if (role === 'super_admin') return 'Super admin';
-  if (role === 'admin') return 'Admin';
-  if (role === 'registrador') return 'Registrador';
-  if (role === 'personal_medico') return 'Personal médico';
-  return role;
+  return appRoleLabel(role);
 }
 
 async function requestUsers(token: string, method: 'GET' | 'POST' | 'PATCH', body?: unknown) {
@@ -144,18 +143,28 @@ function UserEditModal({
   user: AdminUser;
   isSaving: boolean;
   onClose: () => void;
-  onSave: (payload: { contact?: { email?: string; phone?: string }; profile?: Partial<StaffProfile> }) => void;
+  onSave: (payload: {
+    username?: string;
+    contact?: { email?: string; phone?: string };
+    profile?: Partial<StaffProfile>;
+  }) => void;
 }) {
-  const [email, setEmail] = useState(user.email || '');
+  const [username, setUsername] = useState(user.username || '');
+  const [email, setEmail] = useState(user.username ? user.profile.contact_email || '' : user.email || '');
   const [phone, setPhone] = useState(user.phone || '');
   const [profile, setProfile] = useState<StaffProfile>(() => ({
     ...user.profile,
     specialty: profileSpecialtyForDisplay(user.profile.specialty) || user.profile.specialty,
   }));
 
+  const usernameChanged = useMemo(() => {
+    return normalizeUsername(username) !== (user.username || '');
+  }, [username, user.username]);
+
   const contactChanged = useMemo(() => {
-    return email.trim() !== (user.email || '') || normalizePhone(phone) !== (user.phone || '');
-  }, [email, phone, user.email, user.phone]);
+    if (user.username) return normalizeAuthPhone(phone) !== (user.phone || '');
+    return email.trim() !== (user.email || '') || normalizeAuthPhone(phone) !== (user.phone || '');
+  }, [email, phone, user.email, user.phone, user.username]);
 
   const profileChanged = useMemo(() => {
     return PROFILE_FIELDS.some(({ key }) => {
@@ -165,22 +174,32 @@ function UserEditModal({
         return normalizeSpecialty(current) !== normalizeSpecialty(original);
       }
       return current !== original;
-    });
-  }, [profile, user.profile]);
+    }) || (user.username && email.trim() !== (user.profile.contact_email || ''));
+  }, [email, profile, user.profile, user.username]);
 
-  const hasChanges = contactChanged || profileChanged;
+  const hasChanges = usernameChanged || contactChanged || profileChanged;
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!hasChanges) return;
 
-    const payload: { contact?: { email?: string; phone?: string }; profile?: Partial<StaffProfile> } = {};
+    const payload: {
+      username?: string;
+      contact?: { email?: string; phone?: string };
+      profile?: Partial<StaffProfile>;
+    } = {};
+
+    if (usernameChanged) {
+      payload.username = normalizeUsername(username);
+    }
 
     if (contactChanged) {
-      payload.contact = {
-        email: email.trim(),
-        phone: normalizePhone(phone),
-      };
+      payload.contact = user.username
+        ? { phone: normalizeAuthPhone(phone) }
+        : {
+            email: email.trim(),
+            phone: normalizeAuthPhone(phone),
+          };
     }
 
     if (profileChanged) {
@@ -188,6 +207,9 @@ function UserEditModal({
       for (const { key } of PROFILE_FIELDS) {
         const raw = (profile[key] || '').trim();
         nextProfile[key] = key === 'specialty' ? profileSpecialtyForSave(raw) : raw;
+      }
+      if (user.username) {
+        nextProfile.contact_email = email.trim();
       }
       payload.profile = nextProfile;
     }
@@ -251,11 +273,25 @@ function UserEditModal({
           </section>
 
           <section>
-            <h4 className="mb-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Contacto de acceso</h4>
+            <h4 className="mb-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Acceso</h4>
             <div className="space-y-3">
+              {user.username && (
+                <label className="block">
+                  <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <UserRound className="h-3.5 w-3.5" /> Usuario
+                  </span>
+                  <input
+                    value={username}
+                    onChange={(event) => setUsername(event.target.value)}
+                    placeholder="maria.perez"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                  />
+                </label>
+              )}
+
               <label className="block">
                 <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  <Mail className="h-3.5 w-3.5" /> Correo
+                  <Mail className="h-3.5 w-3.5" /> {user.username ? 'Correo de contacto' : 'Correo'}
                 </span>
                 <input
                   type="email"
@@ -268,12 +304,12 @@ function UserEditModal({
 
               <label className="block">
                 <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  <Phone className="h-3.5 w-3.5" /> Teléfono
+                  <Phone className="h-3.5 w-3.5" /> Teléfono de acceso
                 </span>
                 <input
                   value={phone}
                   onChange={(event) => setPhone(event.target.value)}
-                  placeholder="+584141234567"
+                  placeholder="0414-1234567"
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
                 />
               </label>
@@ -281,7 +317,7 @@ function UserEditModal({
           </section>
 
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
-            Debe permanecer al menos un correo o teléfono de acceso. Las eliminaciones y cambios sensibles quedan en el registro de auditoría.
+            Debe permanecer al menos un usuario, correo o teléfono de acceso. Cambiar el usuario actualiza las credenciales de ingreso.
           </div>
         </div>
 
@@ -316,9 +352,10 @@ function CreateUserModal({
 }: {
   roles: string[];
   isSaving: boolean;
-  initialValues?: { phone?: string; profile?: Partial<StaffProfile> };
+  initialValues?: { username?: string; phone?: string; role?: string; profile?: Partial<StaffProfile> };
   onClose: () => void;
   onSave: (payload: {
+    username?: string;
     email?: string;
     phone?: string;
     password: string;
@@ -326,10 +363,15 @@ function CreateUserModal({
     profile?: Partial<StaffProfile>;
   }) => void;
 }) {
+  const [username, setUsername] = useState(initialValues?.username || '');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState(initialValues?.phone || '');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState(roles[0] || 'personal_medico');
+  const [role, setRole] = useState(
+    initialValues?.role && roles.includes(initialValues.role)
+      ? initialValues.role
+      : roles[0] || 'personal_medico'
+  );
   const [profile, setProfile] = useState<StaffProfile>(() => {
     const base = initialValues?.profile || {};
     return {
@@ -337,8 +379,13 @@ function CreateUserModal({
       specialty: base.specialty ? profileSpecialtyForDisplay(base.specialty) : base.specialty,
     };
   });
-  const cleanPhone = normalizePhone(phone);
-  const canSubmit = password.length >= 6 && (!!email.trim() || !!cleanPhone);
+  const cleanUsername = normalizeUsername(username);
+  const cleanPhone = normalizeAuthPhone(phone);
+  const canSubmit =
+    password.length >= 6 &&
+    (isValidUsername(cleanUsername) ||
+      !!email.trim() ||
+      (cleanPhone.length > 0 && isValidAuthPhone(cleanPhone)));
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -351,6 +398,7 @@ function CreateUserModal({
     }
 
     onSave({
+      username: isValidUsername(cleanUsername) ? cleanUsername : undefined,
       email: email.trim() || undefined,
       phone: cleanPhone || undefined,
       password,
@@ -394,7 +442,19 @@ function CreateUserModal({
             <div className="space-y-3">
               <label className="block">
                 <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  <Mail className="h-3.5 w-3.5" /> Correo
+                  <UserRound className="h-3.5 w-3.5" /> Usuario
+                </span>
+                <input
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  placeholder="maria.perez"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <Mail className="h-3.5 w-3.5" /> Correo de contacto (opcional)
                 </span>
                 <input
                   type="email"
@@ -407,15 +467,19 @@ function CreateUserModal({
 
               <label className="block">
                 <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  <Phone className="h-3.5 w-3.5" /> Teléfono
+                  <Phone className="h-3.5 w-3.5" /> Teléfono de acceso (opcional)
                 </span>
                 <input
                   value={phone}
                   onChange={(event) => setPhone(event.target.value)}
-                  placeholder="+584141234567"
+                  placeholder="0414-1234567"
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
                 />
               </label>
+
+              <p className="text-[11px] leading-relaxed text-slate-400">
+                El usuario es la forma principal de ingreso. Correo y teléfono son opcionales.
+              </p>
 
               <label className="block">
                 <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -443,7 +507,7 @@ function CreateUserModal({
                 />
                 {role === 'registrador' && (
                   <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-                    Personal no médico autorizado por una entidad o el equipo clínico para realizar triaje en campo.
+                    Asistente: personal no médico autorizado para triaje y captura en campo, sin evolución clínica.
                   </p>
                 )}
               </label>
@@ -705,11 +769,7 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
 
     setIsLoading(true);
     const cleanIdentity = identityInput.trim();
-    const credentials = cleanIdentity.includes('@')
-      ? { email: cleanIdentity, password }
-      : { phone: cleanIdentity.replace(/[\s()-]/g, ''), password };
-
-    const { data, error } = await supabase.auth.signInWithPassword(credentials);
+    const { data, error } = await signInWithIdentity(supabase, cleanIdentity, password);
     if (error || !data.session) {
       showNotice({ type: 'error', message: 'Credenciales incorrectas.' });
       setIsLoading(false);
@@ -731,11 +791,25 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
   };
 
   const handleUpdateUser = async (payload: {
+    username?: string;
     contact?: { email?: string; phone?: string };
     profile?: Partial<StaffProfile>;
   }) => {
     if (!token || !selectedUser) return;
     setIsSaving(true);
+
+    if (payload.username) {
+      const result = await requestUsers(token, 'PATCH', {
+        id: selectedUser.id,
+        action: 'username',
+        username: payload.username,
+      });
+      if (result.error) {
+        setIsSaving(false);
+        showNotice({ type: 'error', message: result.error });
+        return;
+      }
+    }
 
     if (payload.contact) {
       const result = await requestUsers(token, 'PATCH', {
@@ -770,6 +844,7 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
   };
 
   const handleCreateUser = async (payload: {
+    username?: string;
     email?: string;
     phone?: string;
     password: string;
@@ -929,7 +1004,7 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
             <input
               value={identityInput}
               onChange={(event) => setIdentityInput(event.target.value)}
-              placeholder="correo@ejemplo.com o +58..."
+              placeholder="correo@ejemplo.com o maria.perez"
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
               required
             />
@@ -1026,6 +1101,7 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
                 <div className="min-w-0">
                   <p className="font-semibold text-slate-900">{signupDisplayName(request)}</p>
                   <p className="mt-1 text-xs text-slate-600">
+                    {roleLabel(request.requested_role || 'personal_medico')} ·{' '}
                     {profileSpecialtyForDisplay(request.specialty)} · {request.workplace}
                   </p>
                   <p className="mt-1 font-mono text-[11px] text-slate-500">
@@ -1072,7 +1148,7 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
               options={[
                 { value: 'all', label: 'Todos los roles' },
                 { value: 'personal_medico', label: 'Personal médico' },
-                { value: 'registrador', label: 'Registradores' },
+                { value: 'registrador', label: 'Asistentes' },
                 { value: 'admin', label: 'Administradores' },
                 { value: 'disabled', label: 'Suspendidas' },
               ]}
@@ -1147,7 +1223,8 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
                       )}
                     </td>
                     <td className="px-5 py-4 text-xs text-slate-500">
-                      <div className="font-medium">{user.email || 'Sin correo'}</div>
+                      <div className="font-mono font-semibold text-slate-700">{user.username || 'Sin usuario'}</div>
+                      <div className="mt-1 font-medium">{user.email || 'Sin correo de contacto'}</div>
                       <div className="mt-1 font-mono">{user.phone || 'Sin teléfono'}</div>
                     </td>
                     <td className="px-5 py-4">
@@ -1335,7 +1412,8 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
               initialValues={
                 signupPrefill
                   ? {
-                      phone: signupPrefill.contact_phone,
+                      username: suggestUsername(signupPrefill.first_name, signupPrefill.last_name),
+                      role: signupPrefill.requested_role || 'personal_medico',
                       profile: {
                         first_name: signupPrefill.first_name,
                         last_name: signupPrefill.last_name,

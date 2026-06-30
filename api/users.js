@@ -2,6 +2,14 @@
 // Usa la SERVICE_ROLE key (secreta, solo en el servidor) tras verificar
 // que quien llama tiene permisos. Nunca expongas esta clave al cliente.
 import { createClient } from '@supabase/supabase-js';
+import { normalizeAuthPhone } from '../lib/authPhone.js';
+import {
+  isAuthLoginEmail,
+  isValidUsername,
+  normalizeUsername,
+  resolveAuthUsername,
+  usernameToAuthEmail,
+} from '../lib/authUsername.js';
 
 const admin = createClient(
   process.env.SUPABASE_URL,
@@ -19,6 +27,7 @@ const PROFILE_KEYS = [
   'specialty',
   'workplace',
   'contact_phone',
+  'contact_email',
   'address',
   'professional_license',
 ];
@@ -84,7 +93,7 @@ function rolNormalizado(r) {
   if (r === ROLE_REGISTRADOR) return ROLE_REGISTRADOR;
   return ROLE_PERSONAL_MEDICO;
 }
-const normalizePhone = (value) => String(value || '').trim().replace(/[\s()-]/g, '');
+const normalizePhone = normalizeAuthPhone;
 const normalizeSpecialty = (value) => String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es');
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 
@@ -114,10 +123,17 @@ function actionPermissions(actor, target) {
   };
 }
 
+function displayAuthEmail(user) {
+  if (isAuthLoginEmail(user.email)) return null;
+  return user.email || null;
+}
+
 function serializeUser(u, permissions) {
+  const username = resolveAuthUsername(u);
   return {
     id: u.id,
-    email: u.email || null,
+    email: displayAuthEmail(u),
+    username,
     phone: u.phone || null,
     profile: staffProfile(u),
     role: userRole(u),
@@ -157,8 +173,12 @@ function contactSnapshot(user) {
   return { email: user.email || null, phone: user.phone || null };
 }
 
-function hasCredential(email, phone) {
-  return Boolean(String(email || '').trim() || normalizePhone(phone));
+function hasCredential(email, phone, username) {
+  return Boolean(
+    String(email || '').trim() ||
+      normalizePhone(phone) ||
+      (username && isValidUsername(username)),
+  );
 }
 
 export default async function handler(req, res) {
@@ -195,17 +215,31 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const { email, password, role } = req.body || {};
     const phone = normalizePhone(req.body?.phone);
+    const username = normalizeUsername(req.body?.username);
     const profile = extractProfile(req.body);
-    if (!password || (!email && !phone)) {
-      return res.status(400).json({ error: 'Se requiere contraseña y correo o teléfono' });
+    if (!password || !hasCredential(email, phone, username)) {
+      return res.status(400).json({ error: 'Se requiere contraseña y usuario, correo o teléfono' });
     }
+    if (username && !isValidUsername(username)) {
+      return res.status(400).json({ error: 'Usuario inválido. Use 3–32 caracteres: letras, números, puntos, guiones.' });
+    }
+
+    let authEmail = String(email || '').trim() || undefined;
+    if (username) {
+      authEmail = usernameToAuthEmail(username);
+      if (email) profile.contact_email = String(email).trim();
+    }
+
     const newRole = allowedCreateRole(actorRole, role);
-    const userMetadata = Object.keys(profile).length ? { staff_profile: profile } : {};
+    const userMetadata = {
+      ...(username && { username }),
+      ...(Object.keys(profile).length ? { staff_profile: profile } : {}),
+    };
     const { data, error } = await admin.auth.admin.createUser({
-      email: email || undefined,
+      email: authEmail || undefined,
       phone: phone || undefined,
       password,
-      email_confirm: !!email,
+      email_confirm: !!authEmail,
       phone_confirm: !!phone,
       app_metadata: { role: newRole },
       user_metadata: userMetadata,
@@ -218,7 +252,8 @@ export default async function handler(req, res) {
       actor: me,
       changes: {
         role: { before: null, after: newRole },
-        email: { before: null, after: email || null },
+        username: { before: null, after: username || null },
+        email: { before: null, after: authEmail || null },
         phone: { before: null, after: phone || null },
         profile: { before: null, after: profile },
       },
@@ -267,8 +302,8 @@ export default async function handler(req, res) {
       const nextEmail = hasOwn(req.body || {}, 'email') ? String(email ?? '').trim() : before.email;
       const nextPhone = hasOwn(req.body || {}, 'phone') ? normalizePhone(req.body.phone) : before.phone;
 
-      if (!hasCredential(nextEmail, nextPhone)) {
-        return res.status(400).json({ error: 'Debe quedar al menos un correo o teléfono de acceso' });
+      if (!hasCredential(nextEmail, nextPhone, resolveAuthUsername(target))) {
+        return res.status(400).json({ error: 'Debe quedar al menos un usuario, correo o teléfono de acceso' });
       }
 
       attrs = {};
@@ -297,6 +332,28 @@ export default async function handler(req, res) {
       auditChanges = {
         email: { before: before.email, after: nextEmail || null },
         phone: { before: before.phone, after: nextPhone || null },
+      };
+    } else if (action === 'username') {
+      if (!targetPermissions.canEditContact) {
+        return res.status(403).json({ error: 'No tienes permisos para modificar esta cuenta' });
+      }
+
+      const nextUsername = normalizeUsername(req.body?.username);
+      if (!isValidUsername(nextUsername)) {
+        return res.status(400).json({ error: 'Usuario inválido. Use 3–32 caracteres: letras, números, puntos, guiones.' });
+      }
+
+      attrs = {
+        email: usernameToAuthEmail(nextUsername),
+        email_confirm: true,
+        user_metadata: {
+          ...target.user_metadata,
+          username: nextUsername,
+        },
+      };
+      auditAction = 'username_update';
+      auditChanges = {
+        username: { before: resolveAuthUsername(target), after: nextUsername },
       };
     } else if (action === 'profile') {
       if (!targetPermissions.canEditProfile) return res.status(403).json({ error: 'No tienes permisos para modificar esta cuenta' });

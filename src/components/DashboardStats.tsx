@@ -726,7 +726,7 @@ export default function DashboardStats({
 
       {isRegistrador(role) && (
         <RoleSection
-          badge="Registrador"
+          badge="Asistente"
           title="Captura en campo"
           description="Indicadores de registro y datos pendientes de completar."
           badgeClass="border-teal-100 bg-teal-50 text-teal-700"
@@ -849,7 +849,7 @@ export default function DashboardStats({
               drillLabel="Ver usuarios"
             />
             <MetricCard
-              label="Registradores"
+              label="Asistentes"
               value={superAdminStats.registradores ?? 0}
               hint="Captura en campo"
               hintClass="text-teal-600"

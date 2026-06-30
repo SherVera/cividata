@@ -469,6 +469,8 @@ create table if not exists public.staff_signup_requests (
   contact_phone   text not null,
   specialty       text not null,
   workplace       text not null,
+  requested_role  text not null default 'personal_medico'
+                  check (requested_role in ('personal_medico', 'registrador')),
   status          text not null default 'pending'
                   check (status in ('pending', 'approved', 'rejected')),
   created_at      timestamptz not null default now(),
@@ -482,6 +484,17 @@ create index if not exists staff_signup_requests_status_idx
 create unique index if not exists staff_signup_requests_pending_phone_idx
   on public.staff_signup_requests (contact_phone)
   where status = 'pending';
+
+alter table public.staff_signup_requests
+  add column if not exists requested_role text not null default 'personal_medico';
+
+do $$ begin
+  alter table public.staff_signup_requests
+    add constraint staff_signup_requests_requested_role_check
+    check (requested_role in ('personal_medico', 'registrador'));
+exception
+  when duplicate_object then null;
+end $$;
 
 alter table public.staff_signup_requests enable row level security;
 

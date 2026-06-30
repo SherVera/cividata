@@ -214,6 +214,7 @@ export interface StaffProfile {
   specialty?: string;
   workplace?: string;
   contact_phone?: string;
+  contact_email?: string;
   address?: string;
   professional_license?: string;
 }
@@ -247,6 +248,7 @@ export interface StaffSignupRequest {
   contact_phone: string;
   specialty: string;
   workplace: string;
+  requested_role?: 'personal_medico' | 'registrador';
   status: StaffSignupStatus;
   created_at: string;
   reviewed_at: string | null;
