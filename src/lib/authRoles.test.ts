@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  appRoleLabel,
   canManageClinicalData,
   defaultHomeTab,
   isRegistrador,
@@ -13,6 +14,12 @@ describe('resolveAppRole', () => {
 
   it('defaults unknown roles to personal_medico', () => {
     expect(resolveAppRole({ app_metadata: {} } as any)).toBe('personal_medico');
+  });
+});
+
+describe('appRoleLabel', () => {
+  it('shows Asistente for registrador', () => {
+    expect(appRoleLabel('registrador')).toBe('Asistente');
   });
 });
 

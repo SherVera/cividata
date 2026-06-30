@@ -22,6 +22,10 @@ describe('normalizeSignupPhone', () => {
   it('strips spaces and punctuation', () => {
     expect(normalizeSignupPhone('+58 412-202-7769')).toBe('+584122027769');
   });
+
+  it('converts local Venezuelan format', () => {
+    expect(normalizeSignupPhone('0414-1234567')).toBe('+584141234567');
+  });
 });
 
 describe('validatePreSignup', () => {
@@ -32,6 +36,18 @@ describe('validatePreSignup', () => {
         contactPhone: '+584141234567',
         specialty: 'Pediatría',
         workplace: 'Ambulatorio Central',
+      }),
+    ).toBeNull();
+  });
+
+  it('accepts assistant signup without medical specialty', () => {
+    expect(
+      validatePreSignup({
+        fullName: 'Ana López',
+        contactPhone: '+584141234567',
+        specialty: 'asistente',
+        workplace: 'Centro de acopio Norte',
+        requestedRole: 'registrador',
       }),
     ).toBeNull();
   });

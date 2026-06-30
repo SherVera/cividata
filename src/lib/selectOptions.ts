@@ -80,7 +80,7 @@ export const FILTER_ESCUELA_OPTIONS: SelectOption[] = [
 
 export const ROLE_OPTIONS: SelectOption[] = [
   { value: 'personal_medico', label: 'Personal médico' },
-  { value: 'registrador', label: 'Registrador' },
+  { value: 'registrador', label: 'Asistente' },
   { value: 'admin', label: 'Admin' },
 ];
 

@@ -16,6 +16,8 @@ import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 import AppLogo from './AppLogo';
 import { APP_NAME, APP_VERSION } from '../brand';
 import { fetchLandingStats, type LandingStats } from '../lib/landingStatsApi';
+import { resolveAuthIdentity, signInWithIdentity } from '../lib/authSignIn';
+import { SIGNUP_PROFILE_OPTIONS, type SignupProfileType } from '../lib/authRoles';
 import { submitPreSignup } from '../lib/preSignupApi';
 import SelectField from './SelectField';
 import { formatSpecialty, normalizeSpecialty } from '../lib/specialty';
@@ -47,6 +49,7 @@ export default function AuthScreen() {
   const [specialty, setSpecialty] = useState('');
   const [specialtyOther, setSpecialtyOther] = useState('');
   const [workplace, setWorkplace] = useState('');
+  const [signupProfileType, setSignupProfileType] = useState<SignupProfileType>('personal_medico');
   const [signupHoneypot, setSignupHoneypot] = useState('');
   const [signupError, setSignupError] = useState('');
   const [signupSubmitting, setSignupSubmitting] = useState(false);
@@ -73,11 +76,12 @@ export default function AuthScreen() {
   const registeredToday = usageStats?.registeredToday ?? 0;
   const resolvedSpecialty =
     specialty === '__other__' ? specialtyOther : formatSpecialty(specialty);
+  const isAssistantSignup = signupProfileType === 'registrador';
   const canSubmitSignup =
     fullName.trim().length >= 3 &&
     contactPhone.trim().length >= 10 &&
-    normalizeSpecialty(resolvedSpecialty).length >= 2 &&
-    workplace.trim().length >= 2;
+    workplace.trim().length >= 2 &&
+    (isAssistantSignup || normalizeSpecialty(resolvedSpecialty).length >= 2);
 
   const openSignup = () => {
     setAuthMode('signup');
@@ -96,15 +100,17 @@ export default function AuthScreen() {
     setIsSubmitting(true);
     setError('');
 
-    const credentials = cleanIdentity.includes('@')
-      ? { email: cleanIdentity, password }
-      : { phone: cleanIdentity.replace(/[\s()-]/g, ''), password };
+    const credentials = resolveAuthIdentity(cleanIdentity);
+    if (!credentials) {
+      setIsSubmitting(false);
+      return;
+    }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword(credentials);
+    const { error: signInError } = await signInWithIdentity(supabase, cleanIdentity, password);
     setIsSubmitting(false);
 
     if (signInError) {
-      setError('Credenciales incorrectas. Verifique correo/teléfono y contraseña.');
+      setError('Credenciales incorrectas. Verifique usuario, correo/teléfono y contraseña.');
       if ('vibrate' in navigator) navigator.vibrate(200);
       setTimeout(() => setError(''), 3500);
     }
@@ -120,8 +126,9 @@ export default function AuthScreen() {
     const result = await submitPreSignup({
       fullName,
       contactPhone,
-      specialty: normalizeSpecialty(resolvedSpecialty),
+      specialty: isAssistantSignup ? 'asistente' : normalizeSpecialty(resolvedSpecialty),
       workplace,
+      requestedRole: signupProfileType,
       website: signupHoneypot,
     });
 
@@ -138,6 +145,7 @@ export default function AuthScreen() {
     setSpecialty('');
     setSpecialtyOther('');
     setWorkplace('');
+    setSignupProfileType('personal_medico');
   };
 
   if (!hasSupabaseConfig) {
@@ -162,7 +170,7 @@ export default function AuthScreen() {
       <header className="w-full max-w-7xl mx-auto flex items-center justify-between z-10">
         <AppLogo className="h-9 w-auto max-w-[160px] md:max-w-[200px]" />
         <span className="text-xs bg-blue-50 text-blue-700 border border-blue-100 font-mono px-2.5 py-1 rounded-full flex items-center gap-1 font-medium">
-          <Stethoscope className="w-3.5 h-3.5" /> Personal médico
+          <Stethoscope className="w-3.5 h-3.5" /> {authMode === 'signup' && isAssistantSignup ? 'Asistente' : 'Personal médico'}
         </span>
       </header>
 
@@ -265,7 +273,7 @@ export default function AuthScreen() {
               >
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
-                    Correo o teléfono
+                    Usuario, correo o teléfono
                   </label>
                   <div className="relative">
                     <input
@@ -275,7 +283,7 @@ export default function AuthScreen() {
                         setIdentity(e.target.value);
                         setError('');
                       }}
-                      placeholder="correo@ejemplo.com o +58..."
+                      placeholder="maria.perez, correo o 0414..."
                       autoComplete="username"
                       autoFocus
                       className="w-full px-4 py-3.5 pl-11 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
@@ -370,8 +378,42 @@ export default function AuthScreen() {
                 className="space-y-3"
               >
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  4 datos. Menos de 30 segundos. El administrador activa su cuenta.
+                  Elija su perfil y complete los datos. El administrador activa su cuenta.
                 </p>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 ml-1">
+                    Perfil de acceso
+                  </label>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {SIGNUP_PROFILE_OPTIONS.map((option) => {
+                      const selected = signupProfileType === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setSignupProfileType(option.value)}
+                          className={`rounded-xl border px-3 py-2.5 text-left transition-all ${
+                            selected
+                              ? option.value === 'registrador'
+                                ? 'border-teal-600 bg-teal-600 text-white'
+                                : 'border-blue-600 bg-blue-600 text-white'
+                              : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'
+                          }`}
+                        >
+                          <p className="text-xs font-bold">{option.label}</p>
+                          <p
+                            className={`mt-1 text-[10px] leading-relaxed ${
+                              selected ? 'text-white/85' : 'text-slate-500'
+                            }`}
+                          >
+                            {option.description}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
                 <input
                   type="text"
@@ -407,33 +449,41 @@ export default function AuthScreen() {
                     type="tel"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
-                    placeholder="+58 412..."
+                    placeholder="0414-1234567"
                     autoComplete="tel"
                     className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
-                    Especialidad / cargo
-                  </label>
-                  <SelectField
-                    value={specialty}
-                    onChange={setSpecialty}
-                    options={SPECIALTY_OPTIONS}
-                    placeholder="Seleccionar especialidad"
-                    accent="blue"
-                  />
-                  {specialty === '__other__' && (
-                    <input
-                      type="text"
-                      value={specialtyOther}
-                      onChange={(e) => setSpecialtyOther(e.target.value)}
-                      placeholder="Indique su especialidad o cargo"
-                      className="mt-2 w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                {!isAssistantSignup && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
+                      Especialidad / cargo
+                    </label>
+                    <SelectField
+                      value={specialty}
+                      onChange={setSpecialty}
+                      options={SPECIALTY_OPTIONS}
+                      placeholder="Seleccionar especialidad"
+                      accent="blue"
                     />
-                  )}
-                </div>
+                    {specialty === '__other__' && (
+                      <input
+                        type="text"
+                        value={specialtyOther}
+                        onChange={(e) => setSpecialtyOther(e.target.value)}
+                        placeholder="Indique su especialidad o cargo"
+                        className="mt-2 w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                      />
+                    )}
+                  </div>
+                )}
+
+                {isAssistantSignup && (
+                  <p className="rounded-xl border border-teal-100 bg-teal-50 px-3 py-2.5 text-xs leading-relaxed text-teal-900">
+                    Como asistente podrá registrar triajes y apoyar en centros de acopio. El seguimiento clínico lo realiza el personal médico.
+                  </p>
+                )}
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
