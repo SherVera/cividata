@@ -59,11 +59,3 @@ returns json language sql security definer set search_path = public stable as $$
 $$;
 
 grant execute on function public.landing_stats() to anon, authenticated;
-
-insert into public.schema_migrations (version, name, notes)
-values (
-  '20250630120000',
-  'landing_stats_supply',
-  'Landing pública: necesidades abiertas de insumos por centro'
-)
-on conflict (version) do nothing;
