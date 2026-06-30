@@ -48,7 +48,11 @@ jobs:
             missing=1
           fi
           if [[ "$missing" -eq 1 ]]; then exit 1; fi
-          echo "Secrets dev OK (ref length ${#SUPABASE_PROJECT_ID})."
+          if [[ "$SUPABASE_DB_PASSWORD" == eyJ* ]]; then
+            echo "::error::SUPABASE_DEV_DB_PASSWORD parece un JWT. Usa Database password de Supabase, no anon/service."
+            exit 1
+          fi
+          echo "Secrets dev OK (ref length ${#SUPABASE_PROJECT_ID}, password length ${#SUPABASE_DB_PASSWORD})."
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2
@@ -59,4 +63,4 @@ jobs:
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID" --password "$SUPABASE_DB_PASSWORD"
 
       - name: Push migrations (dev)
-        run: supabase db push --yes
+        run: bash scripts/supabase-db-push-ci.sh dev
