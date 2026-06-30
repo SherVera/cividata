@@ -467,6 +467,7 @@ create table if not exists public.staff_signup_requests (
   first_name      text not null,
   last_name       text not null default '',
   contact_phone   text not null,
+  contact_email   text not null default '',
   specialty       text not null,
   workplace       text not null,
   requested_role  text not null default 'personal_medico'
@@ -487,6 +488,9 @@ create unique index if not exists staff_signup_requests_pending_phone_idx
 
 alter table public.staff_signup_requests
   add column if not exists requested_role text not null default 'personal_medico';
+
+alter table public.staff_signup_requests
+  add column if not exists contact_email text not null default '';
 
 do $$ begin
   alter table public.staff_signup_requests
@@ -572,3 +576,97 @@ end
 where birth_date is not null
    or coalesce(approx_age_years, 0) > 0
    or coalesce(approx_age_months, 0) > 0;
+
+-- =========================================================
+-- Insumos por centro de acopio (ver también supabase/supply_requests.sql)
+-- =========================================================
+create table if not exists public.supply_categories (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  created_at  timestamptz not null default now()
+);
+
+create unique index if not exists supply_categories_name_lower_idx
+  on public.supply_categories (lower(trim(name)));
+
+insert into public.supply_categories (name)
+select v.name
+from (values
+  ('Medicinas'),
+  ('Insumos'),
+  ('Material médico'),
+  ('Equipamiento'),
+  ('Ropa'),
+  ('Otro')
+) as v(name)
+where not exists (
+  select 1 from public.supply_categories c
+  where lower(trim(c.name)) = lower(trim(v.name))
+);
+
+create table if not exists public.center_supply_entries (
+  id                    uuid primary key default gen_random_uuid(),
+  collection_center_id  uuid not null references public.collection_centers(id) on delete cascade,
+  entry_date            date not null default current_date,
+  item_name             text not null,
+  quantity              numeric not null check (quantity > 0),
+  entry_type            text not null check (entry_type in ('necesidad', 'recepcion')),
+  created_by            uuid not null default auth.uid(),
+  created_at            timestamptz not null default now()
+);
+
+alter table public.center_supply_entries add column if not exists category_id uuid;
+
+update public.center_supply_entries e
+set category_id = c.id
+from public.supply_categories c
+where e.category_id is null
+  and lower(trim(c.name)) = 'insumos';
+
+alter table public.center_supply_entries drop constraint if exists center_supply_entries_category_id_fkey;
+alter table public.center_supply_entries
+  add constraint center_supply_entries_category_id_fkey
+  foreign key (category_id) references public.supply_categories(id) on delete restrict;
+
+create index if not exists center_supply_entries_center_idx
+  on public.center_supply_entries (collection_center_id, entry_date desc);
+
+create index if not exists center_supply_entries_category_idx
+  on public.center_supply_entries (collection_center_id, category_id, entry_date desc);
+
+create or replace function public.set_center_supply_entry_registrar()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  new.created_by := auth.uid();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_center_supply_entry_registrar on public.center_supply_entries;
+create trigger trg_center_supply_entry_registrar
+  before insert on public.center_supply_entries
+  for each row execute function public.set_center_supply_entry_registrar();
+
+alter table public.supply_categories enable row level security;
+alter table public.center_supply_entries enable row level security;
+
+drop policy if exists "supply_categories select" on public.supply_categories;
+create policy "supply_categories select"
+  on public.supply_categories for select to authenticated using (true);
+
+drop policy if exists "supply_categories insert" on public.supply_categories;
+create policy "supply_categories insert"
+  on public.supply_categories for insert to authenticated with check (true);
+
+drop policy if exists "center_supply_entries select" on public.center_supply_entries;
+create policy "center_supply_entries select"
+  on public.center_supply_entries for select to authenticated using (true);
+
+drop policy if exists "center_supply_entries insert" on public.center_supply_entries;
+create policy "center_supply_entries insert"
+  on public.center_supply_entries for insert to authenticated
+  with check (created_by = auth.uid());

@@ -1,26 +1,42 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { phoneLoginVariants, resolveAuthIdentity } from '../../lib/authPhone.js';
+
+async function signInThroughAuthLoginApi(
+  supabase: SupabaseClient,
+  identity: string,
+  password: string,
+) {
+  const response = await fetch('/api/auth-login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ identity, password }),
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    error?: string;
+    session?: { access_token: string; refresh_token: string };
+  };
+
+  if (!response.ok || !payload.session) {
+    return {
+      data: { user: null, session: null },
+      error: { message: payload.error || 'Credenciales incorrectas' },
+    };
+  }
+
+  return supabase.auth.setSession(payload.session);
+}
 
 export async function signInWithIdentity(
   supabase: SupabaseClient,
   identity: string,
   password: string,
 ) {
-  const credentials = resolveAuthIdentity(identity);
-  if (!credentials) {
+  const trimmed = identity.trim();
+  if (!trimmed || !password) {
     return { data: { user: null, session: null }, error: { message: 'Credenciales inválidas' } };
   }
 
-  let result = await supabase.auth.signInWithPassword({ ...credentials, password });
-  if (!result.error || !('phone' in credentials)) return result;
-
-  for (const phone of phoneLoginVariants(identity)) {
-    if (phone === credentials.phone) continue;
-    const attempt = await supabase.auth.signInWithPassword({ phone, password });
-    if (!attempt.error) return attempt;
-  }
-
-  return result;
+  return signInThroughAuthLoginApi(supabase, trimmed, password);
 }
 
-export { resolveAuthIdentity } from '../../lib/authPhone.js';
+export { resolveAuthIdentity } from '../../lib/authIdentity.js';

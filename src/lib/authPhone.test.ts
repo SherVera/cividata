@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { isValidAuthPhone, normalizeAuthPhone, phoneLoginVariants, resolveAuthIdentity } from './authPhone';
+import { isValidAuthPhone, normalizeAuthPhone, phoneLoginVariants } from './authPhone';
+import { resolveAuthIdentity } from './authIdentity';
 
 describe('normalizeAuthPhone', () => {
   it('keeps E.164 with +58', () => {
@@ -22,8 +23,8 @@ describe('normalizeAuthPhone', () => {
     expect(normalizeAuthPhone('+58 412-202-7769')).toBe('+584122027769');
   });
 
-  it('normalizes the reported login number', () => {
-    expect(normalizeAuthPhone('04122027769')).toBe('+584122027769');
+  it('normalizes country code without plus', () => {
+    expect(normalizeAuthPhone('584122027769')).toBe('+584122027769');
   });
 });
 
@@ -31,6 +32,12 @@ describe('phoneLoginVariants', () => {
   it('includes common Venezuelan formats for local numbers', () => {
     expect(phoneLoginVariants('04122027769')).toEqual(
       expect.arrayContaining(['+584122027769', '04122027769', '4122027769', '584122027769']),
+    );
+  });
+
+  it('includes all formats when typing the stored number', () => {
+    expect(phoneLoginVariants('584122027769')).toEqual(
+      expect.arrayContaining(['584122027769', '+584122027769', '04122027769']),
     );
   });
 });
@@ -54,7 +61,7 @@ describe('resolveAuthIdentity', () => {
     expect(resolveAuthIdentity('04141234567')).toEqual({ phone: '+584141234567' });
   });
 
-  it('returns username as synthetic email credentials', () => {
-    expect(resolveAuthIdentity('maria.perez')).toEqual({ email: 'maria.perez@login.cividata.app' });
+  it('returns username credentials separately from email', () => {
+    expect(resolveAuthIdentity('maria.perez')).toEqual({ username: 'maria.perez' });
   });
 });

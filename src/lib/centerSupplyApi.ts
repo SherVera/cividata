@@ -31,6 +31,29 @@ export interface SupplyItemBalance {
   balance: number;
 }
 
+export interface CenterSupplyNeedSummary {
+  centerId: string;
+  centerName: string;
+  openItems: number;
+  pendingUnits: number;
+}
+
+export interface SupplyCategoryNeedSummary {
+  categoryId: string;
+  categoryName: string;
+  openItems: number;
+  pendingUnits: number;
+}
+
+export interface SupplyDashboardStats {
+  openItems: number;
+  pendingUnits: number;
+  centersWithNeeds: number;
+  surplusItems: number;
+  byCategory: SupplyCategoryNeedSummary[];
+  byCenter: CenterSupplyNeedSummary[];
+}
+
 export interface ReceptionProjection {
   needed: number;
   receivedBefore: number;
@@ -174,6 +197,57 @@ export async function listOpenSupplyNeedsForCenter(centerId: string): Promise<Su
   return listOpenSupplyNeeds(entries);
 }
 
+export function computeSupplyDashboardStats(entries: CenterSupplyEntry[]): SupplyDashboardStats {
+  const balances = aggregateSupplyBalances(entries);
+  const open = balances.filter((row) => row.balance > 0);
+  const surplus = balances.filter((row) => row.balance < 0);
+
+  const byCategory = new Map<string, SupplyCategoryNeedSummary>();
+  for (const row of open) {
+    const current = byCategory.get(row.categoryId) || {
+      categoryId: row.categoryId,
+      categoryName: row.categoryName,
+      openItems: 0,
+      pendingUnits: 0,
+    };
+    current.openItems += 1;
+    current.pendingUnits += row.balance;
+    byCategory.set(row.categoryId, current);
+  }
+
+  const entriesByCenter = new Map<string, CenterSupplyEntry[]>();
+  for (const entry of entries) {
+    const list = entriesByCenter.get(entry.collectionCenterId) || [];
+    list.push(entry);
+    entriesByCenter.set(entry.collectionCenterId, list);
+  }
+
+  const byCenter: CenterSupplyNeedSummary[] = [];
+  for (const [centerId, centerEntries] of entriesByCenter) {
+    const openRows = aggregateSupplyBalances(centerEntries).filter((row) => row.balance > 0);
+    if (openRows.length === 0) continue;
+    byCenter.push({
+      centerId,
+      centerName: centerEntries[0]?.collectionCenterName || 'Centro',
+      openItems: openRows.length,
+      pendingUnits: openRows.reduce((sum, row) => sum + row.balance, 0),
+    });
+  }
+
+  byCenter.sort((a, b) => b.pendingUnits - a.pendingUnits || a.centerName.localeCompare(b.centerName, 'es'));
+
+  return {
+    openItems: open.length,
+    pendingUnits: open.reduce((sum, row) => sum + row.balance, 0),
+    centersWithNeeds: byCenter.length,
+    surplusItems: surplus.length,
+    byCategory: Array.from(byCategory.values()).sort(
+      (a, b) => b.pendingUnits - a.pendingUnits || a.categoryName.localeCompare(b.categoryName, 'es')
+    ),
+    byCenter,
+  };
+}
+
 export function aggregateSupplyBalances(entries: CenterSupplyEntry[]): SupplyItemBalance[] {
   const map = new Map<string, SupplyItemBalance>();
 
@@ -290,7 +364,7 @@ export async function listCenterSupplyEntries(options?: {
 
 export async function countOpenSupplyNeeds(): Promise<number> {
   const entries = await listCenterSupplyEntries();
-  return aggregateSupplyBalances(entries).filter((b) => b.balance > 0).length;
+  return computeSupplyDashboardStats(entries).openItems;
 }
 
 export async function createCenterSupplyEntry(

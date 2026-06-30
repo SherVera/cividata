@@ -10,6 +10,7 @@ import {
   resolveAuthUsername,
   usernameToAuthEmail,
 } from '../lib/authUsername.js';
+import { findUserByUsername } from '../lib/authLookup.js';
 
 const admin = createClient(
   process.env.SUPABASE_URL,
@@ -226,8 +227,9 @@ export default async function handler(req, res) {
 
     let authEmail = String(email || '').trim() || undefined;
     if (username) {
-      authEmail = usernameToAuthEmail(username);
-      if (email) profile.contact_email = String(email).trim();
+      const taken = await findUserByUsername(admin, username);
+      if (taken) return res.status(400).json({ error: 'Ese usuario ya está en uso.' });
+      if (!authEmail) authEmail = usernameToAuthEmail(username);
     }
 
     const newRole = allowedCreateRole(actorRole, role);
@@ -343,14 +345,24 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Usuario inválido. Use 3–32 caracteres: letras, números, puntos, guiones.' });
       }
 
+      const taken = await findUserByUsername(admin, nextUsername, id);
+      if (taken) return res.status(400).json({ error: 'Ese usuario ya está en uso.' });
+
+      const profile = staffProfile(target);
+      const hasRealEmail = target.email && !isAuthLoginEmail(target.email);
+
       attrs = {
-        email: usernameToAuthEmail(nextUsername),
-        email_confirm: true,
         user_metadata: {
           ...target.user_metadata,
           username: nextUsername,
+          staff_profile: profile,
         },
       };
+
+      if (!hasRealEmail) {
+        attrs.email = usernameToAuthEmail(nextUsername);
+        attrs.email_confirm = true;
+      }
       auditAction = 'username_update';
       auditChanges = {
         username: { before: resolveAuthUsername(target), after: nextUsername },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeSignupPhone, parseFullName, validatePreSignup } from './preSignupApi';
+import { normalizeSignupPhone, parseFullName, validatePreSignup, isValidSignupEmail } from './preSignupApi';
 
 describe('parseFullName', () => {
   it('splits first and last name', () => {
@@ -34,6 +34,7 @@ describe('validatePreSignup', () => {
       validatePreSignup({
         fullName: 'Dra. García',
         contactPhone: '+584141234567',
+        contactEmail: 'maria@ejemplo.com',
         specialty: 'Pediatría',
         workplace: 'Ambulatorio Central',
       }),
@@ -45,9 +46,34 @@ describe('validatePreSignup', () => {
       validatePreSignup({
         fullName: 'Ana López',
         contactPhone: '+584141234567',
+        contactEmail: 'ana@ejemplo.com',
         specialty: 'asistente',
         workplace: 'Centro de acopio Norte',
         requestedRole: 'registrador',
+      }),
+    ).toBeNull();
+  });
+
+  it('accepts signup without workplace', () => {
+    expect(
+      validatePreSignup({
+        fullName: 'Dra. García',
+        contactPhone: '+584141234567',
+        contactEmail: 'maria@ejemplo.com',
+        specialty: 'Pediatría',
+        workplace: '',
+      }),
+    ).toBeNull();
+  });
+
+  it('accepts signup without email', () => {
+    expect(
+      validatePreSignup({
+        fullName: 'Dra. García',
+        contactPhone: '+584141234567',
+        contactEmail: '',
+        specialty: 'Pediatría',
+        workplace: '',
       }),
     ).toBeNull();
   });
@@ -57,9 +83,37 @@ describe('validatePreSignup', () => {
       validatePreSignup({
         fullName: 'Dra. García',
         contactPhone: '0412',
+        contactEmail: 'maria@ejemplo.com',
         specialty: 'Pediatría',
         workplace: 'Ambulatorio Central',
       }),
     ).toBe('Indique un teléfono válido.');
+  });
+
+  it('rejects invalid email', () => {
+    expect(
+      validatePreSignup({
+        fullName: 'Dra. García',
+        contactPhone: '+584141234567',
+        contactEmail: 'correo-invalido',
+        specialty: 'Pediatría',
+        workplace: 'Ambulatorio Central',
+      }),
+    ).toBe('Indique un correo electrónico válido.');
+  });
+});
+
+describe('isValidSignupEmail', () => {
+  it('accepts valid emails', () => {
+    expect(isValidSignupEmail('maria@ejemplo.com')).toBe(true);
+    expect(isValidSignupEmail('  Ana.Lopez@Hospital.ORG  ')).toBe(true);
+  });
+
+  it('accepts empty email as optional', () => {
+    expect(isValidSignupEmail('')).toBe(true);
+  });
+
+  it('rejects invalid emails', () => {
+    expect(isValidSignupEmail('sin-arroba')).toBe(false);
   });
 });

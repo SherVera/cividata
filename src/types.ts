@@ -246,6 +246,7 @@ export interface StaffSignupRequest {
   first_name: string;
   last_name: string;
   contact_phone: string;
+  contact_email: string;
   specialty: string;
   workplace: string;
   requested_role?: 'personal_medico' | 'registrador';

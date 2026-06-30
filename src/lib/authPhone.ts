@@ -1,6 +1,7 @@
 export {
   normalizeAuthPhone,
   isValidAuthPhone,
+  looksLikePhoneIdentity,
   phoneLoginVariants,
-  resolveAuthIdentity,
 } from '../../lib/authPhone.js';
+export { resolveAuthIdentity } from '../../lib/authIdentity.js';

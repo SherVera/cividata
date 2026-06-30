@@ -50,7 +50,7 @@ import {
 import { isRegistroToday, isRegistroWithinDays } from './lib/registroDates';
 import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
 import { listCollectionCenters } from './lib/collectionCentersApi';
-import { countOpenSupplyNeeds } from './lib/centerSupplyApi';
+import { computeSupplyDashboardStats, listCenterSupplyEntries, type SupplyDashboardStats } from './lib/centerSupplyApi';
 import type { SupplyEntryType } from './lib/centerSupplyApi';
 import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin, canManageClinicalData, isRegistrador } from './lib/authRoles';
 import { APP_NAME, APP_TAGLINE } from './brand';
@@ -102,6 +102,7 @@ export default function App() {
   const [listPageSize, setListPageSize] = useListPageSize();
   const [showFiltersMobile, setShowFiltersMobile] = useState<boolean>(false);
   const [pendingSupplyCount, setPendingSupplyCount] = useState(0);
+  const [supplyStats, setSupplyStats] = useState<SupplyDashboardStats | null>(null);
   const [quickSupplyType, setQuickSupplyType] = useState<SupplyEntryType | null>(null);
 
   // Modals state
@@ -195,8 +196,12 @@ export default function App() {
 
   const refreshPendingSupplyCount = async () => {
     try {
-      setPendingSupplyCount(await countOpenSupplyNeeds());
+      const entries = await listCenterSupplyEntries();
+      const stats = computeSupplyDashboardStats(entries);
+      setSupplyStats(stats);
+      setPendingSupplyCount(stats.openItems);
     } catch {
+      setSupplyStats(null);
       setPendingSupplyCount(0);
     }
   };
@@ -228,6 +233,7 @@ export default function App() {
       setCollectionCenters([]);
       setTotalCentrosRegistrados(0);
       setPendingSupplyCount(0);
+      setSupplyStats(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
@@ -1222,6 +1228,7 @@ export default function App() {
                   totalCentrosRegistrados={totalCentrosRegistrados}
                   role={userRole}
                   superAdminStats={superAdminStats}
+                  supplyStats={supplyStats}
                   onDrillDown={handleMetricDrillDown}
                 />
               )}

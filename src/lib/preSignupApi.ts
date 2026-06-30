@@ -7,6 +7,7 @@ import { isValidAuthPhone, normalizeAuthPhone } from './authPhone';
 export type PreSignupPayload = {
   fullName: string;
   contactPhone: string;
+  contactEmail: string;
   specialty: string;
   workplace: string;
   requestedRole?: SignupProfileType;
@@ -35,15 +36,25 @@ export function normalizeSignupPhone(value: string): string {
   return normalizeAuthPhone(value);
 }
 
+export function normalizeSignupEmail(value: string): string {
+  return String(value || '').trim().toLowerCase();
+}
+
+export function isValidSignupEmail(value: string): boolean {
+  const email = normalizeSignupEmail(value);
+  if (!email) return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 export function validatePreSignup(payload: PreSignupPayload): string | null {
   if (payload.website?.trim()) return null;
   const { first_name } = parseFullName(payload.fullName);
   if (first_name.length < 2) return 'Indique su nombre.';
   if (!isValidAuthPhone(payload.contactPhone)) return 'Indique un teléfono válido.';
+  if (!isValidSignupEmail(payload.contactEmail)) return 'Indique un correo electrónico válido.';
   if (resolveSignupRequestedRole(payload) === 'personal_medico' && normalizeSpecialty(payload.specialty).length < 2) {
     return 'Indique su especialidad o cargo.';
   }
-  if (payload.workplace.trim().length < 2) return 'Indique su centro de trabajo.';
   return null;
 }
 
@@ -88,11 +99,13 @@ async function submitPreSignupDirect(
 
   const { first_name, last_name } = parseFullName(payload.fullName);
   const contact_phone = normalizeSignupPhone(payload.contactPhone);
+  const contact_email = normalizeSignupEmail(payload.contactEmail);
 
   const { error } = await supabase.from('staff_signup_requests').insert({
     first_name,
     last_name,
     contact_phone,
+    contact_email,
     specialty: resolveSignupSpecialty(payload),
     workplace: payload.workplace.trim(),
     requested_role: resolveSignupRequestedRole(payload),

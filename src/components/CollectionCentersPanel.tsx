@@ -26,6 +26,11 @@ import { paginate, useListPageSize } from '../lib/pagination';
 import CenterSupplyPanel from './CenterSupplyPanel';
 import QuickSupplyRegisterModal from './QuickSupplyRegisterModal';
 import type { SupplyEntryType } from '../lib/centerSupplyApi';
+import {
+  computeSupplyDashboardStats,
+  formatQty,
+  listCenterSupplyEntries,
+} from '../lib/centerSupplyApi';
 
 interface CollectionCentersPanelProps {
   onBack?: () => void;
@@ -70,6 +75,9 @@ export default function CollectionCentersPanel({
   const [centersPage, setCentersPage] = useState(1);
   const [listPageSize, setListPageSize] = useListPageSize();
   const [quickSupplyType, setQuickSupplyType] = useState<SupplyEntryType | null>(null);
+  const [centerNeedCounts, setCenterNeedCounts] = useState<Map<string, { openItems: number; pendingUnits: number }>>(
+    new Map()
+  );
 
   const resetLocationSearch = () => {
     setLocationQuery('');
@@ -82,6 +90,14 @@ export default function CollectionCentersPanel({
     setLoading(true);
     try {
       setCenters(await listCollectionCenters(!canManageCenters));
+      try {
+        const stats = computeSupplyDashboardStats(await listCenterSupplyEntries());
+        setCenterNeedCounts(
+          new Map(stats.byCenter.map((row) => [row.centerId, { openItems: row.openItems, pendingUnits: row.pendingUnits }]))
+        );
+      } catch {
+        setCenterNeedCounts(new Map());
+      }
     } catch (err: any) {
       setNotice({ type: 'error', message: err?.message || 'No se pudieron cargar los centros.' });
     } finally {
@@ -409,9 +425,22 @@ export default function CollectionCentersPanel({
                     {center.address && (
                       <p className="mt-1 text-xs text-slate-500">{center.address}</p>
                     )}
-                    <p className="mt-2 text-[11px] font-semibold text-teal-700">
-                      Ver necesidades y recepciones →
-                    </p>
+                    {(() => {
+                      const needs = centerNeedCounts.get(center.id);
+                      if (needs && needs.openItems > 0) {
+                        return (
+                          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800">
+                            <Package className="h-3 w-3" />
+                            {needs.openItems} {needs.openItems === 1 ? 'ítem' : 'ítems'} · faltan {formatQty(needs.pendingUnits)}
+                          </p>
+                        );
+                      }
+                      return (
+                        <p className="mt-2 text-[11px] font-semibold text-teal-700">
+                          Ver necesidades y recepciones →
+                        </p>
+                      );
+                    })()}
                   </div>
                   {canManageCenters && (
                   <div className="flex shrink-0 flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
@@ -628,6 +657,7 @@ export default function CollectionCentersPanel({
         onClose={() => setQuickSupplyType(null)}
         onSaved={() => {
           setNotice({ type: 'success', message: 'Registro guardado correctamente.' });
+          void loadCenters();
         }}
       />
     </div>
