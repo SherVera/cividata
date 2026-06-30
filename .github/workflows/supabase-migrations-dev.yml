@@ -1,5 +1,5 @@
 # Aplica migraciones en Supabase DEV al mergear en la rama dev.
-# Secrets en GitHub Environment "dev" (o repo): SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_ID, SUPABASE_DB_PASSWORD
+# Secrets (repo o Environment "dev"): SUPABASE_ACCESS_TOKEN, SUPABASE_DEV_PROJECT_ID, SUPABASE_DEV_DB_PASSWORD
 
 name: Supabase migrations (dev)
 
@@ -25,12 +25,30 @@ jobs:
 
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DEV_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_DEV_PROJECT_ID }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Verify secrets (dev)
+        run: |
+          missing=0
+          if [[ -z "$SUPABASE_ACCESS_TOKEN" ]]; then
+            echo "::error::Falta SUPABASE_ACCESS_TOKEN (repo → Settings → Secrets → Actions)."
+            missing=1
+          fi
+          if [[ -z "$SUPABASE_PROJECT_ID" ]]; then
+            echo "::error::Falta SUPABASE_DEV_PROJECT_ID (Environment dev o repo secrets)."
+            missing=1
+          fi
+          if [[ -z "$SUPABASE_DB_PASSWORD" ]]; then
+            echo "::error::Falta SUPABASE_DEV_DB_PASSWORD — contraseña Database de Supabase dev, no anon/service."
+            missing=1
+          fi
+          if [[ "$missing" -eq 1 ]]; then exit 1; fi
+          echo "Secrets dev OK (ref length ${#SUPABASE_PROJECT_ID})."
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v2

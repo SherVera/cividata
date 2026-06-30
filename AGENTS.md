@@ -115,8 +115,10 @@ npm run db:repair-baseline
 | Secret | Dónde | Source |
 |--------|-------|--------|
 | `SUPABASE_ACCESS_TOKEN` | Repo | supabase.com/dashboard/account/tokens (shared) |
-| `SUPABASE_PROJECT_ID` | Environment **dev** / **prod** | Project ref de ese entorno |
-| `SUPABASE_DB_PASSWORD` | Environment **dev** / **prod** | Database password (no anon/service) |
+| `SUPABASE_DEV_PROJECT_ID` | Environment **dev** o repo | Dev project ref |
+| `SUPABASE_DEV_DB_PASSWORD` | Environment **dev** o repo | Dev database password |
+| `SUPABASE_PROD_PROJECT_ID` | Environment **prod** o repo | Prod project ref |
+| `SUPABASE_PROD_DB_PASSWORD` | Environment **prod** o repo | Prod database password |
 
 Workflows:
 
