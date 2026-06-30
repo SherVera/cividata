@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   aggregateSupplyBalances,
+  computeSupplyDashboardStats,
   entryRegisteredOnDifferentDay,
   formatQty,
   projectReception,
@@ -50,6 +51,39 @@ describe('aggregateSupplyBalances', () => {
       baseEntry({ id: '2', categoryId: 'cat-ins', categoryName: 'Insumos', quantity: 3 }),
     ]);
     expect(balances).toHaveLength(2);
+  });
+});
+
+describe('computeSupplyDashboardStats', () => {
+  it('agrega totales, centros y clasificaciones', () => {
+    const stats = computeSupplyDashboardStats([
+      baseEntry({ id: '1', collectionCenterId: 'c1', collectionCenterName: 'Centro A', entryType: 'necesidad', quantity: 10 }),
+      baseEntry({ id: '2', collectionCenterId: 'c1', collectionCenterName: 'Centro A', entryType: 'recepcion', quantity: 4 }),
+      baseEntry({
+        id: '3',
+        collectionCenterId: 'c2',
+        collectionCenterName: 'Centro B',
+        categoryId: 'cat-med',
+        categoryName: 'Medicinas',
+        itemName: 'Paracetamol',
+        entryType: 'necesidad',
+        quantity: 5,
+      }),
+    ]);
+
+    expect(stats).toMatchObject({
+      openItems: 2,
+      pendingUnits: 11,
+      centersWithNeeds: 2,
+      surplusItems: 0,
+    });
+    expect(stats.byCenter[0]).toMatchObject({ centerId: 'c1', openItems: 1, pendingUnits: 6 });
+    expect(stats.byCategory).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ categoryName: 'Insumos', openItems: 1, pendingUnits: 6 }),
+        expect.objectContaining({ categoryName: 'Medicinas', openItems: 1, pendingUnits: 5 }),
+      ])
+    );
   });
 });
 

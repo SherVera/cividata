@@ -42,6 +42,7 @@ export default defineConfig(() => {
       tailwindcss(),
       localVercelApiPlugin({
         'voice-parse': path.resolve(__dirname, 'api/voice-parse.js'),
+        'auth-login': path.resolve(__dirname, 'api/auth-login.js'),
         users: path.resolve(__dirname, 'api/users.js'),
       }),
       {

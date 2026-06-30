@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ShieldCheck,
   Lock,
@@ -17,8 +17,9 @@ import AppLogo from './AppLogo';
 import { APP_NAME, APP_VERSION } from '../brand';
 import { fetchLandingStats, type LandingStats } from '../lib/landingStatsApi';
 import { resolveAuthIdentity, signInWithIdentity } from '../lib/authSignIn';
+import { isValidAuthPhone } from '../lib/authPhone';
 import { SIGNUP_PROFILE_OPTIONS, type SignupProfileType } from '../lib/authRoles';
-import { submitPreSignup } from '../lib/preSignupApi';
+import { submitPreSignup, isValidSignupEmail } from '../lib/preSignupApi';
 import SelectField from './SelectField';
 import { formatSpecialty, normalizeSpecialty } from '../lib/specialty';
 
@@ -46,6 +47,7 @@ export default function AuthScreen() {
   const [usageStatsLoading, setUsageStatsLoading] = useState(true);
   const [fullName, setFullName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   const [specialty, setSpecialty] = useState('');
   const [specialtyOther, setSpecialtyOther] = useState('');
   const [workplace, setWorkplace] = useState('');
@@ -79,9 +81,21 @@ export default function AuthScreen() {
   const isAssistantSignup = signupProfileType === 'registrador';
   const canSubmitSignup =
     fullName.trim().length >= 3 &&
-    contactPhone.trim().length >= 10 &&
-    workplace.trim().length >= 2 &&
+    isValidAuthPhone(contactPhone) &&
+    isValidSignupEmail(contactEmail) &&
     (isAssistantSignup || normalizeSpecialty(resolvedSpecialty).length >= 2);
+  const signupBlockers = useMemo(() => {
+    const items: string[] = [];
+    if (fullName.trim().length < 3) items.push('nombre completo');
+    if (!isValidAuthPhone(contactPhone)) items.push('teléfono válido (ej. 0414-1234567)');
+    if (contactEmail.trim() && !isValidSignupEmail(contactEmail)) {
+      items.push('correo electrónico válido');
+    }
+    if (!isAssistantSignup && normalizeSpecialty(resolvedSpecialty).length < 2) {
+      items.push('especialidad o cargo');
+    }
+    return items;
+  }, [fullName, contactPhone, contactEmail, isAssistantSignup, resolvedSpecialty]);
 
   const openSignup = () => {
     setAuthMode('signup');
@@ -126,6 +140,7 @@ export default function AuthScreen() {
     const result = await submitPreSignup({
       fullName,
       contactPhone,
+      contactEmail,
       specialty: isAssistantSignup ? 'asistente' : normalizeSpecialty(resolvedSpecialty),
       workplace,
       requestedRole: signupProfileType,
@@ -142,6 +157,7 @@ export default function AuthScreen() {
     setSignupDone(true);
     setFullName('');
     setContactPhone('');
+    setContactEmail('');
     setSpecialty('');
     setSpecialtyOther('');
     setWorkplace('');
@@ -455,6 +471,20 @@ export default function AuthScreen() {
                   />
                 </div>
 
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
+                    Correo electrónico <span className="font-normal normal-case text-slate-400">(opcional)</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="correo@ejemplo.com"
+                    autoComplete="email"
+                    className="w-full px-3.5 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder:text-slate-400/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  />
+                </div>
+
                 {!isAssistantSignup && (
                   <div>
                     <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
@@ -487,7 +517,7 @@ export default function AuthScreen() {
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">
-                    Centro de trabajo
+                    Centro de trabajo <span className="font-normal normal-case text-slate-400">(opcional)</span>
                   </label>
                   <input
                     type="text"
@@ -501,6 +531,12 @@ export default function AuthScreen() {
                 {signupError && (
                   <p className="p-3 bg-red-50 text-red-700 text-xs font-medium rounded-xl border border-red-100 text-center">
                     {signupError}
+                  </p>
+                )}
+
+                {signupBlockers.length > 0 && !signupSubmitting && (
+                  <p className="text-center text-[11px] leading-relaxed text-slate-500">
+                    Para enviar, complete: {signupBlockers.join(', ')}.
                   </p>
                 )}
 

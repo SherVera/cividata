@@ -61,6 +61,7 @@ const PROFILE_FIELDS: { key: keyof StaffProfile; label: string; placeholder: str
   { key: 'specialty', label: 'Especialidad / cargo', placeholder: 'Pediatría, enfermería…' },
   { key: 'workplace', label: 'Centro de trabajo', placeholder: 'Hospital, ambulatorio…' },
   { key: 'contact_phone', label: 'Teléfono de contacto', placeholder: '0414-1234567' },
+  { key: 'contact_email', label: 'Correo de contacto', placeholder: 'correo@ejemplo.com' },
   { key: 'address', label: 'Dirección', placeholder: 'Opcional' },
   { key: 'professional_license', label: 'Cédula profesional', placeholder: 'Opcional' },
 ];
@@ -149,8 +150,10 @@ function UserEditModal({
     profile?: Partial<StaffProfile>;
   }) => void;
 }) {
-  const [username, setUsername] = useState(user.username || '');
-  const [email, setEmail] = useState(user.username ? user.profile.contact_email || '' : user.email || '');
+  const [username, setUsername] = useState(
+    user.username || suggestUsername(user.profile.first_name, user.profile.last_name),
+  );
+  const [email, setEmail] = useState(user.email || '');
   const [phone, setPhone] = useState(user.phone || '');
   const [profile, setProfile] = useState<StaffProfile>(() => ({
     ...user.profile,
@@ -162,9 +165,8 @@ function UserEditModal({
   }, [username, user.username]);
 
   const contactChanged = useMemo(() => {
-    if (user.username) return normalizeAuthPhone(phone) !== (user.phone || '');
     return email.trim() !== (user.email || '') || normalizeAuthPhone(phone) !== (user.phone || '');
-  }, [email, phone, user.email, user.phone, user.username]);
+  }, [email, phone, user.email, user.phone]);
 
   const profileChanged = useMemo(() => {
     return PROFILE_FIELDS.some(({ key }) => {
@@ -174,9 +176,11 @@ function UserEditModal({
         return normalizeSpecialty(current) !== normalizeSpecialty(original);
       }
       return current !== original;
-    }) || (user.username && email.trim() !== (user.profile.contact_email || ''));
-  }, [email, profile, user.profile, user.username]);
+    });
+  }, [profile, user.profile]);
 
+  const cleanUsername = normalizeUsername(username);
+  const usernameSubmissionValid = !usernameChanged || isValidUsername(cleanUsername);
   const hasChanges = usernameChanged || contactChanged || profileChanged;
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -190,16 +194,14 @@ function UserEditModal({
     } = {};
 
     if (usernameChanged) {
-      payload.username = normalizeUsername(username);
+      payload.username = cleanUsername;
     }
 
     if (contactChanged) {
-      payload.contact = user.username
-        ? { phone: normalizeAuthPhone(phone) }
-        : {
-            email: email.trim(),
-            phone: normalizeAuthPhone(phone),
-          };
+      payload.contact = {
+        email: email.trim(),
+        phone: normalizeAuthPhone(phone),
+      };
     }
 
     if (profileChanged) {
@@ -207,9 +209,6 @@ function UserEditModal({
       for (const { key } of PROFILE_FIELDS) {
         const raw = (profile[key] || '').trim();
         nextProfile[key] = key === 'specialty' ? profileSpecialtyForSave(raw) : raw;
-      }
-      if (user.username) {
-        nextProfile.contact_email = email.trim();
       }
       payload.profile = nextProfile;
     }
@@ -275,23 +274,26 @@ function UserEditModal({
           <section>
             <h4 className="mb-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">Acceso</h4>
             <div className="space-y-3">
-              {user.username && (
-                <label className="block">
-                  <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    <UserRound className="h-3.5 w-3.5" /> Usuario
-                  </span>
-                  <input
-                    value={username}
-                    onChange={(event) => setUsername(event.target.value)}
-                    placeholder="maria.perez"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
-                  />
-                </label>
-              )}
+              <label className="block">
+                <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <UserRound className="h-3.5 w-3.5" /> Usuario
+                </span>
+                <input
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  placeholder="maria.perez"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-medium text-slate-700 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10"
+                />
+                {!user.username && (
+                  <p className="mt-1.5 text-[11px] leading-relaxed text-amber-700">
+                    Esta cuenta no tiene usuario. Asigne uno y guarde para habilitar ingreso por username.
+                  </p>
+                )}
+              </label>
 
               <label className="block">
                 <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  <Mail className="h-3.5 w-3.5" /> {user.username ? 'Correo de contacto' : 'Correo'}
+                  <Mail className="h-3.5 w-3.5" /> Correo de acceso
                 </span>
                 <input
                   type="email"
@@ -317,7 +319,7 @@ function UserEditModal({
           </section>
 
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-800">
-            Debe permanecer al menos un usuario, correo o teléfono de acceso. Cambiar el usuario actualiza las credenciales de ingreso.
+            Usuario, correo y teléfono son credenciales independientes. Debe quedar al menos una activa para ingresar.
           </div>
         </div>
 
@@ -331,7 +333,7 @@ function UserEditModal({
           </button>
           <button
             type="submit"
-            disabled={!hasChanges || isSaving}
+            disabled={!hasChanges || isSaving || !usernameSubmissionValid}
             className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-blue-600/15 transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
           >
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
@@ -352,7 +354,7 @@ function CreateUserModal({
 }: {
   roles: string[];
   isSaving: boolean;
-  initialValues?: { username?: string; phone?: string; role?: string; profile?: Partial<StaffProfile> };
+  initialValues?: { username?: string; email?: string; phone?: string; role?: string; profile?: Partial<StaffProfile> };
   onClose: () => void;
   onSave: (payload: {
     username?: string;
@@ -364,7 +366,7 @@ function CreateUserModal({
   }) => void;
 }) {
   const [username, setUsername] = useState(initialValues?.username || '');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialValues?.email || '');
   const [phone, setPhone] = useState(initialValues?.phone || '');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState(
@@ -454,7 +456,7 @@ function CreateUserModal({
 
               <label className="block">
                 <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  <Mail className="h-3.5 w-3.5" /> Correo de contacto (opcional)
+                  <Mail className="h-3.5 w-3.5" /> Correo de acceso (opcional)
                 </span>
                 <input
                   type="email"
@@ -478,7 +480,7 @@ function CreateUserModal({
               </label>
 
               <p className="text-[11px] leading-relaxed text-slate-400">
-                El usuario es la forma principal de ingreso. Correo y teléfono son opcionales.
+                Puede ingresar con usuario, correo o teléfono. Elija al menos una credencial de acceso.
               </p>
 
               <label className="block">
@@ -1102,10 +1104,12 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
                   <p className="font-semibold text-slate-900">{signupDisplayName(request)}</p>
                   <p className="mt-1 text-xs text-slate-600">
                     {roleLabel(request.requested_role || 'personal_medico')} ·{' '}
-                    {profileSpecialtyForDisplay(request.specialty)} · {request.workplace}
+                    {profileSpecialtyForDisplay(request.specialty)}
+                    {request.workplace?.trim() ? ` · ${request.workplace}` : ''}
                   </p>
                   <p className="mt-1 font-mono text-[11px] text-slate-500">
-                    {request.contact_phone} · {formatSignupDate(request.created_at)}
+                    {request.contact_phone}
+                    {request.contact_email?.trim() ? ` · ${request.contact_email}` : ''} · {formatSignupDate(request.created_at)}
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
@@ -1413,6 +1417,7 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
                 signupPrefill
                   ? {
                       username: suggestUsername(signupPrefill.first_name, signupPrefill.last_name),
+                      email: signupPrefill.contact_email || '',
                       role: signupPrefill.requested_role || 'personal_medico',
                       profile: {
                         first_name: signupPrefill.first_name,
@@ -1420,6 +1425,7 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
                         specialty: signupPrefill.specialty,
                         workplace: signupPrefill.workplace,
                         contact_phone: signupPrefill.contact_phone,
+                        contact_email: signupPrefill.contact_email,
                       },
                     }
                   : undefined

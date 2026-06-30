@@ -13,8 +13,10 @@ import { isRegistroToday, isRegistroWithinDays } from '../lib/registroDates';
 import {
   Users, ShieldCheck, Heart, Smile, Warehouse,
   CalendarDays, MapPinOff, Stethoscope, UserCog, UserX, Activity, ClipboardList,
-  ChevronRight, School, AlertCircle, Syringe,
+  ChevronRight, School, AlertCircle, Syringe, Package, AlertTriangle, ArrowDownToLine,
 } from 'lucide-react';
+import type { SupplyDashboardStats } from '../lib/centerSupplyApi';
+import { formatQty } from '../lib/centerSupplyApi';
 
 export type SuperAdminDashboardStats = {
   totalUsuarios: number;
@@ -29,6 +31,7 @@ interface DashboardStatsProps {
   totalCentrosRegistrados: number;
   role: AppRole;
   superAdminStats?: SuperAdminDashboardStats | null;
+  supplyStats?: SupplyDashboardStats | null;
   onDrillDown?: (action: MetricDrillDown) => void;
 }
 
@@ -181,6 +184,7 @@ export default function DashboardStats({
   totalCentrosRegistrados,
   role,
   superAdminStats,
+  supplyStats,
   onDrillDown,
 }: DashboardStatsProps) {
   const drill = (action: MetricDrillDown) => onDrillDown?.(action);
@@ -675,6 +679,117 @@ export default function DashboardStats({
           </div>
         </div>
       </div>
+
+      {supplyStats && (
+        <RoleSection
+          badge="Insumos"
+          title="Necesidades por centro de acopio"
+          description="Resumen de ítems pendientes y recepciones en todos los centros."
+          badgeClass="border-amber-100 bg-amber-50 text-amber-800"
+        >
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              label="Necesidades abiertas"
+              value={supplyStats.openItems}
+              hint="Ítems con faltante"
+              hintClass="text-amber-600"
+              icon={AlertTriangle}
+              iconClass="bg-amber-50 text-amber-600"
+              onDrillDown={onDrillDown ? () => drill({ target: 'centros' }) : undefined}
+              drillLabel="Ver centros"
+            />
+            <MetricCard
+              label="Unidades pendientes"
+              value={supplyStats.pendingUnits}
+              hint="Por recibir en total"
+              hintClass="text-amber-600"
+              icon={Package}
+              iconClass="bg-amber-50 text-amber-700"
+              onDrillDown={onDrillDown ? () => drill({ target: 'centros' }) : undefined}
+            />
+            <MetricCard
+              label="Centros con faltantes"
+              value={supplyStats.centersWithNeeds}
+              hint={`De ${totalCentrosRegistrados} registrados`}
+              hintClass="text-teal-600"
+              icon={Warehouse}
+              iconClass="bg-teal-50 text-teal-600"
+              onDrillDown={onDrillDown ? () => drill({ target: 'centros' }) : undefined}
+            />
+            <MetricCard
+              label="Superávit"
+              value={supplyStats.surplusItems}
+              hint="Ítems con exceso recibido"
+              hintClass="text-sky-600"
+              icon={ArrowDownToLine}
+              iconClass="bg-sky-50 text-sky-600"
+              onDrillDown={onDrillDown ? () => drill({ target: 'centros' }) : undefined}
+            />
+          </div>
+
+          {(supplyStats.byCenter.length > 0 || supplyStats.byCategory.length > 0) && (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {supplyStats.byCenter.length > 0 && (
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Centros con mayor faltante
+                  </h4>
+                  <ul className="mt-3 space-y-2">
+                    {supplyStats.byCenter.slice(0, 6).map((row) => (
+                      <li
+                        key={row.centerId}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-800">{row.centerName}</p>
+                          <p className="text-[11px] text-slate-500">
+                            {row.openItems} {row.openItems === 1 ? 'ítem' : 'ítems'} pendiente{row.openItems === 1 ? '' : 's'}
+                          </p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">
+                          Faltan {formatQty(row.pendingUnits)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {supplyStats.byCategory.length > 0 && (
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Por clasificación
+                  </h4>
+                  <ul className="mt-3 space-y-2">
+                    {supplyStats.byCategory.slice(0, 6).map((row) => (
+                      <li
+                        key={row.categoryId}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-800">{row.categoryName}</p>
+                          <p className="text-[11px] text-slate-500">
+                            {row.openItems} {row.openItems === 1 ? 'ítem' : 'ítems'}
+                          </p>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">
+                          {formatQty(row.pendingUnits)} u.
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {supplyStats.openItems === 0 && (
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+              No hay necesidades abiertas en los centros de acopio.
+            </div>
+          )}
+        </RoleSection>
+      )}
 
       {isPersonalMedico(role) && (
         <RoleSection

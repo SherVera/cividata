@@ -1,5 +1,6 @@
 import type { Connect, Plugin } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { pathToFileURL } from 'node:url';
 
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -114,11 +115,8 @@ export function localVercelApiPlugin(apiFiles: Record<string, string>): Plugin {
       const hasBody = req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH';
       const bodyText = hasBody ? await readBody(req) : '';
       const query = Object.fromEntries(requestUrl.searchParams.entries());
-      const importPath =
-        process.env.NODE_ENV === 'production'
-          ? handlerPath
-          : `${handlerPath}?t=${Date.now()}`;
-      const module = await import(importPath);
+      const importPath = pathToFileURL(handlerPath).href;
+      const module = await import(/* @vite-ignore */ importPath);
       const handler = module.default;
       if (typeof handler !== 'function') {
         res.statusCode = 500;

@@ -22,6 +22,16 @@ function parseFullName(fullName) {
 
 const normalizePhone = normalizeAuthPhone;
 
+function normalizeSignupEmail(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isValidSignupEmail(value) {
+  const email = normalizeSignupEmail(value);
+  if (!email) return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 function normalizeSpecialty(value) {
   return String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es');
 }
@@ -36,11 +46,11 @@ function validateBody(body) {
   const { first_name } = parseFullName(body?.fullName);
   if (first_name.length < 2) return 'Indique su nombre.';
   if (!isValidAuthPhone(body?.contactPhone)) return 'Indique un teléfono válido.';
+  if (!isValidSignupEmail(body?.contactEmail)) return 'Indique un correo electrónico válido.';
   const requestedRole = body?.requestedRole === 'registrador' ? 'registrador' : 'personal_medico';
   if (requestedRole === 'personal_medico' && normalizeSpecialty(body?.specialty).length < 2) {
     return 'Indique su especialidad o cargo.';
   }
-  if (String(body?.workplace || '').trim().length < 2) return 'Indique su centro de trabajo.';
   return null;
 }
 
@@ -75,9 +85,10 @@ async function notifyAdmin(request) {
     '',
     `Nombre: ${fullName}`,
     `Teléfono: ${request.contact_phone}`,
+    `Correo: ${request.contact_email?.trim() || 'No indicado'}`,
     `Perfil: ${roleLabelForNotify(request.requested_role || 'personal_medico')}`,
     `Especialidad: ${formatSpecialty(request.specialty)}`,
-    `Centro: ${request.workplace}`,
+    `Centro: ${request.workplace?.trim() || 'No indicado'}`,
     `ID solicitud: ${request.id}`,
     '',
     'Debe aprobar o rechazar esta solicitud en el panel de administración.',
@@ -137,6 +148,7 @@ export default async function handler(req, res) {
 
   const { first_name, last_name } = parseFullName(body.fullName);
   const contact_phone = normalizePhone(body.contactPhone);
+  const contact_email = normalizeSignupEmail(body.contactEmail);
   const requested_role = resolveRequestedRole(body);
   const specialty = resolveSignupSpecialty(body);
   const workplace = String(body.workplace).trim();
@@ -147,12 +159,13 @@ export default async function handler(req, res) {
       first_name,
       last_name,
       contact_phone,
+      contact_email,
       specialty,
       workplace,
       requested_role,
       status: 'pending',
     })
-    .select('id, first_name, last_name, contact_phone, specialty, workplace, requested_role')
+    .select('id, first_name, last_name, contact_phone, contact_email, specialty, workplace, requested_role')
     .single();
 
   if (error) {
