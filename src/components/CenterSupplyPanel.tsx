@@ -12,6 +12,7 @@ import {
   CenterSupplyEntry,
   SupplyCategory,
   SupplyEntryType,
+  SupplyItemBalance,
   aggregateSupplyBalances,
   entryRegisteredOnDifferentDay,
   formatQty,
@@ -19,6 +20,8 @@ import {
   formatSupplyRegisteredAt,
   listCenterSupplyEntries,
   listSupplyCategories,
+  listSupplySurplus,
+  supplyItemKey,
 } from '../lib/centerSupplyApi';
 import SelectField from './SelectField';
 import QuickSupplyRegisterModal from './QuickSupplyRegisterModal';
@@ -40,6 +43,7 @@ export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelP
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [showForm, setShowForm] = useState<SupplyEntryType | null>(null);
+  const [presetNeedKey, setPresetNeedKey] = useState<string | null>(null);
 
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -86,6 +90,7 @@ export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelP
   const balances = useMemo(() => aggregateSupplyBalances(entries), [entries]);
 
   const openEntries = useMemo(() => balances.filter((b) => b.balance > 0), [balances]);
+  const surplusEntries = useMemo(() => listSupplySurplus(entries), [entries]);
 
   const dayGroups = useMemo(() => {
     const map = new Map<string, CenterSupplyEntry[]>();
@@ -100,8 +105,18 @@ export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelP
       .map(([date, items]) => ({ date, label: formatDateLabel(date), items }));
   }, [entries]);
 
-  const openEntryForm = (type: SupplyEntryType) => {
+  const openEntryForm = (type: SupplyEntryType, needKey?: string) => {
+    setPresetNeedKey(needKey || null);
     setShowForm(type);
+  };
+
+  const openReceptionForNeed = (row: SupplyItemBalance) => {
+    openEntryForm('recepcion', supplyItemKey(row.categoryId, row.itemName));
+  };
+
+  const closeEntryForm = () => {
+    setShowForm(null);
+    setPresetNeedKey(null);
   };
 
   const handleSaved = () => {
@@ -110,6 +125,7 @@ export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelP
       message: showForm === 'recepcion' ? 'Recepción registrada.' : 'Necesidad registrada.',
     });
     setShowForm(null);
+    setPresetNeedKey(null);
     loadCategories();
     loadEntries();
   };
@@ -196,9 +212,11 @@ export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelP
                 </h3>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {openEntries.map((row) => (
-                    <div
+                    <button
                       key={`${row.categoryId}-${row.itemName}`}
-                      className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3"
+                      type="button"
+                      onClick={() => openReceptionForNeed(row)}
+                      className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3 text-left transition-colors hover:border-emerald-200 hover:bg-emerald-50/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div>
@@ -214,13 +232,47 @@ export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelP
                       <p className="mt-1 text-[11px] text-slate-600">
                         Necesita {formatQty(row.needed)} · Recibido {formatQty(row.received)}
                       </p>
+                      <p className="mt-2 text-[10px] font-semibold text-emerald-700">
+                        Tocar para registrar recepción →
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {surplusEntries.length > 0 && (
+              <div className="mb-5">
+                <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Superávit por ítem
+                </h3>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {surplusEntries.map((row) => (
+                    <div
+                      key={`surplus-${row.categoryId}-${row.itemName}`}
+                      className="rounded-2xl border border-sky-100 bg-sky-50/60 px-4 py-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-sky-800">
+                            {row.categoryName}
+                          </p>
+                          <p className="text-sm font-bold text-slate-900">{row.itemName}</p>
+                        </div>
+                        <span className="rounded-full bg-sky-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                          Exceso {formatQty(row.balance)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-600">
+                        Necesita {formatQty(row.needed)} · Recibido {formatQty(row.received)}
+                      </p>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {balances.length > 0 && openEntries.length === 0 && (
+            {balances.length > 0 && openEntries.length === 0 && surplusEntries.length === 0 && (
               <div className="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
                 <Check className="mb-1 inline h-4 w-4" /> Sin faltantes en esta clasificación.
               </div>
@@ -294,7 +346,8 @@ export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelP
         open={showForm !== null}
         entryType={showForm ?? 'necesidad'}
         presetCenter={center}
-        onClose={() => setShowForm(null)}
+        presetNeedKey={presetNeedKey ?? undefined}
+        onClose={closeEntryForm}
         onSaved={handleSaved}
       />
     </div>

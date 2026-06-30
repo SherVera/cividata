@@ -50,6 +50,34 @@ export const FILTER_AGE_RANGE_OPTIONS: SelectOption[] = [
   { value: 'Adolescentes', label: 'Adolescentes (13+ años)' },
 ];
 
+export const FILTER_SALUD_OPTIONS: SelectOption[] = [
+  { value: 'All', label: 'Todos' },
+  { value: 'AtencionEspecial', label: 'Alergias o crónicos' },
+];
+
+export const FILTER_REGISTRO_OPTIONS: SelectOption[] = [
+  { value: 'All', label: 'Cualquier fecha' },
+  { value: 'Hoy', label: 'Registrados hoy' },
+  { value: 'Ultimos7', label: 'Últimos 7 días' },
+];
+
+export const FILTER_HISTORIA_OPTIONS: SelectOption[] = [
+  { value: 'All', label: 'Todos' },
+  { value: 'ConNotas', label: 'Con historia clínica' },
+  { value: 'SinNotas', label: 'Sin notas clínicas' },
+];
+
+export const FILTER_EDAD_OPTIONS: SelectOption[] = [
+  { value: 'All', label: 'Todos' },
+  { value: 'SinEdad', label: 'Sin edad ni fecha' },
+];
+
+export const FILTER_ESCUELA_OPTIONS: SelectOption[] = [
+  { value: 'All', label: 'Todos' },
+  { value: 'Asiste', label: 'Asiste a escuela' },
+  { value: 'NoAsiste', label: 'No asiste a escuela' },
+];
+
 export const ROLE_OPTIONS: SelectOption[] = [
   { value: 'personal_medico', label: 'Personal médico' },
   { value: 'registrador', label: 'Registrador' },

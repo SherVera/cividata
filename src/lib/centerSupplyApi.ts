@@ -31,6 +31,18 @@ export interface SupplyItemBalance {
   balance: number;
 }
 
+export interface ReceptionProjection {
+  needed: number;
+  receivedBefore: number;
+  pendingBefore: number;
+  quantityReceived: number;
+  receivedAfter: number;
+  pendingAfter: number;
+  surplus: number;
+}
+
+export const MANUAL_SUPPLY_NEED_KEY = '__manual__';
+
 export type CreateCenterSupplyEntryInput = {
   collectionCenterId: string;
   categoryId?: string;
@@ -119,6 +131,49 @@ export function formatQty(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '');
 }
 
+export function supplyItemKey(categoryId: string, itemName: string): string {
+  return `${categoryId}::${itemName.trim().toLowerCase()}`;
+}
+
+/** Proyecta saldo o superávit tras registrar una recepción. */
+export function projectReception(
+  balance: Pick<SupplyItemBalance, 'needed' | 'received' | 'balance'> | null,
+  quantityReceived: number
+): ReceptionProjection {
+  const needed = balance?.needed ?? 0;
+  const receivedBefore = balance?.received ?? 0;
+  const pendingBefore = balance?.balance ?? Math.max(0, needed - receivedBefore);
+  const qty = Math.max(0, quantityReceived);
+  const receivedAfter = receivedBefore + qty;
+  const pendingAfter = Math.max(0, needed - receivedAfter);
+  const surplus = Math.max(0, receivedAfter - needed);
+
+  return {
+    needed,
+    receivedBefore,
+    pendingBefore,
+    quantityReceived: qty,
+    receivedAfter,
+    pendingAfter,
+    surplus,
+  };
+}
+
+export function listOpenSupplyNeeds(entries: CenterSupplyEntry[]): SupplyItemBalance[] {
+  return aggregateSupplyBalances(entries).filter((row) => row.balance > 0);
+}
+
+export function listSupplySurplus(entries: CenterSupplyEntry[]): SupplyItemBalance[] {
+  return aggregateSupplyBalances(entries)
+    .filter((row) => row.balance < 0)
+    .map((row) => ({ ...row, balance: Math.abs(row.balance) }));
+}
+
+export async function listOpenSupplyNeedsForCenter(centerId: string): Promise<SupplyItemBalance[]> {
+  const entries = await listCenterSupplyEntries({ centerId });
+  return listOpenSupplyNeeds(entries);
+}
+
 export function aggregateSupplyBalances(entries: CenterSupplyEntry[]): SupplyItemBalance[] {
   const map = new Map<string, SupplyItemBalance>();
 
@@ -187,15 +242,15 @@ export async function findOrCreateSupplyCategory(name: string): Promise<SupplyCa
 }
 
 async function resolveCategoryId(input: Pick<CreateCenterSupplyEntryInput, 'categoryId' | 'categoryName'>) {
+  if (input.categoryName?.trim()) {
+    return (await findOrCreateSupplyCategory(input.categoryName)).id;
+  }
   if (input.categoryId) {
     const categories = await listSupplyCategories();
     const match = categories.find((c) => c.id === input.categoryId);
     if (match) return match.id;
   }
-  if (input.categoryName?.trim()) {
-    return (await findOrCreateSupplyCategory(input.categoryName)).id;
-  }
-  throw new Error('Seleccione o cree una clasificación.');
+  throw new Error('Indique la clasificación del insumo.');
 }
 
 export async function listCenterSupplyEntries(options?: {

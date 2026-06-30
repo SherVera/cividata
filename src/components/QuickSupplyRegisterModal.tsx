@@ -6,16 +6,21 @@ import {
   listCollectionCenters,
 } from '../lib/collectionCentersApi';
 import {
+  MANUAL_SUPPLY_NEED_KEY,
   SupplyCategory,
   SupplyEntryType,
+  SupplyItemBalance,
   createCenterSupplyEntry,
+  formatQty,
+  listOpenSupplyNeedsForCenter,
   listSupplyCategories,
+  projectReception,
+  supplyItemKey,
   todayIsoDate,
 } from '../lib/centerSupplyApi';
 import CenterPicker from './CenterPicker';
 import SelectField from './SelectField';
-
-export const NEW_SUPPLY_CATEGORY = '__new__';
+import SupplyCategoryField from './SupplyCategoryField';
 
 export type QuickSupplyRegisterModalProps = {
   open: boolean;
@@ -24,6 +29,8 @@ export type QuickSupplyRegisterModalProps = {
   onSaved?: () => void;
   /** Si se indica, el centro queda fijo y no se muestra el selector. */
   presetCenter?: Pick<CollectionCenter, 'id' | 'name'>;
+  /** Necesidad abierta a preseleccionar al registrar recepción. */
+  presetNeedKey?: string;
 };
 
 export default function QuickSupplyRegisterModal({
@@ -32,6 +39,7 @@ export default function QuickSupplyRegisterModal({
   onClose,
   onSaved,
   presetCenter,
+  presetNeedKey,
 }: QuickSupplyRegisterModalProps) {
   const [entryType, setEntryType] = useState<SupplyEntryType>(initialEntryType);
   const [centers, setCenters] = useState<CollectionCenter[]>([]);
@@ -42,11 +50,20 @@ export default function QuickSupplyRegisterModal({
 
   const [selectedCenterId, setSelectedCenterId] = useState('');
   const [centerFilter, setCenterFilter] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const [categoryName, setCategoryName] = useState('');
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [entryDate, setEntryDate] = useState(todayIsoDate());
+  const [openNeeds, setOpenNeeds] = useState<SupplyItemBalance[]>([]);
+  const [loadingNeeds, setLoadingNeeds] = useState(false);
+  const [selectedNeedKey, setSelectedNeedKey] = useState('');
+  const [saveResult, setSaveResult] = useState<{
+    itemLabel: string;
+    surplus: number;
+    pendingAfter: number;
+  } | null>(null);
+
+  const activeCenterId = presetCenter?.id || selectedCenterId;
 
   const selectedCenterName = useMemo(
     () =>
@@ -56,23 +73,17 @@ export default function QuickSupplyRegisterModal({
     [presetCenter, centers, selectedCenterId]
   );
 
-  const formCategoryOptions = useMemo(
-    () => [
-      ...categories.map((c) => ({ value: c.id, label: c.name })),
-      { value: NEW_SUPPLY_CATEGORY, label: '+ Nueva clasificación…' },
-    ],
-    [categories]
-  );
-
   const resetFields = (type: SupplyEntryType = initialEntryType) => {
     setEntryType(type);
     setSelectedCenterId(presetCenter?.id || '');
     setCenterFilter('');
-    setCategoryId('');
-    setNewCategoryName('');
+    setCategoryName('');
     setItemName('');
     setQuantity('1');
     setEntryDate(todayIsoDate());
+    setOpenNeeds([]);
+    setSelectedNeedKey(presetNeedKey || '');
+    setSaveResult(null);
     setError('');
   };
 
@@ -84,16 +95,79 @@ export default function QuickSupplyRegisterModal({
       .then(([ctrs, cats]) => {
         setCenters(ctrs);
         setCategories(cats);
-        const defaultCat =
-          cats.find((c) => c.name.toLowerCase() === 'insumos')?.id || cats[0]?.id || '';
-        setCategoryId(defaultCat);
+        const defaultName =
+          cats.find((c) => c.name.toLowerCase() === 'insumos')?.name || cats[0]?.name || '';
+        setCategoryName(defaultName);
       })
       .catch((err: any) => {
         setError(err?.message || 'No se pudo cargar el formulario.');
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialEntryType, presetCenter?.id]);
+  }, [open, initialEntryType, presetCenter?.id, presetNeedKey]);
+
+  useEffect(() => {
+    if (!open || entryType !== 'recepcion' || !activeCenterId) {
+      setOpenNeeds([]);
+      if (!presetNeedKey) setSelectedNeedKey('');
+      return;
+    }
+
+    setLoadingNeeds(true);
+    listOpenSupplyNeedsForCenter(activeCenterId)
+      .then((needs) => {
+        setOpenNeeds(needs);
+        setSelectedNeedKey((prev) => {
+          if (presetNeedKey && needs.some((n) => supplyItemKey(n.categoryId, n.itemName) === presetNeedKey)) {
+            return presetNeedKey;
+          }
+          if (prev === MANUAL_SUPPLY_NEED_KEY) return prev;
+          if (prev && needs.some((n) => supplyItemKey(n.categoryId, n.itemName) === prev)) {
+            return prev;
+          }
+          return needs.length === 1 ? supplyItemKey(needs[0].categoryId, needs[0].itemName) : '';
+        });
+        if (presetNeedKey) {
+          const match = needs.find((n) => supplyItemKey(n.categoryId, n.itemName) === presetNeedKey);
+          if (match) setQuantity(String(match.balance));
+        }
+      })
+      .catch(() => setOpenNeeds([]))
+      .finally(() => setLoadingNeeds(false));
+  }, [open, entryType, activeCenterId, presetNeedKey]);
+
+  const selectedNeed = useMemo(() => {
+    if (!selectedNeedKey || selectedNeedKey === MANUAL_SUPPLY_NEED_KEY) return null;
+    return openNeeds.find((n) => supplyItemKey(n.categoryId, n.itemName) === selectedNeedKey) || null;
+  }, [openNeeds, selectedNeedKey]);
+
+  const linkedToNeed = entryType === 'recepcion' && selectedNeed !== null;
+
+  useEffect(() => {
+    if (!selectedNeed) return;
+    setCategoryName(selectedNeed.categoryName);
+    setItemName(selectedNeed.itemName);
+  }, [selectedNeed]);
+
+  const receptionQty = Number(quantity);
+  const receptionProjection = useMemo(() => {
+    if (entryType !== 'recepcion' || !Number.isFinite(receptionQty) || receptionQty <= 0) {
+      return null;
+    }
+    return projectReception(selectedNeed, receptionQty);
+  }, [entryType, selectedNeed, receptionQty]);
+
+  const needOptions = useMemo(
+    () => [
+      { value: '', label: 'Seleccione la necesidad a suplir…' },
+      ...openNeeds.map((need) => ({
+        value: supplyItemKey(need.categoryId, need.itemName),
+        label: `${need.categoryName} · ${need.itemName} (faltan ${formatQty(need.balance)})`,
+      })),
+      { value: MANUAL_SUPPLY_NEED_KEY, label: 'Otro ítem (sin necesidad registrada)' },
+    ],
+    [openNeeds]
+  );
 
   const handleClose = () => {
     resetFields();
@@ -102,25 +176,39 @@ export default function QuickSupplyRegisterModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const centerId = presetCenter?.id || selectedCenterId;
+    const centerId = activeCenterId;
     if (!centerId) {
       setError('Seleccione un centro de acopio.');
+      return;
+    }
+    if (entryType === 'recepcion' && !selectedNeedKey) {
+      setError('Indique qué necesidad va a suplir o elija otro ítem.');
       return;
     }
 
     setSaving(true);
     setError('');
     try {
-      const usingNewCategory = categoryId === NEW_SUPPLY_CATEGORY;
       await createCenterSupplyEntry({
         collectionCenterId: centerId,
-        categoryId: usingNewCategory ? undefined : categoryId,
-        categoryName: usingNewCategory ? newCategoryName : undefined,
+        categoryName: categoryName.trim(),
         itemName,
         quantity: Number(quantity),
         entryType,
         entryDate,
       });
+
+      if (entryType === 'recepcion' && receptionProjection) {
+        const itemLabel = `${categoryName.trim()} · ${itemName.trim()}`;
+        setSaveResult({
+          itemLabel,
+          surplus: receptionProjection.surplus,
+          pendingAfter: receptionProjection.pendingAfter,
+        });
+        onSaved?.();
+        return;
+      }
+
       onSaved?.();
       handleClose();
     } catch (err: any) {
@@ -130,9 +218,60 @@ export default function QuickSupplyRegisterModal({
     }
   };
 
+  const handleDismissResult = () => {
+    setSaveResult(null);
+    resetFields(entryType);
+    onSaved?.();
+    onClose();
+  };
+
   if (!open) return null;
 
   const isNeed = entryType === 'necesidad';
+
+  if (saveResult) {
+    const { itemLabel, surplus, pendingAfter } = saveResult;
+    return (
+      <div className="fixed inset-0 z-[1300] flex items-end justify-center bg-slate-900/60 p-4 backdrop-blur-xs sm:items-center">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+        >
+          <div className="border-b border-slate-100 px-5 py-4">
+            <h3 className="text-sm font-bold text-slate-900">Recepción registrada</h3>
+            <p className="mt-1 text-xs text-slate-500">{itemLabel}</p>
+          </div>
+          <div className="space-y-3 p-5">
+            {surplus > 0 ? (
+              <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-sky-800">Superávit</p>
+                <p className="mt-1 text-sm font-semibold text-sky-900">
+                  Exceso de {formatQty(surplus)} unidades respecto a la necesidad.
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-amber-800">Pendiente</p>
+                <p className="mt-1 text-sm font-semibold text-amber-900">
+                  Aún faltan {formatQty(pendingAfter)} unidades para cubrir la necesidad.
+                </p>
+              </div>
+            )}
+          </div>
+          <div className="border-t border-slate-100 bg-slate-50 p-4">
+            <button
+              type="button"
+              onClick={handleDismissResult}
+              className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-700"
+            >
+              Listo
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[1300] flex items-end justify-center bg-slate-900/60 p-4 backdrop-blur-xs sm:items-center">
@@ -156,7 +295,10 @@ export default function QuickSupplyRegisterModal({
           <div className="flex rounded-xl bg-slate-100 p-1">
             <button
               type="button"
-              onClick={() => setEntryType('necesidad')}
+              onClick={() => {
+                setEntryType('necesidad');
+                setSelectedNeedKey('');
+              }}
               className={`flex-1 rounded-lg py-2 text-xs font-bold transition-colors ${
                 isNeed ? 'bg-white text-amber-800 shadow-sm' : 'text-slate-500'
               }`}
@@ -205,6 +347,41 @@ export default function QuickSupplyRegisterModal({
                 </div>
               )}
 
+              {!isNeed && activeCenterId && (
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                    Necesidad a suplir
+                  </label>
+                  {loadingNeeds ? (
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-500">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-teal-600" />
+                      Cargando necesidades abiertas…
+                    </div>
+                  ) : (
+                    <>
+                      <SelectField
+                        value={selectedNeedKey}
+                        onChange={setSelectedNeedKey}
+                        options={needOptions}
+                        disabled={saving}
+                        menuZIndex={1400}
+                      />
+                      {openNeeds.length === 0 && selectedNeedKey !== MANUAL_SUPPLY_NEED_KEY && (
+                        <p className="mt-1 text-[10px] text-amber-700">
+                          No hay necesidades pendientes en este centro. Puede registrar otro ítem.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {!isNeed && !activeCenterId && (
+                <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                  Seleccione primero el centro de acopio para ver las necesidades abiertas.
+                </p>
+              )}
+
               <div>
                 <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Fecha del movimiento
@@ -221,27 +398,17 @@ export default function QuickSupplyRegisterModal({
                 </p>
               </div>
 
-              <div className="space-y-1">
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <div>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Clasificación
-                </span>
-                <SelectField
-                  value={categoryId || categories[0]?.id || NEW_SUPPLY_CATEGORY}
-                  onChange={setCategoryId}
-                  options={formCategoryOptions}
-                  size="sm"
-                  accent="teal"
+                </label>
+                <SupplyCategoryField
+                  categories={categories}
+                  value={categoryName}
+                  onChange={setCategoryName}
+                  disabled={loading || saving || linkedToNeed}
+                  menuZIndex={1400}
                 />
-                {categoryId === NEW_SUPPLY_CATEGORY && (
-                  <input
-                    type="text"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    required
-                    placeholder="Nombre de la nueva clasificación"
-                    className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-                  />
-                )}
               </div>
 
               <div>
@@ -253,8 +420,11 @@ export default function QuickSupplyRegisterModal({
                   value={itemName}
                   onChange={(e) => setItemName(e.target.value)}
                   required
+                  readOnly={linkedToNeed}
                   placeholder="Ej.: Paracetamol, guantes M…"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
+                  className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 ${
+                    linkedToNeed ? 'cursor-default text-slate-600' : ''
+                  }`}
                 />
               </div>
 
@@ -271,6 +441,30 @@ export default function QuickSupplyRegisterModal({
                   required
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
                 />
+                {!isNeed && receptionProjection && selectedNeed && (
+                  <div
+                    className={`mt-2 rounded-xl border px-3 py-2.5 text-xs ${
+                      receptionProjection.surplus > 0
+                        ? 'border-sky-200 bg-sky-50 text-sky-900'
+                        : 'border-amber-200 bg-amber-50 text-amber-900'
+                    }`}
+                  >
+                    <p>
+                      Faltaban <span className="font-bold">{formatQty(receptionProjection.pendingBefore)}</span>
+                      {' · '}
+                      recibe <span className="font-bold">{formatQty(receptionProjection.quantityReceived)}</span>
+                    </p>
+                    {receptionProjection.surplus > 0 ? (
+                      <p className="mt-1 font-semibold">
+                        Superávit: {formatQty(receptionProjection.surplus)} unidades de exceso
+                      </p>
+                    ) : (
+                      <p className="mt-1 font-semibold">
+                        Quedarán faltando {formatQty(receptionProjection.pendingAfter)} unidades
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -298,9 +492,9 @@ export default function QuickSupplyRegisterModal({
               !itemName.trim() ||
               !quantity ||
               !entryDate ||
-              !categoryId ||
-              (categoryId === NEW_SUPPLY_CATEGORY && !newCategoryName.trim()) ||
-              (!presetCenter && !selectedCenterId)
+              !categoryName.trim() ||
+              (!presetCenter && !selectedCenterId) ||
+              (!isNeed && !selectedNeedKey)
             }
             className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50 ${
               isNeed ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'

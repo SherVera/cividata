@@ -12,14 +12,22 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
+type LocalApiRequest = {
+  method?: string;
+  body?: unknown;
+  headers?: IncomingMessage['headers'];
+  query?: Record<string, string>;
+};
+
 function invokeVercelHandler(
-  handler: (req: { method?: string; body?: unknown }, res: {
+  handler: (req: LocalApiRequest, res: {
     status: (code: number) => { json: (payload: unknown) => void };
     json: (payload: unknown) => void;
   }) => Promise<void> | void,
   req: IncomingMessage,
   res: ServerResponse,
-  bodyText: string
+  bodyText: string,
+  query: Record<string, string>
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -64,13 +72,15 @@ function invokeVercelHandler(
       handler({
         method: req.method,
         body,
+        headers: req.headers,
+        query,
       }, mockRes)
     )
       .then(() => {
         if (!settled) {
           res.statusCode = 500;
           res.setHeader('Content-Type', 'application/json; charset=utf-8');
-          res.end(JSON.stringify({ error: 'El servidor de IA no respondió.' }));
+          res.end(JSON.stringify({ error: 'La API local no respondió.' }));
           finish();
         }
       })
@@ -89,7 +99,8 @@ export function localVercelApiPlugin(apiFiles: Record<string, string>): Plugin {
   );
 
   const middleware: Connect.NextHandleFunction = async (req, res, next) => {
-    const pathname = req.url?.split('?')[0] ?? '';
+    const requestUrl = new URL(req.url || '/', 'http://localhost');
+    const pathname = requestUrl.pathname;
     const handlerPath = routes[pathname];
     if (!handlerPath) return next();
 
@@ -100,7 +111,9 @@ export function localVercelApiPlugin(apiFiles: Record<string, string>): Plugin {
     }
 
     try {
-      const bodyText = req.method === 'POST' || req.method === 'PUT' ? await readBody(req) : '';
+      const hasBody = req.method === 'POST' || req.method === 'PUT' || req.method === 'PATCH';
+      const bodyText = hasBody ? await readBody(req) : '';
+      const query = Object.fromEntries(requestUrl.searchParams.entries());
       const importPath =
         process.env.NODE_ENV === 'production'
           ? handlerPath
@@ -113,12 +126,12 @@ export function localVercelApiPlugin(apiFiles: Record<string, string>): Plugin {
         res.end(JSON.stringify({ error: 'Handler de API inválido.' }));
         return;
       }
-      await invokeVercelHandler(handler, req, res, bodyText);
+      await invokeVercelHandler(handler, req, res, bodyText, query);
     } catch (err) {
       console.error(`[local-api] ${pathname}`, err);
       res.statusCode = 500;
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.end(JSON.stringify({ error: 'Error interno del servidor de IA en desarrollo.' }));
+      res.end(JSON.stringify({ error: 'Error interno de la API local en desarrollo.' }));
     }
   };
 
