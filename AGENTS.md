@@ -100,21 +100,15 @@ npx supabase migration list                 # CLI-applied migrations
 
 ### Existing database (one-time per project)
 
-Run **`npm run db:repair-baseline` once per Supabase project** (dev and prod separately):
+Run **`npm run db:repair-baseline` once per Supabase project** (dev and prod separately). The script reads migration files from `supabase/migrations/` and the linked project from `supabase link` (no hardcoded refs):
 
 ```bash
-# Dev
-export SUPABASE_PROJECT_ID=<dev-ref>
-export SUPABASE_DB_PASSWORD='...'
+npx supabase link --project-ref <dev-ref> --password "$SUPABASE_DB_PASSWORD"
 npm run db:repair-baseline
 
-# Prod
-export SUPABASE_PROJECT_ID=<prod-ref>
-export SUPABASE_DB_PASSWORD='...'
+npx supabase link --project-ref <prod-ref> --password "$SUPABASE_DB_PASSWORD"
 npm run db:repair-baseline
 ```
-
-Or individually: `npx supabase migration repair --status applied VERSION`.
 
 ### GitHub Actions secrets
 

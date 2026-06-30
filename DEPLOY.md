@@ -104,20 +104,50 @@ feature branch
 | `SUPABASE_PROD_PROJECT_ID` | Ref del proyecto **prod** |
 | `SUPABASE_PROD_DB_PASSWORD` | Password DB **prod** |
 
-### Repair baseline (una vez por proyecto)
+**Importante:** es la contraseña de **Database** (usuario `postgres`), **no** la anon key ni la service_role key. Se obtiene o resetea en Supabase → **Project Settings → Database → Database password**.
 
-Si cada Supabase ya tenía el esquema aplicado a mano:
+Si el workflow falla con `password authentication failed (28P01)`:
+
+1. En Supabase del proyecto que falla (dev o prod) → **Reset database password** → copia la nueva.
+2. Actualiza el secret correspondiente en GitHub (`SUPABASE_DEV_DB_PASSWORD` o `SUPABASE_PROD_DB_PASSWORD`).
+3. Verifica que `SUPABASE_*_PROJECT_ID` sea el **ref** de ese mismo proyecto (URL del dashboard).
+4. Si la contraseña tiene caracteres raros (`@`, `#`, `$`), prueba resetear a una alfanumérica larga.
+5. Supabase → **Database → Network Bans**: quita IPs bloqueadas por intentos fallidos.
+6. Re-ejecuta el workflow (**Actions → Run workflow**).
+
+Prueba local antes de GitHub:
 
 ```bash
-# Dev
-export SUPABASE_PROJECT_ID=<ref-dev>
+export SUPABASE_ACCESS_TOKEN='...'
 export SUPABASE_DB_PASSWORD='...'
+npx supabase link --project-ref TU_REF --password "$SUPABASE_DB_PASSWORD"
+npx supabase migration list
+```
+
+### Repair baseline (una vez por proyecto)
+
+Si cada Supabase ya tenía el esquema aplicado a mano, enlaza y ejecuta (detecta migraciones y proyecto automáticamente):
+
+```bash
+npx supabase link --project-ref <ref-dev> --password "$SUPABASE_DB_PASSWORD"
 npm run db:repair-baseline
 
-# Prod
-export SUPABASE_PROJECT_ID=<ref-prod>
-export SUPABASE_DB_PASSWORD='...'
+npx supabase link --project-ref <ref-prod> --password "$SUPABASE_DB_PASSWORD"
 npm run db:repair-baseline
+```
+
+Opcional: `export SUPABASE_PROJECT_ID=...` si no usas `supabase link` antes.
+
+**Fallback SQL Editor** (si el CLI no conecta o `schema_migrations` no existe):
+
+```bash
+npm run db:repair-baseline:sql
+```
+
+Copia el output en Supabase → **SQL Editor**. El script crea `supabase_migrations.schema_migrations` (tabla del CLI, distinta de `public.schema_migrations`) y marca las migraciones como applied. Verifica:
+
+```sql
+select version, name from supabase_migrations.schema_migrations order by version;
 ```
 
 ### Proteger `main` (GitHub → Settings → Branches → Branch protection)

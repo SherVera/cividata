@@ -91,22 +91,14 @@ npx supabase link --project-ref TU_PROJECT_ID
 npx supabase db push
 ```
 
-**Proyecto que ya tenía SQL pegado a mano** (una sola vez):
+**Proyecto que ya tenía SQL pegado a mano** (una sola vez por Supabase):
 
 ```bash
-export SUPABASE_PROJECT_ID=TU_PROJECT_ID
-export SUPABASE_DB_PASSWORD='tu-password'
+npx supabase link --project-ref TU_REF --password "$SUPABASE_DB_PASSWORD"
 npm run db:repair-baseline
 ```
 
-Orden de migraciones baseline:
-
-1. `20250101000000_bootstrap_schema.sql` — esquema completo  
-2. `20250301000000_migration_tracker.sql`  
-3. `20250301000001_record_legacy_baseline.sql`  
-4. `20250301000002_care_pathway.sql` — triaje clínico  
-
-Detalle completo en [`AGENTS.md`](AGENTS.md) y [`DEPLOY.md`](DEPLOY.md).
+Repite cambiando el `link` para dev y prod. El script detecta migraciones y proyecto enlazado; no hace falta listar versiones a mano.
 
 ## Uso local
 
@@ -127,7 +119,7 @@ npm run build            # build producción → dist/
 npm run preview          # vista previa del build
 
 npm run db:migration:new -- nombre   # nueva migración SQL
-npm run db:repair-baseline           # marcar baseline en DB existente
+npm run db:repair-baseline           # marca migraciones locales como applied (proyecto enlazado)
 
 npm start                # servidor legacy SQLite (local/, no producción)
 ```
