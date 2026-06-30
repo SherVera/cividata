@@ -29,6 +29,8 @@ export type QuickSupplyRegisterModalProps = {
   onSaved?: () => void;
   /** Si se indica, el centro queda fijo y no se muestra el selector. */
   presetCenter?: Pick<CollectionCenter, 'id' | 'name'>;
+  /** Necesidad abierta a preseleccionar al registrar recepción. */
+  presetNeedKey?: string;
 };
 
 export default function QuickSupplyRegisterModal({
@@ -37,6 +39,7 @@ export default function QuickSupplyRegisterModal({
   onClose,
   onSaved,
   presetCenter,
+  presetNeedKey,
 }: QuickSupplyRegisterModalProps) {
   const [entryType, setEntryType] = useState<SupplyEntryType>(initialEntryType);
   const [centers, setCenters] = useState<CollectionCenter[]>([]);
@@ -79,7 +82,7 @@ export default function QuickSupplyRegisterModal({
     setQuantity('1');
     setEntryDate(todayIsoDate());
     setOpenNeeds([]);
-    setSelectedNeedKey('');
+    setSelectedNeedKey(presetNeedKey || '');
     setSaveResult(null);
     setError('');
   };
@@ -101,12 +104,12 @@ export default function QuickSupplyRegisterModal({
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialEntryType, presetCenter?.id]);
+  }, [open, initialEntryType, presetCenter?.id, presetNeedKey]);
 
   useEffect(() => {
     if (!open || entryType !== 'recepcion' || !activeCenterId) {
       setOpenNeeds([]);
-      setSelectedNeedKey('');
+      if (!presetNeedKey) setSelectedNeedKey('');
       return;
     }
 
@@ -115,16 +118,23 @@ export default function QuickSupplyRegisterModal({
       .then((needs) => {
         setOpenNeeds(needs);
         setSelectedNeedKey((prev) => {
+          if (presetNeedKey && needs.some((n) => supplyItemKey(n.categoryId, n.itemName) === presetNeedKey)) {
+            return presetNeedKey;
+          }
           if (prev === MANUAL_SUPPLY_NEED_KEY) return prev;
           if (prev && needs.some((n) => supplyItemKey(n.categoryId, n.itemName) === prev)) {
             return prev;
           }
           return needs.length === 1 ? supplyItemKey(needs[0].categoryId, needs[0].itemName) : '';
         });
+        if (presetNeedKey) {
+          const match = needs.find((n) => supplyItemKey(n.categoryId, n.itemName) === presetNeedKey);
+          if (match) setQuantity(String(match.balance));
+        }
       })
       .catch(() => setOpenNeeds([]))
       .finally(() => setLoadingNeeds(false));
-  }, [open, entryType, activeCenterId]);
+  }, [open, entryType, activeCenterId, presetNeedKey]);
 
   const selectedNeed = useMemo(() => {
     if (!selectedNeedKey || selectedNeedKey === MANUAL_SUPPLY_NEED_KEY) return null;
