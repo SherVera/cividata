@@ -22,6 +22,7 @@ import AdminPanel from './components/AdminPanel';
 import CollectionCentersPanel from './components/CollectionCentersPanel';
 import QuickSupplyRegisterModal from './components/QuickSupplyRegisterModal';
 import BottomNav, { BottomNavKey } from './components/BottomNav';
+import MobileOptionsDrawer, { MobileDrawerItem } from './components/MobileOptionsDrawer';
 import AppLogo from './components/AppLogo';
 import PatientPhoto from './components/PatientPhoto';
 import ListPagination from './components/ListPagination';
@@ -106,6 +107,7 @@ export default function App() {
   const [quickSupplyType, setQuickSupplyType] = useState<SupplyEntryType | null>(null);
 
   // Modals state
+  const [showMobileMenu, setShowMobileMenu] = useState<boolean>(false);
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [newPasswordInput, setNewPasswordInput] = useState<string>('');
   const [settingsSuccess, setSettingsSuccess] = useState<string>('');
@@ -585,6 +587,85 @@ export default function App() {
     }
   };
 
+  const mobileDrawerItems = useMemo<MobileDrawerItem[]>(() => {
+    const items: MobileDrawerItem[] = [
+      {
+        id: 'home',
+        label: 'Inicio',
+        icon: Home,
+        active: currentView === 'list',
+        onSelect: () => {
+          setCurrentView('list');
+          setActiveTab(defaultHomeTab(userRole));
+        },
+      },
+      {
+        id: 'quick-supply',
+        label: 'Insumo rápido',
+        icon: AlertTriangle,
+        tone: 'amber',
+        onSelect: () => setQuickSupplyType('necesidad'),
+      },
+      {
+        id: 'centros',
+        label: 'Centros de acopio',
+        icon: Warehouse,
+        tone: 'teal',
+        active: currentView === 'centros',
+        badge: pendingSupplyCount > 0 ? (pendingSupplyCount > 9 ? '9+' : pendingSupplyCount) : undefined,
+        onSelect: () => setCurrentView('centros'),
+      },
+    ];
+
+    if (isAppAdministrator) {
+      items.push({
+        id: 'admin',
+        label: 'Administración',
+        icon: ShieldCheck,
+        active: currentView === 'admin',
+        onSelect: () => setCurrentView('admin'),
+      });
+    }
+
+    items.push(
+      {
+        id: 'refresh',
+        label: 'Actualizar datos',
+        icon: RefreshCw,
+        loading: dataRefreshing,
+        disabled: dataRefreshing,
+        onSelect: () => {
+          void refreshAllData();
+        },
+      },
+      {
+        id: 'settings',
+        label: 'Configuración',
+        icon: Settings,
+        onSelect: () => setShowSettingsModal(true),
+      },
+      {
+        id: 'lock',
+        label: 'Bloquear sesión',
+        icon: LogOut,
+        tone: 'danger',
+        onSelect: () => {
+          void handleLockSession();
+        },
+      },
+    );
+
+    return items;
+  }, [
+    currentView,
+    dataRefreshing,
+    handleLockSession,
+    isAppAdministrator,
+    pendingSupplyCount,
+    refreshAllData,
+    userRole,
+  ]);
+
   // Wait for Supabase to resolve the current session before deciding what to show
   if (!authReady) {
     return (
@@ -634,7 +715,15 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
           
           {/* Logo y subtítulo */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
+            <button
+              type="button"
+              onClick={() => setShowMobileMenu(true)}
+              className="rounded-xl p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 md:hidden"
+              aria-label="Abrir opciones"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -651,8 +740,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* Quick Actions Header */}
-          <div className="flex items-center gap-2">
+          {/* Quick Actions Header (desktop) */}
+          <div className="hidden md:flex items-center gap-2">
             <button
               type="button"
               onClick={() => {
@@ -746,6 +835,12 @@ export default function App() {
 
         </div>
       </header>
+
+      <MobileOptionsDrawer
+        open={showMobileMenu}
+        onClose={() => setShowMobileMenu(false)}
+        items={mobileDrawerItems}
+      />
 
       {/* MASTER CONTAINER */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 pb-28 md:pb-6 space-y-6">
