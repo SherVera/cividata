@@ -15,6 +15,8 @@ export const voiceConfig = {
   parseMinChars: envInt(import.meta.env.VITE_VOICE_PARSE_MIN_CHARS, 8),
   parseMaxChars: envInt(import.meta.env.VITE_VOICE_PARSE_MAX_CHARS, 2500),
   speechLang: import.meta.env.VITE_SPEECH_RECOGNITION_LANG?.trim() || 'es-VE',
+  /** 0 = sin límite. Ej.: 30 o 60 para cortar el dictado automáticamente. */
+  speechMaxSeconds: envInt(import.meta.env.VITE_SPEECH_MAX_SECONDS, 0),
   /** Si true, no llama a Gemini cuando el texto tiene etiquetas (ahorra cuota). */
   preferLocalParse: envBool(import.meta.env.VITE_VOICE_PARSE_PREFER_LOCAL, true),
 };

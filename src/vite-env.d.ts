@@ -8,6 +8,7 @@ interface ImportMetaEnv {
   readonly VITE_VOICE_PARSE_MIN_CHARS?: string;
   readonly VITE_VOICE_PARSE_MAX_CHARS?: string;
   readonly VITE_SPEECH_RECOGNITION_LANG?: string;
+  readonly VITE_SPEECH_MAX_SECONDS?: string;
   readonly VITE_VOICE_PARSE_PREFER_LOCAL?: string;
 }
 
