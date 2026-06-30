@@ -14,3 +14,6 @@ dist/
 # Generado en build desde env vars (no versionar claves)
 web/config.js
 .vercel
+
+supabase/*
+backup/*
