@@ -21,6 +21,7 @@ import { DEFAULT_MAP_CENTER, formatDistance, haversineMeters } from '../lib/geo'
 import { GeocodeResult, searchPlaces } from '../lib/geocodeApi';
 import GeoMapPicker from './GeoMapPicker';
 import ListPagination from './ListPagination';
+import { CAPTURE_POINT_LABEL } from '../brand';
 import { paginate, useListPageSize } from '../lib/pagination';
 
 import CenterSupplyPanel from './CenterSupplyPanel';
@@ -308,7 +309,7 @@ export default function CollectionCentersPanel({
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-teal-100">
             <Warehouse className="h-3.5 w-3.5" /> Centros de acopio
           </span>
-          <h2 className="mt-3 text-xl font-bold tracking-tight">Puntos de triaje</h2>
+          <h2 className="mt-3 text-xl font-bold tracking-tight">{CAPTURE_POINT_LABEL}s</h2>
           <p className="mt-1 max-w-xl text-sm text-slate-300">
             {canManageCenters
               ? 'Administre los centros y consulte necesidades y recepciones de insumos por punto.'
@@ -683,7 +684,7 @@ export default function CollectionCentersPanel({
                   onChange={(e) => setForm((prev) => ({ ...prev, active: e.target.checked }))}
                   className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                 />
-                Centro activo para nuevos triajes
+                Centro activo para nuevas capturas
               </label>
             </div>
 

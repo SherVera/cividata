@@ -16,7 +16,9 @@ import { parseMultiValue } from '../lib/multiValue';
 import GeoMapPicker from './GeoMapPicker';
 import { formatDistance, haversineMeters } from '../lib/geo';
 import { parseFormNumber, validateClinicalNote } from '../lib/patientValidation';
+import { CAPTURE_LABEL, CAPTURE_POINT_LABEL } from '../brand';
 import PatientPhoto from './PatientPhoto';
+import ClinicalTriagePanel from './ClinicalTriagePanel';
 
 interface PatientDetailsProps {
   patient: Paciente;
@@ -160,7 +162,7 @@ export default function PatientDetails({
             onClick={() => onEdit(patient)}
             className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-semibold bg-white text-blue-700 hover:bg-blue-50 border border-blue-200 transition-all cursor-pointer active:scale-95"
           >
-            <Edit3 className="w-4 h-4" /> Editar triaje
+            <Edit3 className="w-4 h-4" /> Editar captura
           </button>
           )}
           
@@ -244,9 +246,9 @@ export default function PatientDetails({
             {/* Quick Badge Status bar */}
             <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-xs">
               <span className="flex items-center gap-1 font-medium">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Triaje validado
+                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Captura validada
               </span>
-              <span className="font-mono text-[10px] text-blue-200">Triaje: {patient.fechaRegistro}</span>
+              <span className="font-mono text-[10px] text-blue-200">Censo: {patient.fechaRegistro}</span>
             </div>
           </div>
 
@@ -346,7 +348,7 @@ export default function PatientDetails({
             <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 flex items-center justify-between">
               <h3 className="font-sans font-bold text-slate-700 text-sm flex items-center gap-2">
                 <ClipboardList className="w-4 h-4 text-blue-600" />
-                Detalles completos del triaje
+                Detalles completos de la captura
               </h3>
             </div>
 
@@ -393,7 +395,7 @@ export default function PatientDetails({
                 </div>
               </div>
 
-              {/* Seccion 2: Triaje y Centro de Acopio */}
+              {/* Seccion 2: Captura y Centro de Acopio */}
               {(patient.puntoRegistroTipo === 'medico' || patient.centroAcopioNombre || patient.registroLat != null) && (
                 <div className="space-y-3 pt-2">
                   <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5 pb-1.5 border-b border-slate-200">
@@ -402,7 +404,7 @@ export default function PatientDetails({
                     ) : (
                       <Warehouse className="w-3.5 h-3.5" />
                     )}
-                    Punto de triaje del paciente
+                    {CAPTURE_POINT_LABEL} del paciente
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-3 gap-x-4 text-xs">
                     <div className="sm:col-span-3">
@@ -570,6 +572,10 @@ export default function PatientDetails({
 
             </div>
           </div>
+
+          {canAddClinicalNotes && (
+            <ClinicalTriagePanel patient={patient} canManage={canAddClinicalNotes} />
+          )}
 
           {/* HISTORIAL CLÍNICO - EVOLUCIÓN (CRITICAL FOR CLINICAL RECORD TRACKING) */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden print:hidden">

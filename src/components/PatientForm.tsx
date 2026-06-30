@@ -19,6 +19,7 @@ import { CollectionCenter, listCollectionCenters } from '../lib/collectionCenter
 import { DEFAULT_MAP_CENTER, findNearest, formatDistance, GeoNamedPoint } from '../lib/geo';
 import GeoMapPicker from './GeoMapPicker';
 import { requestDeviceLocation } from '../lib/geo';
+import { CAPTURE_FULL_LABEL, CAPTURE_LABEL, CAPTURE_POINT_LABEL } from '../brand';
 import QuickCenterRegister from './QuickCenterRegister';
 import CenterPicker from './CenterPicker';
 import SelectField from './SelectField';
@@ -253,7 +254,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       registroLng: center.geo_lng,
     }));
     setCenterFilter('');
-    setGeoHint(`Punto de triaje centrado en ${center.name}. Ajuste arrastrando el marcador si hace falta.`);
+    setGeoHint(`${CAPTURE_POINT_LABEL} centrado en ${center.name}. Ajuste arrastrando el marcador si hace falta.`);
     if (formErrors.centroAcopioId) {
       setFormErrors((prev) => {
         const copy = { ...prev };
@@ -277,7 +278,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     setCenterNotice(
       created
         ? `Centro "${center.name}" registrado y seleccionado.`
-        : `Ya existía "${center.name}"; se seleccionó el triaje previo.`
+        : `Ya existía "${center.name}"; se seleccionó la captura previa.`
     );
   };
 
@@ -365,7 +366,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       registroLat: center.geo_lat,
       registroLng: center.geo_lng,
     }));
-    setGeoHint(`Punto de triaje centrado en ${center.name}. Ajuste arrastrando el marcador si hace falta.`);
+    setGeoHint(`${CAPTURE_POINT_LABEL} centrado en ${center.name}. Ajuste arrastrando el marcador si hace falta.`);
   };
 
   const handleCenterSelect = (centerId: string) => {
@@ -605,7 +606,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             )}
           </div>
           <h2 className="font-sans font-bold text-xl md:text-2xl tracking-tight mt-1">
-            {initialPatient ? 'Modificar triaje médico' : 'Nuevo triaje médico'}
+            {initialPatient ? `Modificar ${CAPTURE_LABEL.toLowerCase()}` : `Nueva ${CAPTURE_LABEL.toLowerCase()}`}
           </h2>
           <p className="text-xs text-slate-300 mt-1 max-w-xl">
             Complete los datos que tenga disponibles. Sin fecha ni edad tentativa, asigne la clasificación etaria manualmente.
@@ -895,7 +896,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
             <div className="rounded-2xl border border-teal-100 bg-teal-50/40 p-4 space-y-4">
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-teal-700" />
-                <h4 className="text-sm font-bold text-teal-900">Punto de triaje del paciente</h4>
+                <h4 className="text-sm font-bold text-teal-900">{CAPTURE_POINT_LABEL} del paciente</h4>
               </div>
               <p className="text-xs text-teal-800/80 leading-relaxed">
                 Indique si la atención fue en un centro de acopio o apoyo, o si un médico atendió en la calle u otro lugar sin centro.
@@ -937,7 +938,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 </p>
               ) : (
                 <p className="text-xs font-medium text-indigo-800 leading-relaxed">
-                  No se asignará un centro de acopio. El triaje quedará como atención médica en campo; marque el punto en el mapa.
+                  No se asignará un centro de acopio. La captura quedará como atención médica en campo; marque el punto en el mapa.
                 </p>
               )}
 
@@ -1723,7 +1724,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 disabled={isUploadingPhoto}
                 className="flex-1 sm:flex-initial flex items-center justify-center gap-1 px-5 py-2.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all cursor-pointer active:scale-95 shadow-sm disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                <Save className="w-4 h-4" /> {isUploadingPhoto ? 'Guardando foto…' : 'Guardar triaje'}
+                <Save className="w-4 h-4" /> {isUploadingPhoto ? 'Guardando foto…' : `Guardar ${CAPTURE_LABEL.toLowerCase()}`}
               </button>
             )}
           </div>

@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { Paciente, CensoStats, grupoEtarioLabel, pacienteTieneEdad, resolveGrupoEtario } from '../types';
-import { APP_NAME } from '../brand';
+import { APP_NAME, CAPTURE_LABEL } from '../brand';
 import type { AppRole } from '../lib/authRoles';
 import { isPersonalMedico, isRegistrador } from '../lib/authRoles';
 import type { MetricDrillDown } from '../lib/metricDrillDown';
@@ -326,7 +326,7 @@ export default function DashboardStats({
 
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          label="Total triajes"
+          label={`Total ${CAPTURE_LABEL.toLowerCase()}s`}
           value={stats.totalPacientes}
           hint="Pacientes registrados"
           hintClass="text-blue-600"
@@ -367,7 +367,7 @@ export default function DashboardStats({
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard
-          label="Triajes hoy"
+          label={`${CAPTURE_LABEL}s hoy`}
           value={fieldStats.registrosHoy}
           hint="Registros del día"
           hintClass="text-blue-600"
@@ -507,7 +507,7 @@ export default function DashboardStats({
                         </span>
                         <div className="mt-1 font-mono text-3xl font-bold text-slate-800">{val}</div>
                         <p className="mt-1 text-[11px] text-slate-500">
-                          {pct}% de triajes · {val} paciente{val === 1 ? '' : 's'}
+                          {pct}% de capturas · {val} paciente{val === 1 ? '' : 's'}
                         </p>
                         {onDrillDown && val > 0 && (
                           <span className="mt-2 text-[10px] font-bold text-blue-600 flex items-center gap-0.5">
@@ -922,7 +922,7 @@ export default function DashboardStats({
             <MetricCard
               label="Últimos 7 días"
               value={fieldStats.registrosUltimos7Dias}
-              hint="Triajes recientes"
+              hint="Capturas recientes"
               hintClass="text-indigo-600"
               icon={Activity}
               iconClass="bg-indigo-50 text-indigo-600"
@@ -945,7 +945,7 @@ export default function DashboardStats({
         >
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
-              label="Triajes hoy"
+              label={`${CAPTURE_LABEL}s hoy`}
               value={fieldStats.registrosHoy}
               hint="Registros del día"
               hintClass="text-blue-600"
@@ -997,9 +997,9 @@ export default function DashboardStats({
         >
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
-              label="Triajes hoy"
+              label={`${CAPTURE_LABEL}s hoy`}
               value={fieldStats.registrosHoy}
-              hint="Triajes del día"
+              hint="Capturas del día"
               hintClass="text-blue-600"
               icon={CalendarDays}
               iconClass="bg-blue-50 text-blue-600"

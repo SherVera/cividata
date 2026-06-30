@@ -1,17 +1,27 @@
 /** Nombre público de la app (repositorio npm: kids-alive). */
 export const APP_NAME = 'Cividata';
 
-export const APP_TAGLINE = 'Triaje médico y seguimiento de pacientes';
+export const APP_TAGLINE = 'Censo y seguimiento clínico de pacientes';
 
 /** Versión visible en la app. */
 export const APP_VERSION = '2.0';
 
 export const APP_DESCRIPTION =
-  'Cividata: triaje médico, censo y seguimiento clínico, optimizado para uso en teléfonos.';
+  'Cividata: captura en censo, triaje clínico y seguimiento, optimizado para uso en teléfonos.';
 
-/** Etiqueta corta del flujo de captura inicial (antes «registro»). */
-export const TRIAGE_LABEL = 'Triaje';
-export const TRIAGE_MEDICAL_LABEL = 'Triaje médico';
+/** Alta inicial del paciente en brigada / centro (antes «triaje» en la UI). */
+export const CAPTURE_LABEL = 'Captura';
+export const CAPTURE_QUICK_LABEL = 'Captura rápida';
+export const CAPTURE_FULL_LABEL = 'Captura completa';
+export const CAPTURE_POINT_LABEL = 'Punto de captura';
+
+/** Evaluación clínica de urgencia por visita (care_pathway). */
+export const CLINICAL_TRIAGE_LABEL = 'Triaje clínico';
+
+/** @deprecated Use CAPTURE_LABEL */
+export const TRIAGE_LABEL = CAPTURE_LABEL;
+/** @deprecated Use APP_TAGLINE */
+export const TRIAGE_MEDICAL_LABEL = 'Captura en censo';
 
 export const CONTACT_EMAIL =
   (import.meta.env.VITE_CONTACT_EMAIL as string | undefined)?.trim() || '';

@@ -10,12 +10,15 @@ import {
   Stethoscope,
   CheckCircle2,
   UserPlus,
+  Warehouse,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 import AppLogo from './AppLogo';
 import { APP_NAME, APP_VERSION } from '../brand';
 import { fetchLandingStats, type LandingStats } from '../lib/landingStatsApi';
+import { formatQty } from '../lib/centerSupplyApi';
+import LandingPublicNeeds from './LandingPublicNeeds';
 import { resolveAuthIdentity, signInWithIdentity } from '../lib/authSignIn';
 import { isValidAuthPhone } from '../lib/authPhone';
 import { SIGNUP_PROFILE_OPTIONS, type SignupProfileType } from '../lib/authRoles';
@@ -45,6 +48,7 @@ export default function AuthScreen() {
   const [isSubmittingState, setIsSubmitting] = useState(false);
   const [usageStats, setUsageStats] = useState<LandingStats | null>(null);
   const [usageStatsLoading, setUsageStatsLoading] = useState(true);
+  const [usageStatsError, setUsageStatsError] = useState(false);
   const [fullName, setFullName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [contactEmail, setContactEmail] = useState('');
@@ -62,9 +66,11 @@ export default function AuthScreen() {
 
     (async () => {
       setUsageStatsLoading(true);
+      setUsageStatsError(false);
       const stats = await fetchLandingStats();
       if (!cancelled) {
         setUsageStats(stats);
+        setUsageStatsError(stats === null);
         setUsageStatsLoading(false);
       }
     })();
@@ -74,8 +80,10 @@ export default function AuthScreen() {
     };
   }, []);
 
-  const totalPatients = usageStats?.totalPatients ?? 0;
-  const registeredToday = usageStats?.registeredToday ?? 0;
+  const collectionCenters = usageStats?.collectionCenters ?? 0;
+  const openItems = usageStats?.openItems ?? 0;
+  const pendingUnits = usageStats?.pendingUnits ?? 0;
+  const openNeeds = usageStats?.needs ?? [];
   const resolvedSpecialty =
     specialty === '__other__' ? specialtyOther : formatSpecialty(specialty);
   const isAssistantSignup = signupProfileType === 'registrador';
@@ -190,7 +198,8 @@ export default function AuthScreen() {
         </span>
       </header>
 
-      <main className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-10 lg:gap-14 items-center flex-1 py-10 md:py-16 z-10">
+      <main className="w-full max-w-7xl mx-auto flex flex-col gap-10 lg:gap-12 flex-1 py-10 md:py-16 z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-10 lg:gap-14 items-start">
         <section className="flex flex-col justify-center space-y-8 lg:py-6">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
@@ -199,11 +208,11 @@ export default function AuthScreen() {
             className="space-y-5"
           >
             <h1 className="font-sans text-[2.5rem] sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-[1.02]">
-              ¿Cuántos pacientes atendió{' '}
-              <span className="text-blue-600">hoy</span>?
+              ¿Qué insumos faltan en cada{' '}
+              <span className="text-blue-600">centro</span>?
             </h1>
             <p className="text-xl md:text-2xl font-semibold text-slate-600 max-w-lg leading-snug">
-              ¿Llevó el triaje de todos?
+              Consulte necesidades abiertas por punto de acopio y coordine entregas.
             </p>
             <button
               type="button"
@@ -219,25 +228,39 @@ export default function AuthScreen() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.12, duration: 0.45 }}
-            className="flex flex-wrap items-end gap-5"
+            className="flex flex-wrap items-end gap-8"
           >
             <div>
               {usageStatsLoading ? (
-                <div className="h-14 w-36 rounded-xl bg-slate-200/80 animate-pulse" aria-hidden="true" />
+                <div className="h-14 w-28 rounded-xl bg-slate-200/80 animate-pulse" aria-hidden="true" />
               ) : (
                 <p className="text-5xl md:text-6xl font-bold font-mono text-slate-900 tabular-nums tracking-tight">
-                  {numberFormatter.format(totalPatients)}
+                  {numberFormatter.format(collectionCenters)}
                 </p>
               )}
-              <p className="mt-2 text-sm font-medium text-slate-500">
-                pacientes en {APP_NAME}
+              <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
+                <Warehouse className="w-4 h-4 text-slate-400" aria-hidden="true" />
+                centros de acopio en {APP_NAME}
               </p>
             </div>
-            {!usageStatsLoading && registeredToday > 0 && (
-              <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
-                +{numberFormatter.format(registeredToday)} hoy
-              </span>
-            )}
+            <div>
+              {usageStatsLoading ? (
+                <div className="h-14 w-28 rounded-xl bg-slate-200/80 animate-pulse" aria-hidden="true" />
+              ) : (
+                <p className="text-5xl md:text-6xl font-bold font-mono text-amber-700 tabular-nums tracking-tight">
+                  {numberFormatter.format(openItems)}
+                </p>
+              )}
+              <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
+                <AlertTriangle className="w-4 h-4 text-amber-500" aria-hidden="true" />
+                necesidades abiertas
+              </p>
+              {!usageStatsLoading && pendingUnits > 0 && (
+                <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
+                  faltan {formatQty(pendingUnits)} unidades
+                </span>
+              )}
+            </div>
           </motion.div>
         </section>
 
@@ -511,7 +534,7 @@ export default function AuthScreen() {
 
                 {isAssistantSignup && (
                   <p className="rounded-xl border border-teal-100 bg-teal-50 px-3 py-2.5 text-xs leading-relaxed text-teal-900">
-                    Como asistente podrá registrar triajes y apoyar en centros de acopio. El seguimiento clínico lo realiza el personal médico.
+                    Como asistente podrá registrar capturas en censo y apoyar en centros de acopio. El seguimiento clínico lo realiza el personal médico.
                   </p>
                 )}
 
@@ -560,6 +583,13 @@ export default function AuthScreen() {
             )}
           </AnimatePresence>
         </motion.aside>
+        </div>
+
+        <LandingPublicNeeds
+          needs={openNeeds}
+          loading={usageStatsLoading}
+          loadError={usageStatsError}
+        />
       </main>
 
       <footer className="text-center z-10 pb-2">

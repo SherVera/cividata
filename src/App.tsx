@@ -55,7 +55,7 @@ import { listCollectionCenters } from './lib/collectionCentersApi';
 import { computeSupplyDashboardStats, listCenterSupplyEntries, type SupplyDashboardStats } from './lib/centerSupplyApi';
 import type { SupplyEntryType } from './lib/centerSupplyApi';
 import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin, canManageClinicalData, isRegistrador } from './lib/authRoles';
-import { APP_NAME, APP_TAGLINE } from './brand';
+import { APP_NAME, APP_TAGLINE, CAPTURE_FULL_LABEL, CAPTURE_LABEL, CAPTURE_QUICK_LABEL } from './brand';
 
 export default function App() {
   // Authentication via Supabase
@@ -311,12 +311,12 @@ export default function App() {
     try {
       await savePatient(savedPatient);
     } catch (err: any) {
-      showNotification('error', 'Error al guardar el triaje: ' + (err?.message || err));
+      showNotification('error', 'Error al guardar la captura: ' + (err?.message || err));
       return;
     }
     if (wasEditing) {
       setPatients(prev => prev.map(p => p.id === savedPatient.id ? savedPatient : p));
-      showNotification('success', `Triaje de ${patientDisplayName(savedPatient)} actualizado correctamente.`);
+      showNotification('success', `Captura de ${patientDisplayName(savedPatient)} actualizada correctamente.`);
       setSelectedPatient(savedPatient);
       setCurrentView('details');
       return;
@@ -335,7 +335,7 @@ export default function App() {
       return;
     }
 
-    showNotification('success', `Triaje de ${patientDisplayName(savedPatient)} guardado en ${APP_NAME}.`);
+    showNotification('success', `Captura de ${patientDisplayName(savedPatient)} guardada en ${APP_NAME}.`);
     setSelectedPatient(savedPatient);
     setCurrentView('details');
   };
@@ -357,13 +357,13 @@ export default function App() {
     try {
       await deletePatient(id);
     } catch (err: any) {
-      showNotification('error', 'Error al eliminar el triaje: ' + (err?.message || err));
+      showNotification('error', 'Error al eliminar la captura: ' + (err?.message || err));
       setShowDeleteConfirm(null);
       return;
     }
     if (p) {
       setPatients(prev => prev.filter(patient => patient.id !== id));
-      showNotification('error', `Se eliminó el triaje de ${p.nombres} ${p.apellidos}.`);
+      showNotification('error', `Se eliminó la captura de ${p.nombres} ${p.apellidos}.`);
     }
     setShowDeleteConfirm(null);
     if (currentView === 'details') {
@@ -617,7 +617,7 @@ export default function App() {
     const items: MobileDrawerItem[] = [
       {
         id: 'quick-create',
-        label: 'Triaje rápido',
+        label: CAPTURE_QUICK_LABEL,
         icon: Zap,
         tone: 'default',
         active: currentView === 'quick-create',
@@ -625,14 +625,14 @@ export default function App() {
       },
       {
         id: 'full-create',
-        label: 'Triaje completo',
+        label: CAPTURE_FULL_LABEL,
         icon: Plus,
         active: currentView === 'create',
         onSelect: goToFullCreate,
       },
       {
         id: 'listado',
-        label: isRegistrador(userRole) ? 'Listado de triajes' : 'Listado de pacientes',
+        label: isRegistrador(userRole) ? 'Listado del censo' : 'Listado de pacientes',
         icon: ClipboardList,
         active: isListadoActive,
         onSelect: goToListado,
@@ -837,7 +837,7 @@ export default function App() {
               }`}
             >
               <Zap className="w-3.5 h-3.5" />
-              Triaje rápido
+              {CAPTURE_QUICK_LABEL}
             </button>
 
             <button
@@ -951,7 +951,7 @@ export default function App() {
               className="flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-sm active:scale-95"
             >
               <Zap className="w-3.5 h-3.5" />
-              Triaje rápido
+              {CAPTURE_QUICK_LABEL}
             </button>
             <button
               type="button"
@@ -1024,7 +1024,7 @@ export default function App() {
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-mono font-bold uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full">
-                      Triaje médico comunitario
+                      Captura en censo comunitario
                     </span>
                     <span className="flex items-center gap-0.5 text-[10px] text-blue-600 font-semibold">
                       <Sparkles className="w-3 h-3 animate-pulse text-blue-500" /> Datos en línea
@@ -1035,8 +1035,8 @@ export default function App() {
                   </h2>
                   <p className="text-xs text-slate-500 max-w-xl leading-relaxed">
                     {isRegistrador(userRole)
-                      ? 'Use la barra superior para triaje rápido, listado o estadísticas.'
-                      : 'Use la barra superior para triaje rápido, consultar el listado o revisar estadísticas.'}
+                      ? 'Use la barra superior para captura rápida, listado o estadísticas.'
+                      : 'Use la barra superior para captura rápida, consultar el listado o revisar estadísticas.'}
                   </p>
                 </div>
               </div>
@@ -1065,8 +1065,8 @@ export default function App() {
                     {isAppAdministrator
                       ? `Listado de Pacientes (${filteredPatients.length})`
                       : isRegistrador(userRole)
-                        ? `Triajes (${filteredPatients.length})`
-                        : `Mis triajes (${filteredPatients.length})`}
+                        ? `En censo (${filteredPatients.length})`
+                        : `Mis capturas (${filteredPatients.length})`}
                   </button>
                 </div>
 
@@ -1397,7 +1397,7 @@ export default function App() {
                               {isAppAdministrator && (
                                 <button
                                   onClick={() => { setShowDeleteConfirm(p); }}
-                                  title="Eliminar triaje"
+                                  title="Eliminar captura"
                                   className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -1418,7 +1418,7 @@ export default function App() {
                                 onClick={() => { setSelectedPatient(p); setCurrentView('details'); }}
                                 className="flex items-center gap-1 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg font-bold text-xs transition-colors cursor-pointer"
                               >
-                                <Eye className="w-3.5 h-3.5" /> Ver triaje
+                                <Eye className="w-3.5 h-3.5" /> Ver ficha
                               </button>
                             </div>
                           </div>
@@ -1444,7 +1444,7 @@ export default function App() {
                       <div>
                         <h3 className="font-sans font-bold text-slate-700 text-sm">No se encontraron pacientes</h3>
                         <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                          No hay ningún triaje que coincida con los criterios de búsqueda o filtros activos seleccionados.
+                          No hay ninguna captura que coincida con los criterios de búsqueda o filtros activos seleccionados.
                         </p>
                       </div>
                       
@@ -1600,7 +1600,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 text-center space-y-2">
           <div className="flex items-center justify-center gap-1 text-[11px] text-slate-400 font-medium">
             <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-            <span>{APP_NAME} &bull; Triaje y seguimiento de pacientes</span>
+            <span>{APP_NAME} &bull; {APP_TAGLINE}</span>
           </div>
           <p className="text-[10px] text-slate-300">
             Acceso protegido con autenticación segura. Los datos clínicos se gestionan de forma centralizada.
@@ -1687,11 +1687,11 @@ export default function App() {
             >
               <div className="flex items-center gap-2.5 text-rose-600">
                 <AlertTriangle className="w-5 h-5" />
-                <h3 className="font-sans font-bold text-slate-800 text-base">¿Eliminar triaje?</h3>
+                <h3 className="font-sans font-bold text-slate-800 text-base">¿Eliminar captura?</h3>
               </div>
 
               <p className="text-xs text-slate-500 leading-relaxed">
-                Está a punto de eliminar de forma permanente el triaje de:
+                Está a punto de eliminar de forma permanente la captura de:
                 <br />
                 <strong className="text-slate-800 font-bold block mt-1.5 text-sm">
                   {showDeleteConfirm.nombres} {showDeleteConfirm.apellidos}

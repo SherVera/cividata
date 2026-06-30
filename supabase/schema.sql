@@ -147,16 +147,62 @@ $$;
 grant execute on function public.general_stats() to authenticated;
 
 -- =========================================================
--- Public landing stats (anon): aggregate usage only, no PII.
+-- Public landing stats (anon): centros de acopio e insumos, sin PII.
 -- =========================================================
 create or replace function public.landing_stats()
 returns json language sql security definer set search_path = public stable as $$
+  with balances as (
+    select
+      e.collection_center_id,
+      e.category_id,
+      min(trim(e.item_name)) as item_name,
+      sum(case when e.entry_type = 'necesidad' then e.quantity else 0 end) as needed,
+      sum(case when e.entry_type = 'recepcion' then e.quantity else 0 end) as received
+    from center_supply_entries e
+    group by e.collection_center_id, e.category_id, lower(trim(e.item_name))
+  ),
+  open_rows as (
+    select
+      b.collection_center_id,
+      b.category_id,
+      b.item_name,
+      b.needed,
+      b.received,
+      b.needed - b.received as balance,
+      cc.name as collection_center_name,
+      coalesce(sc.name, 'Insumos') as category_name
+    from balances b
+    inner join collection_centers cc on cc.id = b.collection_center_id
+    left join supply_categories sc on sc.id = b.category_id
+    where b.needed - b.received > 0
+      and cc.active is distinct from false
+  )
   select json_build_object(
-    'total_patients', (select count(*) from patients),
-    'registered_today', (select count(*) from patients where created_at::date = now()::date),
-    'registered_last_7_days', (select count(*) from patients where created_at > now() - interval '7 days'),
-    'clinical_notes', (select count(*) from clinical_notes),
-    'collection_centers', (select count(*) from collection_centers where active is distinct from false)
+    'collection_centers', (
+      select count(*)::int from collection_centers where active is distinct from false
+    ),
+    'open_items', (select count(*)::int from open_rows),
+    'pending_units', (select coalesce(sum(balance), 0)::numeric from open_rows),
+    'centers_with_needs', (select count(distinct collection_center_id)::int from open_rows),
+    'needs', coalesce(
+      (
+        select json_agg(
+          json_build_object(
+            'collection_center_id', collection_center_id,
+            'collection_center_name', collection_center_name,
+            'category_id', category_id,
+            'category_name', category_name,
+            'item_name', item_name,
+            'needed', needed,
+            'received', received,
+            'balance', balance
+          )
+          order by balance desc, collection_center_name, item_name
+        )
+        from open_rows
+      ),
+      '[]'::json
+    )
   );
 $$;
 
@@ -673,3 +719,65 @@ drop policy if exists "center_supply_entries insert" on public.center_supply_ent
 create policy "center_supply_entries insert"
   on public.center_supply_entries for insert to authenticated
   with check (created_by = auth.uid());
+
+-- =========================================================
+-- Landing público: estadísticas + listado de necesidades (re-ejecutar tras tablas de insumos).
+-- =========================================================
+create or replace function public.landing_stats()
+returns json language sql security definer set search_path = public stable as $$
+  with balances as (
+    select
+      e.collection_center_id,
+      e.category_id,
+      min(trim(e.item_name)) as item_name,
+      sum(case when e.entry_type = 'necesidad' then e.quantity else 0 end) as needed,
+      sum(case when e.entry_type = 'recepcion' then e.quantity else 0 end) as received
+    from center_supply_entries e
+    group by e.collection_center_id, e.category_id, lower(trim(e.item_name))
+  ),
+  open_rows as (
+    select
+      b.collection_center_id,
+      b.category_id,
+      b.item_name,
+      b.needed,
+      b.received,
+      b.needed - b.received as balance,
+      cc.name as collection_center_name,
+      coalesce(sc.name, 'Insumos') as category_name
+    from balances b
+    inner join collection_centers cc on cc.id = b.collection_center_id
+    left join supply_categories sc on sc.id = b.category_id
+    where b.needed - b.received > 0
+      and cc.active is distinct from false
+  )
+  select json_build_object(
+    'collection_centers', (
+      select count(*)::int from collection_centers where active is distinct from false
+    ),
+    'open_items', (select count(*)::int from open_rows),
+    'pending_units', (select coalesce(sum(balance), 0)::numeric from open_rows),
+    'centers_with_needs', (select count(distinct collection_center_id)::int from open_rows),
+    'needs', coalesce(
+      (
+        select json_agg(
+          json_build_object(
+            'collection_center_id', collection_center_id,
+            'collection_center_name', collection_center_name,
+            'category_id', category_id,
+            'category_name', category_name,
+            'item_name', item_name,
+            'needed', needed,
+            'received', received,
+            'balance', balance
+          )
+          order by balance desc, collection_center_name, item_name
+        )
+        from open_rows
+      ),
+      '[]'::json
+    )
+  );
+$$;
+
+grant execute on function public.landing_stats() to anon, authenticated;

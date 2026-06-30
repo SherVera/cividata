@@ -509,7 +509,7 @@ function CreateUserModal({
                 />
                 {role === 'registrador' && (
                   <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-                    Asistente: personal no médico autorizado para triaje y captura en campo, sin evolución clínica.
+                    Asistente: personal no médico autorizado para captura en campo, sin evolución clínica.
                   </p>
                 )}
               </label>
@@ -989,7 +989,7 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
           </span>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Panel de administración</h2>
           <p className="max-w-xl text-sm leading-relaxed text-slate-500">
-            Gestiona las cuentas autorizadas para acceder al triaje y seguimiento clínico.
+            Gestiona las cuentas autorizadas para acceder al censo y seguimiento clínico.
           </p>
         </div>
 

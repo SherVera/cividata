@@ -22,6 +22,7 @@ import {
   compressPatientPhoto,
   uploadPatientPhoto,
 } from '../lib/patientPhotosApi';
+import { CAPTURE_FULL_LABEL, CAPTURE_POINT_LABEL, CAPTURE_QUICK_LABEL } from '../brand';
 import QuickCenterRegister from './QuickCenterRegister';
 import CenterPicker from './CenterPicker';
 import SelectField from './SelectField';
@@ -230,7 +231,7 @@ export default function QuickPatientRegister({
     setCenterNotice(
       created
         ? `Centro "${center.name}" registrado y seleccionado.`
-        : `Ya existía "${center.name}"; se seleccionó el triaje previo.`
+        : `Ya existía "${center.name}"; se seleccionó la captura previa.`
     );
   };
 
@@ -290,7 +291,7 @@ export default function QuickPatientRegister({
 
       onSave(patient, { andContinue });
     } catch (err: any) {
-      setSubmitError(err?.message || 'No se pudo guardar el triaje.');
+      setSubmitError(err?.message || 'No se pudo guardar la captura.');
     } finally {
       setSaving(false);
     }
@@ -307,7 +308,7 @@ export default function QuickPatientRegister({
             </span>
           </div>
           <h2 className="mt-1 font-sans text-xl font-bold tracking-tight md:text-2xl">
-            Triaje rápido
+            {CAPTURE_QUICK_LABEL}
           </h2>
           <p className="mt-1 max-w-md text-xs text-slate-300">
             Solo lo esencial para brigadas y jornadas. Puede completar la ficha después.
@@ -325,7 +326,7 @@ export default function QuickPatientRegister({
       <div className="space-y-5 p-6 md:p-8">
         {hasCarryOver && (
           <div className="rounded-xl border border-teal-100 bg-teal-50/60 px-4 py-3 text-xs font-medium text-teal-800">
-            Se conservan centro y ubicación del triaje anterior.
+            Se conservan centro y ubicación de la captura anterior.
             {carryOver?.centroAcopioNombre && (
               <span className="mt-0.5 block font-bold">{carryOver.centroAcopioNombre}</span>
             )}
@@ -514,7 +515,7 @@ export default function QuickPatientRegister({
         </div>
 
         <div className="space-y-3 rounded-2xl border border-teal-100 bg-teal-50/40 p-4">
-          <p className="text-xs font-bold text-teal-900">Punto de triaje</p>
+          <p className="text-xs font-bold text-teal-900">{CAPTURE_POINT_LABEL}</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
               type="button"
