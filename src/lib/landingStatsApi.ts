@@ -12,6 +12,8 @@ export interface LandingOpenNeed {
 }
 
 export interface LandingStats {
+  totalPatients: number;
+  registeredToday: number;
   collectionCenters: number;
   openItems: number;
   pendingUnits: number;
@@ -33,8 +35,7 @@ function mapNeedRow(raw: Record<string, unknown>): LandingOpenNeed {
 }
 
 function mapLandingStatsRow(data: Record<string, unknown>): LandingStats | null {
-  // Versión antigua (pacientes) antes de insumos por centro
-  if ('total_patients' in data && !('needs' in data)) {
+  if (!('needs' in data)) {
     return null;
   }
 
@@ -51,12 +52,23 @@ function mapLandingStatsRow(data: Record<string, unknown>): LandingStats | null 
   };
 
   return {
+    totalPatients: Number(data.total_patients) || 0,
+    registeredToday: Number(data.registered_today) || 0,
     collectionCenters: Number(data.collection_centers) || 0,
     openItems: fromNeeds.openItems || Number(data.open_items) || 0,
     pendingUnits: fromNeeds.pendingUnits || Number(data.pending_units) || 0,
     centersWithNeeds: fromNeeds.centersWithNeeds || Number(data.centers_with_needs) || 0,
     needs,
   };
+}
+
+/** Total del censo redondeado para la landing pública (sin cifra exacta). */
+export function roundLandingPatientTotal(total: number): number {
+  if (total <= 0) return 0;
+  if (total < 50) return Math.max(5, Math.round(total / 5) * 5);
+  if (total < 500) return Math.round(total / 10) * 10;
+  if (total < 5000) return Math.round(total / 100) * 100;
+  return Math.round(total / 500) * 500;
 }
 
 export async function fetchLandingStats(): Promise<LandingStats | null> {

@@ -11,12 +11,14 @@ import {
   CheckCircle2,
   UserPlus,
   Warehouse,
+  Users,
+  ArrowDown,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 import AppLogo from './AppLogo';
-import { APP_NAME, APP_VERSION } from '../brand';
-import { fetchLandingStats, type LandingStats } from '../lib/landingStatsApi';
+import { APP_NAME, APP_TAGLINE, APP_VERSION, CAPTURE_LABEL } from '../brand';
+import { fetchLandingStats, roundLandingPatientTotal, type LandingStats } from '../lib/landingStatsApi';
 import { formatQty } from '../lib/centerSupplyApi';
 import LandingPublicNeeds from './LandingPublicNeeds';
 import { resolveAuthIdentity, signInWithIdentity } from '../lib/authSignIn';
@@ -83,6 +85,9 @@ export default function AuthScreen() {
   const collectionCenters = usageStats?.collectionCenters ?? 0;
   const openItems = usageStats?.openItems ?? 0;
   const pendingUnits = usageStats?.pendingUnits ?? 0;
+  const totalPatients = usageStats?.totalPatients ?? 0;
+  const estimatedPatients = roundLandingPatientTotal(totalPatients);
+  const registeredToday = usageStats?.registeredToday ?? 0;
   const openNeeds = usageStats?.needs ?? [];
   const resolvedSpecialty =
     specialty === '__other__' ? specialtyOther : formatSpecialty(specialty);
@@ -207,59 +212,111 @@ export default function AuthScreen() {
             transition={{ duration: 0.5, ease: 'easeOut' }}
             className="space-y-5"
           >
-            <h1 className="font-sans text-[2.5rem] sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-slate-900 leading-[1.02]">
-              ¿Qué insumos faltan en cada{' '}
-              <span className="text-blue-600">centro</span>?
+            <h1 className="font-sans text-[2.5rem] sm:text-5xl md:text-6xl lg:text-[3.5rem] font-bold tracking-tight text-slate-900 leading-[1.05]">
+              Censo de pacientes y necesidades por{' '}
+              <span className="text-blue-600">centro</span>
             </h1>
-            <p className="text-xl md:text-2xl font-semibold text-slate-600 max-w-lg leading-snug">
-              Consulte necesidades abiertas por punto de acopio y coordine entregas.
+            <p className="text-lg md:text-xl font-medium text-slate-600 max-w-2xl leading-relaxed">
+              {APP_TAGLINE}. Consulte insumos faltantes en puntos de acopio y solicite acceso para
+              registrar capturas con su equipo.
             </p>
-            <button
-              type="button"
-              onClick={openSignup}
-              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-700 active:scale-[0.98]"
-            >
-              <UserPlus className="w-4 h-4" />
-              Registrarme — menos de 30 seg
-            </button>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.12, duration: 0.45 }}
-            className="flex flex-wrap items-end gap-8"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2"
           >
-            <div>
-              {usageStatsLoading ? (
-                <div className="h-14 w-28 rounded-xl bg-slate-200/80 animate-pulse" aria-hidden="true" />
-              ) : (
-                <p className="text-5xl md:text-6xl font-bold font-mono text-slate-900 tabular-nums tracking-tight">
-                  {numberFormatter.format(collectionCenters)}
-                </p>
-              )}
-              <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
-                <Warehouse className="w-4 h-4 text-slate-400" aria-hidden="true" />
-                centros de acopio en {APP_NAME}
-              </p>
-            </div>
-            <div>
-              {usageStatsLoading ? (
-                <div className="h-14 w-28 rounded-xl bg-slate-200/80 animate-pulse" aria-hidden="true" />
-              ) : (
-                <p className="text-5xl md:text-6xl font-bold font-mono text-amber-700 tabular-nums tracking-tight">
-                  {numberFormatter.format(openItems)}
-                </p>
-              )}
-              <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
-                <AlertTriangle className="w-4 h-4 text-amber-500" aria-hidden="true" />
-                necesidades abiertas
-              </p>
+            <div className="rounded-2xl border border-amber-200/80 bg-white/90 p-5 shadow-sm backdrop-blur-sm">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-700">
+                    <Warehouse className="h-4 w-4" aria-hidden="true" />
+                    Centros e insumos
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500 leading-relaxed">
+                    Necesidades abiertas por punto de acopio, sin datos de pacientes.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-end gap-5">
+                <div>
+                  {usageStatsLoading ? (
+                    <div className="h-12 w-24 rounded-xl bg-slate-200/80 animate-pulse" aria-hidden="true" />
+                  ) : (
+                    <p className="text-4xl font-bold font-mono text-slate-900 tabular-nums tracking-tight">
+                      {numberFormatter.format(collectionCenters)}
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs font-medium text-slate-500">centros de acopio</p>
+                </div>
+                <div>
+                  {usageStatsLoading ? (
+                    <div className="h-12 w-24 rounded-xl bg-slate-200/80 animate-pulse" aria-hidden="true" />
+                  ) : (
+                    <p className="text-4xl font-bold font-mono text-amber-700 tabular-nums tracking-tight">
+                      {numberFormatter.format(openItems)}
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs font-medium text-slate-500">necesidades abiertas</p>
+                </div>
+              </div>
               {!usageStatsLoading && pendingUnits > 0 && (
-                <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800">
+                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-800">
                   faltan {formatQty(pendingUnits)} unidades
-                </span>
+                </p>
               )}
+              <a
+                href="#necesidades"
+                className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:text-blue-800"
+              >
+                Ver necesidades abiertas
+                <ArrowDown className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </div>
+
+            <div className="rounded-2xl border border-blue-200/80 bg-white/90 p-5 shadow-sm backdrop-blur-sm">
+              <div className="mb-4">
+                <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-blue-700">
+                  <Users className="h-4 w-4" aria-hidden="true" />
+                  {CAPTURE_LABEL} de pacientes
+                </p>
+                <p className="mt-1 text-sm text-slate-500 leading-relaxed">
+                  Personal médico y asistentes registran el censo. Los datos clínicos quedan en acceso privado.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-end gap-5">
+                <div>
+                  {usageStatsLoading ? (
+                    <div className="h-12 w-24 rounded-xl bg-slate-200/80 animate-pulse" aria-hidden="true" />
+                  ) : estimatedPatients > 0 ? (
+                    <p className="text-4xl font-bold font-mono text-slate-900 tabular-nums tracking-tight">
+                      ~{numberFormatter.format(estimatedPatients)}
+                    </p>
+                  ) : (
+                    <p className="text-4xl font-bold font-mono text-slate-900 tabular-nums tracking-tight">
+                      0
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs font-medium text-slate-500">
+                    pacientes en {APP_NAME} (estimado)
+                  </p>
+                </div>
+                {!usageStatsLoading && registeredToday > 0 && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                    +{numberFormatter.format(registeredToday)} hoy
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={openSignup}
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-blue-600/20 transition-all hover:bg-blue-700 active:scale-[0.98]"
+              >
+                <UserPlus className="w-4 h-4" />
+                Solicitar acceso — menos de 30 seg
+              </button>
             </div>
           </motion.div>
         </section>
@@ -586,6 +643,7 @@ export default function AuthScreen() {
         </div>
 
         <LandingPublicNeeds
+          id="necesidades"
           needs={openNeeds}
           loading={usageStatsLoading}
           loadError={usageStatsError}

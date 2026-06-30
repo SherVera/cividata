@@ -7,12 +7,13 @@ import ListPagination from './ListPagination';
 import { paginate, useListPageSize } from '../lib/pagination';
 
 type LandingPublicNeedsProps = {
+  id?: string;
   needs: LandingOpenNeed[];
   loading: boolean;
   loadError?: boolean;
 };
 
-export default function LandingPublicNeeds({ needs, loading, loadError = false }: LandingPublicNeedsProps) {
+export default function LandingPublicNeeds({ id, needs, loading, loadError = false }: LandingPublicNeedsProps) {
   const [search, setSearch] = useState('');
   const [centerFilter, setCenterFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -75,7 +76,10 @@ export default function LandingPublicNeeds({ needs, loading, loadError = false }
   }, [page, pagination.totalPages]);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur-sm md:p-6">
+    <section
+      id={id}
+      className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm backdrop-blur-sm md:p-6 scroll-mt-8"
+    >
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="inline-flex items-center gap-2 text-lg font-bold text-slate-900">
@@ -129,7 +133,7 @@ export default function LandingPublicNeeds({ needs, loading, loadError = false }
           <p className="text-sm font-semibold text-amber-900">No se pudieron cargar las necesidades.</p>
           <p className="mt-1 text-xs text-amber-800/80">
             Actualice la función <code className="font-mono">landing_stats</code> en Supabase
-            (migración <code className="font-mono">20250630120000_landing_stats_supply</code>).
+            (migración <code className="font-mono">20250630140000_landing_stats_patients</code>).
           </p>
         </div>
       ) : needs.length === 0 ? (
