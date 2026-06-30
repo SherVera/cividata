@@ -187,15 +187,15 @@ export async function findOrCreateSupplyCategory(name: string): Promise<SupplyCa
 }
 
 async function resolveCategoryId(input: Pick<CreateCenterSupplyEntryInput, 'categoryId' | 'categoryName'>) {
+  if (input.categoryName?.trim()) {
+    return (await findOrCreateSupplyCategory(input.categoryName)).id;
+  }
   if (input.categoryId) {
     const categories = await listSupplyCategories();
     const match = categories.find((c) => c.id === input.categoryId);
     if (match) return match.id;
   }
-  if (input.categoryName?.trim()) {
-    return (await findOrCreateSupplyCategory(input.categoryName)).id;
-  }
-  throw new Error('Seleccione o cree una clasificación.');
+  throw new Error('Indique la clasificación del insumo.');
 }
 
 export async function listCenterSupplyEntries(options?: {

@@ -13,9 +13,7 @@ import {
   todayIsoDate,
 } from '../lib/centerSupplyApi';
 import CenterPicker from './CenterPicker';
-import SelectField from './SelectField';
-
-export const NEW_SUPPLY_CATEGORY = '__new__';
+import SupplyCategoryField from './SupplyCategoryField';
 
 export type QuickSupplyRegisterModalProps = {
   open: boolean;
@@ -42,8 +40,7 @@ export default function QuickSupplyRegisterModal({
 
   const [selectedCenterId, setSelectedCenterId] = useState('');
   const [centerFilter, setCenterFilter] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const [categoryName, setCategoryName] = useState('');
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('1');
   const [entryDate, setEntryDate] = useState(todayIsoDate());
@@ -56,20 +53,11 @@ export default function QuickSupplyRegisterModal({
     [presetCenter, centers, selectedCenterId]
   );
 
-  const formCategoryOptions = useMemo(
-    () => [
-      ...categories.map((c) => ({ value: c.id, label: c.name })),
-      { value: NEW_SUPPLY_CATEGORY, label: '+ Nueva clasificación…' },
-    ],
-    [categories]
-  );
-
   const resetFields = (type: SupplyEntryType = initialEntryType) => {
     setEntryType(type);
     setSelectedCenterId(presetCenter?.id || '');
     setCenterFilter('');
-    setCategoryId('');
-    setNewCategoryName('');
+    setCategoryName('');
     setItemName('');
     setQuantity('1');
     setEntryDate(todayIsoDate());
@@ -84,9 +72,9 @@ export default function QuickSupplyRegisterModal({
       .then(([ctrs, cats]) => {
         setCenters(ctrs);
         setCategories(cats);
-        const defaultCat =
-          cats.find((c) => c.name.toLowerCase() === 'insumos')?.id || cats[0]?.id || '';
-        setCategoryId(defaultCat);
+        const defaultName =
+          cats.find((c) => c.name.toLowerCase() === 'insumos')?.name || cats[0]?.name || '';
+        setCategoryName(defaultName);
       })
       .catch((err: any) => {
         setError(err?.message || 'No se pudo cargar el formulario.');
@@ -111,11 +99,9 @@ export default function QuickSupplyRegisterModal({
     setSaving(true);
     setError('');
     try {
-      const usingNewCategory = categoryId === NEW_SUPPLY_CATEGORY;
       await createCenterSupplyEntry({
         collectionCenterId: centerId,
-        categoryId: usingNewCategory ? undefined : categoryId,
-        categoryName: usingNewCategory ? newCategoryName : undefined,
+        categoryName: categoryName.trim(),
         itemName,
         quantity: Number(quantity),
         entryType,
@@ -221,27 +207,16 @@ export default function QuickSupplyRegisterModal({
                 </p>
               </div>
 
-              <div className="space-y-1">
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <div>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">
                   Clasificación
-                </span>
-                <SelectField
-                  value={categoryId || categories[0]?.id || NEW_SUPPLY_CATEGORY}
-                  onChange={setCategoryId}
-                  options={formCategoryOptions}
-                  size="sm"
-                  accent="teal"
+                </label>
+                <SupplyCategoryField
+                  categories={categories}
+                  value={categoryName}
+                  onChange={setCategoryName}
+                  disabled={loading || saving}
                 />
-                {categoryId === NEW_SUPPLY_CATEGORY && (
-                  <input
-                    type="text"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    required
-                    placeholder="Nombre de la nueva clasificación"
-                    className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
-                  />
-                )}
               </div>
 
               <div>
@@ -298,8 +273,7 @@ export default function QuickSupplyRegisterModal({
               !itemName.trim() ||
               !quantity ||
               !entryDate ||
-              !categoryId ||
-              (categoryId === NEW_SUPPLY_CATEGORY && !newCategoryName.trim()) ||
+              !categoryName.trim() ||
               (!presetCenter && !selectedCenterId)
             }
             className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50 ${

@@ -19,6 +19,8 @@ type SelectFieldProps = {
   accent?: 'teal' | 'blue';
   /** Si false, el menú usa absolute dentro del root (puede recortarse con overflow del padre). */
   portaled?: boolean;
+  /** z-index del menú portaled (usar >1300 dentro de modales). */
+  menuZIndex?: number;
   id?: string;
   'aria-label'?: string;
 };
@@ -33,6 +35,7 @@ export default function SelectField({
   size = 'md',
   accent = 'teal',
   portaled = true,
+  menuZIndex = 300,
   id,
   'aria-label': ariaLabel,
 }: SelectFieldProps) {
@@ -58,7 +61,7 @@ export default function SelectField({
         top: rect.bottom,
         left: rect.left,
         width: rect.width,
-        zIndex: 300,
+        zIndex: menuZIndex,
       });
       return;
     }

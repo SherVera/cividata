@@ -21,6 +21,7 @@ from (values
   ('Insumos'),
   ('Material médico'),
   ('Equipamiento'),
+  ('Ropa'),
   ('Otro')
 ) as v(name)
 where not exists (
