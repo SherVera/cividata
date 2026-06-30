@@ -20,6 +20,7 @@ import PatientDetails from './components/PatientDetails';
 import DashboardStats, { SuperAdminDashboardStats } from './components/DashboardStats';
 import AdminPanel from './components/AdminPanel';
 import CollectionCentersPanel from './components/CollectionCentersPanel';
+import QuickSupplyRegisterModal from './components/QuickSupplyRegisterModal';
 import BottomNav, { BottomNavKey } from './components/BottomNav';
 import AppLogo from './components/AppLogo';
 import PatientPhoto from './components/PatientPhoto';
@@ -37,6 +38,8 @@ import {
 } from './lib/selectOptions';
 import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
 import { listCollectionCenters } from './lib/collectionCentersApi';
+import { countOpenSupplyNeeds } from './lib/centerSupplyApi';
+import type { SupplyEntryType } from './lib/centerSupplyApi';
 import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin, canManageClinicalData, isRegistrador } from './lib/authRoles';
 import { APP_NAME, APP_TAGLINE } from './brand';
 
@@ -80,6 +83,8 @@ export default function App() {
   const [listPage, setListPage] = useState(1);
   const [listPageSize, setListPageSize] = useListPageSize();
   const [showFiltersMobile, setShowFiltersMobile] = useState<boolean>(false);
+  const [pendingSupplyCount, setPendingSupplyCount] = useState(0);
+  const [quickSupplyType, setQuickSupplyType] = useState<SupplyEntryType | null>(null);
 
   // Modals state
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
@@ -148,10 +153,10 @@ export default function App() {
     }
   }, [isAuthenticated, homeTabInitialized, userRole]);
 
-  // Sin permisos admin: bloquear vistas de administración
+  // Sin permisos admin: bloquear panel de administración
   useEffect(() => {
     if (!isAuthenticated || isAppAdministrator) return;
-    if (currentView === 'admin' || currentView === 'centros') {
+    if (currentView === 'admin') {
       setCurrentView('list');
       setActiveTab('estadisticas');
     }
@@ -170,12 +175,21 @@ export default function App() {
     }
   };
 
+  const refreshPendingSupplyCount = async () => {
+    try {
+      setPendingSupplyCount(await countOpenSupplyNeeds());
+    } catch {
+      setPendingSupplyCount(0);
+    }
+  };
+
   const refreshAllData = async () => {
     if (dataRefreshing) return;
     setDataRefreshing(true);
     try {
       await loadPatients({ silent: true });
       await refreshCollectionCenters();
+      await refreshPendingSupplyCount();
       await loadSuperAdminStats();
       showNotification('success', 'Datos actualizados correctamente.');
     } catch {
@@ -190,10 +204,12 @@ export default function App() {
     if (isAuthenticated) {
       loadPatients();
       refreshCollectionCenters();
+      refreshPendingSupplyCount();
     } else {
       setPatients([]);
       setCollectionCenters([]);
       setTotalCentrosRegistrados(0);
+      setPendingSupplyCount(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
@@ -559,21 +575,37 @@ export default function App() {
               <span className="text-xs font-semibold hidden md:inline">Home</span>
             </button>
 
+            <button
+              type="button"
+              onClick={() => setQuickSupplyType('necesidad')}
+              title="Registro rápido de insumos"
+              className="p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              <span className="text-xs font-semibold hidden lg:inline">Insumo rápido</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCurrentView('centros')}
+              title="Centros de acopio"
+              className={`relative p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                currentView === 'centros'
+                  ? 'bg-teal-50 text-teal-700'
+                  : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+              }`}
+            >
+              <Warehouse className="w-4 h-4" />
+              <span className="text-xs font-semibold hidden md:inline">Centros</span>
+              {pendingSupplyCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-white">
+                  {pendingSupplyCount > 9 ? '9+' : pendingSupplyCount}
+                </span>
+              )}
+            </button>
+
             {isAppAdministrator && (
               <>
-                <button
-                  onClick={() => setCurrentView('centros')}
-                  title="Centros de acopio"
-                  className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-                    currentView === 'centros'
-                      ? 'bg-teal-50 text-teal-700'
-                      : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
-                  }`}
-                >
-                  <Warehouse className="w-4 h-4" />
-                  <span className="text-xs font-semibold hidden md:inline">Centros</span>
-                </button>
-
                 <button
                   onClick={() => setCurrentView('admin')}
                   title="Panel de Administración"
@@ -1146,7 +1178,7 @@ export default function App() {
           )}
 
           {/* 6. COLLECTION CENTERS VIEW */}
-          {currentView === 'centros' && isAppAdministrator && (
+          {currentView === 'centros' && (
             <motion.div
               key="centros-view"
               initial={{ opacity: 0, y: 10 }}
@@ -1154,10 +1186,12 @@ export default function App() {
               exit={{ opacity: 0 }}
             >
               <CollectionCentersPanel
+                canManageCenters={isAppAdministrator}
                 onBack={() => {
                   setCurrentView('list');
-                  setActiveTab('listado');
+                  setActiveTab(defaultHomeTab(userRole));
                   refreshCollectionCenters();
+                  refreshPendingSupplyCount();
                 }}
               />
             </motion.div>
@@ -1289,6 +1323,16 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      <QuickSupplyRegisterModal
+        open={quickSupplyType !== null}
+        entryType={quickSupplyType ?? 'necesidad'}
+        onClose={() => setQuickSupplyType(null)}
+        onSaved={() => {
+          refreshPendingSupplyCount();
+          showNotification('success', 'Registro de insumo guardado.');
+        }}
+      />
 
       {/* APP-LIKE BOTTOM NAVIGATION (mobile) */}
       <BottomNav

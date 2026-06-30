@@ -15,5 +15,8 @@ dist/
 web/config.js
 .vercel
 
-supabase/*
+# Supabase CLI / enlace local (no versionar)
+supabase/.temp/
+
+# Respaldos locales (pueden contener datos clínicos)
 backup/*
