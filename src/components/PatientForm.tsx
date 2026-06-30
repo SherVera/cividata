@@ -392,7 +392,8 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
     }
   };
 
-  // Campos de edad en meses solo para niño/a; adulto y tercera edad ocultan secciones de representante y escolaridad.
+  // Campos de edad en meses solo cuando los años son 0 (bebés).
+  const showEdadMeses = formData.edadAnios === 0;
   const isChildAgeProfile = formData.grupoEtario !== 'adulto' && formData.grupoEtario !== 'tercera_edad';
   const clasificacionManual = !pacienteTieneEdad(formData);
 
@@ -455,6 +456,12 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       prev.grupoEtario === calculated ? prev : { ...prev, grupoEtario: calculated }
     );
   }, [formData.fechaNacimiento, formData.edadAnios, formData.edadMeses]);
+
+  useEffect(() => {
+    if (formData.edadAnios > 0 && formData.edadMeses !== 0) {
+      setFormData((prev) => ({ ...prev, edadMeses: 0 }));
+    }
+  }, [formData.edadAnios, formData.edadMeses]);
 
   const requiereRepresentante = pacienteRequiereRepresentante(formData);
 
@@ -724,12 +731,12 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                   {hasExactBirthDate ? 'Edad calculada' : 'Edad tentativa'}
                 </label>
                 {hasExactBirthDate ? (
-                  <div className={`grid gap-2 ${isChildAgeProfile ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  <div className={`grid gap-2 ${showEdadMeses ? 'grid-cols-2' : 'grid-cols-1'}`}>
                     <div className="relative bg-slate-100 rounded-xl px-4 py-2.5 border border-slate-200 flex items-center justify-between text-sm text-slate-700">
                       <span className="font-mono font-bold text-slate-800">{formData.edadAnios}</span>
                       <span className="text-xs text-slate-500">años</span>
                     </div>
-                    {isChildAgeProfile && (
+                    {showEdadMeses && (
                       <div className="relative bg-slate-100 rounded-xl px-4 py-2.5 border border-slate-200 flex items-center justify-between text-sm text-slate-700">
                         <span className="font-mono font-bold text-slate-800">{formData.edadMeses}</span>
                         <span className="text-xs text-slate-500">meses</span>
@@ -737,7 +744,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                     )}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className={`grid gap-2 ${showEdadMeses ? 'grid-cols-2' : 'grid-cols-1'}`}>
                     <div>
                       <input
                         type="number"
@@ -751,6 +758,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                         }`}
                       />
                     </div>
+                    {showEdadMeses && (
                     <div>
                       <input
                         type="number"
@@ -763,6 +771,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                         className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10 focus:border-teal-500"
                       />
                     </div>
+                    )}
                   </div>
                 )}
                 {formErrors.edadAnios && <p className="text-red-500 text-xs mt-1 font-medium">{formErrors.edadAnios}</p>}

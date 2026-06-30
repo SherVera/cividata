@@ -270,7 +270,7 @@ export async function savePatient(p: Paciente): Promise<void> {
     photo_path: p.fotoPath || null,
     age_group: grupoEtario,
     approx_age_years: hasBirthDate ? null : (p.edadAnios > 0 ? p.edadAnios : null),
-    approx_age_months: hasBirthDate ? null : (p.edadAnios > 0 || p.edadMeses > 0 ? p.edadMeses : null),
+    approx_age_months: hasBirthDate ? null : (p.edadAnios === 0 && p.edadMeses > 0 ? p.edadMeses : null),
     nationality_id: nationalityId,
     address: (p.direccion || '').trim() || null,
     state_id: stateId,
