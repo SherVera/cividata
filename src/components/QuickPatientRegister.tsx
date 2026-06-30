@@ -223,7 +223,7 @@ export default function QuickPatientRegister({
     setCenterNotice(
       created
         ? `Centro "${center.name}" registrado y seleccionado.`
-        : `Ya existía "${center.name}"; se seleccionó el registro previo.`
+        : `Ya existía "${center.name}"; se seleccionó el triaje previo.`
     );
   };
 
@@ -283,7 +283,7 @@ export default function QuickPatientRegister({
 
       onSave(patient, { andContinue });
     } catch (err: any) {
-      setSubmitError(err?.message || 'No se pudo guardar el registro.');
+      setSubmitError(err?.message || 'No se pudo guardar el triaje.');
     } finally {
       setSaving(false);
     }
@@ -300,7 +300,7 @@ export default function QuickPatientRegister({
             </span>
           </div>
           <h2 className="mt-1 font-sans text-xl font-bold tracking-tight md:text-2xl">
-            Registro rápido
+            Triaje rápido
           </h2>
           <p className="mt-1 max-w-md text-xs text-slate-300">
             Solo lo esencial para brigadas y jornadas. Puede completar la ficha después.
@@ -318,7 +318,7 @@ export default function QuickPatientRegister({
       <div className="space-y-5 p-6 md:p-8">
         {hasCarryOver && (
           <div className="rounded-xl border border-teal-100 bg-teal-50/60 px-4 py-3 text-xs font-medium text-teal-800">
-            Se conservan centro y ubicación del registro anterior.
+            Se conservan centro y ubicación del triaje anterior.
             {carryOver?.centroAcopioNombre && (
               <span className="mt-0.5 block font-bold">{carryOver.centroAcopioNombre}</span>
             )}
@@ -505,7 +505,7 @@ export default function QuickPatientRegister({
         </div>
 
         <div className="space-y-3 rounded-2xl border border-teal-100 bg-teal-50/40 p-4">
-          <p className="text-xs font-bold text-teal-900">Punto de registro</p>
+          <p className="text-xs font-bold text-teal-900">Punto de triaje</p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
               type="button"

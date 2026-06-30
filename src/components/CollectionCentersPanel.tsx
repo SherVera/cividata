@@ -20,7 +20,7 @@ import { DEFAULT_MAP_CENTER, formatDistance, haversineMeters } from '../lib/geo'
 import { GeocodeResult, searchPlaces } from '../lib/geocodeApi';
 import GeoMapPicker from './GeoMapPicker';
 import ListPagination from './ListPagination';
-import { paginate, TABLE_LIST_PAGE_SIZE } from '../lib/pagination';
+import { paginate, useListPageSize } from '../lib/pagination';
 
 interface CollectionCentersPanelProps {
   onBack?: () => void;
@@ -58,6 +58,7 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
   const [searchedPlaceLabel, setSearchedPlaceLabel] = useState('');
   const [notice, setNotice] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
   const [centersPage, setCentersPage] = useState(1);
+  const [listPageSize, setListPageSize] = useListPageSize();
 
   const resetLocationSearch = () => {
     setLocationQuery('');
@@ -94,9 +95,14 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
   }, [centers, search, showInactive]);
 
   const centersPagination = useMemo(
-    () => paginate(filtered, centersPage, TABLE_LIST_PAGE_SIZE),
-    [filtered, centersPage]
+    () => paginate(filtered, centersPage, listPageSize),
+    [filtered, centersPage, listPageSize]
   );
+
+  const handleListPageSizeChange = (size: number) => {
+    setListPageSize(size);
+    setCentersPage(1);
+  };
 
   useEffect(() => {
     setCentersPage(1);
@@ -238,7 +244,7 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-teal-100">
             <Warehouse className="h-3.5 w-3.5" /> Centros de acopio
           </span>
-          <h2 className="mt-3 text-xl font-bold tracking-tight">Puntos de registro</h2>
+          <h2 className="mt-3 text-xl font-bold tracking-tight">Puntos de triaje</h2>
           <p className="mt-1 max-w-xl text-sm text-slate-300">
             Administre los centros donde se capturan fichas. La ubicación es aproximada (~100 m) y se puede ajustar arrastrando el marcador en el mapa.
           </p>
@@ -340,6 +346,8 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
             startIndex={centersPagination.startIndex}
             endIndex={centersPagination.endIndex}
             onPageChange={setCentersPage}
+            pageSize={listPageSize}
+            onPageSizeChange={handleListPageSizeChange}
           />
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {centersPagination.pageItems.map((center) => (
@@ -397,6 +405,8 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
             startIndex={centersPagination.startIndex}
             endIndex={centersPagination.endIndex}
             onPageChange={setCentersPage}
+            pageSize={listPageSize}
+            onPageSizeChange={handleListPageSizeChange}
           />
           </div>
         )}
@@ -547,7 +557,7 @@ export default function CollectionCentersPanel({ onBack }: CollectionCentersPane
                   onChange={(e) => setForm((prev) => ({ ...prev, active: e.target.checked }))}
                   className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                 />
-                Centro activo para nuevos registros
+                Centro activo para nuevos triajes
               </label>
             </div>
 
