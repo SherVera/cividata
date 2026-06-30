@@ -3,6 +3,7 @@ import {
   aggregateSupplyBalances,
   entryRegisteredOnDifferentDay,
   formatQty,
+  projectReception,
   type CenterSupplyEntry,
 } from './centerSupplyApi';
 
@@ -49,6 +50,31 @@ describe('aggregateSupplyBalances', () => {
       baseEntry({ id: '2', categoryId: 'cat-ins', categoryName: 'Insumos', quantity: 3 }),
     ]);
     expect(balances).toHaveLength(2);
+  });
+});
+
+describe('projectReception', () => {
+  it('calcula faltante cuando la recepción no cubre la necesidad', () => {
+    const result = projectReception({ needed: 10, received: 4, balance: 6 }, 3);
+    expect(result).toMatchObject({
+      pendingBefore: 6,
+      pendingAfter: 3,
+      surplus: 0,
+    });
+  });
+
+  it('calcula superávit cuando la recepción excede la necesidad', () => {
+    const result = projectReception({ needed: 10, received: 4, balance: 6 }, 8);
+    expect(result).toMatchObject({
+      pendingBefore: 6,
+      pendingAfter: 0,
+      surplus: 2,
+    });
+  });
+
+  it('cubre exactamente la necesidad pendiente', () => {
+    const result = projectReception({ needed: 10, received: 4, balance: 6 }, 6);
+    expect(result).toMatchObject({ pendingAfter: 0, surplus: 0 });
   });
 });
 

@@ -19,6 +19,7 @@ import {
   formatSupplyRegisteredAt,
   listCenterSupplyEntries,
   listSupplyCategories,
+  listSupplySurplus,
 } from '../lib/centerSupplyApi';
 import SelectField from './SelectField';
 import QuickSupplyRegisterModal from './QuickSupplyRegisterModal';
@@ -86,6 +87,7 @@ export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelP
   const balances = useMemo(() => aggregateSupplyBalances(entries), [entries]);
 
   const openEntries = useMemo(() => balances.filter((b) => b.balance > 0), [balances]);
+  const surplusEntries = useMemo(() => listSupplySurplus(entries), [entries]);
 
   const dayGroups = useMemo(() => {
     const map = new Map<string, CenterSupplyEntry[]>();
@@ -220,7 +222,38 @@ export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelP
               </div>
             )}
 
-            {balances.length > 0 && openEntries.length === 0 && (
+            {surplusEntries.length > 0 && (
+              <div className="mb-5">
+                <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Superávit por ítem
+                </h3>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {surplusEntries.map((row) => (
+                    <div
+                      key={`surplus-${row.categoryId}-${row.itemName}`}
+                      className="rounded-2xl border border-sky-100 bg-sky-50/60 px-4 py-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-sky-800">
+                            {row.categoryName}
+                          </p>
+                          <p className="text-sm font-bold text-slate-900">{row.itemName}</p>
+                        </div>
+                        <span className="rounded-full bg-sky-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                          Exceso {formatQty(row.balance)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-slate-600">
+                        Necesita {formatQty(row.needed)} · Recibido {formatQty(row.received)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {balances.length > 0 && openEntries.length === 0 && surplusEntries.length === 0 && (
               <div className="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
                 <Check className="mb-1 inline h-4 w-4" /> Sin faltantes en esta clasificación.
               </div>
