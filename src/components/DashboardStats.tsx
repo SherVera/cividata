@@ -49,29 +49,52 @@ function computeFieldStats(list: Paciente[]) {
   };
 }
 
+function ModuleLink({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick?: () => void;
+}) {
+  if (!onClick) return null;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex shrink-0 items-center gap-0.5 rounded-lg px-2 py-1 text-xs font-bold text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700"
+    >
+      {label}
+      <ChevronRight className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
 function RoleSection({
   badge,
   title,
   description,
   badgeClass,
+  moduleLink,
   children,
 }: {
   badge: string;
   title: string;
   description: string;
   badgeClass: string;
+  moduleLink?: { label: string; onClick?: () => void };
   children: React.ReactNode;
 }) {
   return (
     <section className="space-y-4">
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${badgeClass}`}>
             {badge}
           </span>
           <h3 className="mt-2 text-sm font-bold text-slate-800">{title}</h3>
           <p className="text-xs text-slate-500">{description}</p>
         </div>
+        <ModuleLink label={moduleLink?.label ?? ''} onClick={moduleLink?.onClick} />
       </div>
       {children}
     </section>
@@ -282,6 +305,25 @@ export default function DashboardStats({
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h2 className="text-sm font-bold text-slate-800">Resumen del censo</h2>
+          <p className="text-xs text-slate-500">
+            Métricas generales. Toque una tarjeta o use los enlaces para abrir el módulo correspondiente.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <ModuleLink
+            label="Ir al listado"
+            onClick={onDrillDown ? () => drill({ target: 'listado' }) : undefined}
+          />
+          <ModuleLink
+            label="Ir a centros"
+            onClick={onDrillDown ? () => drill({ target: 'centros' }) : undefined}
+          />
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           label="Total triajes"
@@ -370,7 +412,12 @@ export default function DashboardStats({
               Cantidad por rangos de edad o por clasificación etaria. Toque un bloque para ver el listado filtrado.
             </p>
           </div>
-          <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <ModuleLink
+              label="Ir al listado"
+              onClick={onDrillDown ? () => drill({ target: 'listado' }) : undefined}
+            />
+            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
             <button
               type="button"
               onClick={() => setDemographicsView('edad')}
@@ -393,6 +440,7 @@ export default function DashboardStats({
             >
               Por clasificación
             </button>
+          </div>
           </div>
         </div>
 
@@ -484,7 +532,15 @@ export default function DashboardStats({
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3 px-1">
+          <p className="text-xs text-slate-500">Indicadores demográficos y de salud del censo.</p>
+          <ModuleLink
+            label="Ir al listado"
+            onClick={onDrillDown ? () => drill({ target: 'listado' }) : undefined}
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between space-y-4">
           <div>
             <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Esquema de vacunación</h4>
@@ -679,6 +735,7 @@ export default function DashboardStats({
           </div>
         </div>
       </div>
+      </div>
 
       {supplyStats && (
         <RoleSection
@@ -686,7 +743,17 @@ export default function DashboardStats({
           title="Necesidades por centro de acopio"
           description="Resumen de ítems pendientes y recepciones en todos los centros."
           badgeClass="border-amber-100 bg-amber-50 text-amber-800"
+          moduleLink={{
+            label: 'Ir a centros de acopio',
+            onClick: onDrillDown ? () => drill({ target: 'centros' }) : undefined,
+          }}
         >
+          <div className="flex flex-wrap items-center gap-2">
+            <ModuleLink
+              label="Necesidades y entregas"
+              onClick={onDrillDown ? () => drill({ target: 'centros', panelView: 'ledger' }) : undefined}
+            />
+          </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               label="Necesidades abiertas"
@@ -731,24 +798,36 @@ export default function DashboardStats({
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {supplyStats.byCenter.length > 0 && (
                 <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Centros con mayor faltante
-                  </h4>
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Centros con mayor faltante
+                    </h4>
+                    <ModuleLink
+                      label="Ver centros"
+                      onClick={onDrillDown ? () => drill({ target: 'centros' }) : undefined}
+                    />
+                  </div>
                   <ul className="mt-3 space-y-2">
                     {supplyStats.byCenter.slice(0, 6).map((row) => (
-                      <li
-                        key={row.centerId}
-                        className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-800">{row.centerName}</p>
-                          <p className="text-[11px] text-slate-500">
-                            {row.openItems} {row.openItems === 1 ? 'ítem' : 'ítems'} pendiente{row.openItems === 1 ? '' : 's'}
-                          </p>
-                        </div>
-                        <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">
-                          Faltan {formatQty(row.pendingUnits)}
-                        </span>
+                      <li key={row.centerId}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onDrillDown && drill({ target: 'centros', centerId: row.centerId })
+                          }
+                          disabled={!onDrillDown}
+                          className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-left transition-colors hover:border-teal-200 hover:bg-teal-50/60 disabled:cursor-default"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-800">{row.centerName}</p>
+                            <p className="text-[11px] text-slate-500">
+                              {row.openItems} {row.openItems === 1 ? 'ítem' : 'ítems'} pendiente{row.openItems === 1 ? '' : 's'}
+                            </p>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">
+                            Faltan {formatQty(row.pendingUnits)}
+                          </span>
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -757,24 +836,34 @@ export default function DashboardStats({
 
               {supplyStats.byCategory.length > 0 && (
                 <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Por clasificación
-                  </h4>
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Por clasificación
+                    </h4>
+                    <ModuleLink
+                      label="Ver centros"
+                      onClick={onDrillDown ? () => drill({ target: 'centros' }) : undefined}
+                    />
+                  </div>
                   <ul className="mt-3 space-y-2">
                     {supplyStats.byCategory.slice(0, 6).map((row) => (
-                      <li
-                        key={row.categoryId}
-                        className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-slate-800">{row.categoryName}</p>
-                          <p className="text-[11px] text-slate-500">
-                            {row.openItems} {row.openItems === 1 ? 'ítem' : 'ítems'}
-                          </p>
-                        </div>
-                        <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">
-                          {formatQty(row.pendingUnits)} u.
-                        </span>
+                      <li key={row.categoryId}>
+                        <button
+                          type="button"
+                          onClick={() => onDrillDown && drill({ target: 'centros' })}
+                          disabled={!onDrillDown}
+                          className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-left transition-colors hover:border-amber-200 hover:bg-amber-50/50 disabled:cursor-default"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-slate-800">{row.categoryName}</p>
+                            <p className="text-[11px] text-slate-500">
+                              {row.openItems} {row.openItems === 1 ? 'ítem' : 'ítems'}
+                            </p>
+                          </div>
+                          <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-800">
+                            {formatQty(row.pendingUnits)} u.
+                          </span>
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -797,6 +886,10 @@ export default function DashboardStats({
           title="Seguimiento clínico"
           description="Indicadores de atención y pendientes clínicos en su ámbito."
           badgeClass="border-blue-100 bg-blue-50 text-blue-700"
+          moduleLink={{
+            label: 'Ir al listado',
+            onClick: onDrillDown ? () => drill({ target: 'listado' }) : undefined,
+          }}
         >
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
@@ -845,6 +938,10 @@ export default function DashboardStats({
           title="Captura en campo"
           description="Indicadores de registro y datos pendientes de completar."
           badgeClass="border-teal-100 bg-teal-50 text-teal-700"
+          moduleLink={{
+            label: 'Ir al listado',
+            onClick: onDrillDown ? () => drill({ target: 'listado' }) : undefined,
+          }}
         >
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
@@ -893,6 +990,10 @@ export default function DashboardStats({
           title="Operación de campo"
           description="Indicadores de captura y seguimiento del personal médico."
           badgeClass="border-blue-100 bg-blue-50 text-blue-700"
+          moduleLink={{
+            label: 'Ir al listado',
+            onClick: onDrillDown ? () => drill({ target: 'listado' }) : undefined,
+          }}
         >
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
@@ -941,6 +1042,10 @@ export default function DashboardStats({
           title="Gobernanza del sistema"
           description="Resumen de cuentas y accesos. Toque una métrica para ver usuarios filtrados."
           badgeClass="border-violet-100 bg-violet-50 text-violet-700"
+          moduleLink={{
+            label: 'Ir a administración',
+            onClick: onDrillDown ? () => drill({ target: 'admin', roleFilter: 'all' }) : undefined,
+          }}
         >
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
             <MetricCard

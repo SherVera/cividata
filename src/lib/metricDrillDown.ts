@@ -35,7 +35,7 @@ export type AdminUserRoleFilter =
 
 export type MetricDrillDown =
   | { target: 'listado'; filters?: Partial<PatientListFilters> }
-  | { target: 'centros' }
+  | { target: 'centros'; centerId?: string; panelView?: 'centros' | 'ledger' }
   | { target: 'admin'; roleFilter?: AdminUserRoleFilter };
 
 export function mergePatientListFilters(

@@ -7,7 +7,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Plus, Search, SlidersHorizontal, Download, Upload, Lock, 
   ShieldCheck, Eye, Settings, Trash2, LogOut, Edit, Filter, Database, 
-  Activity, FileSpreadsheet, AlertTriangle, Heart, Sparkles, Menu, X, Check, RefreshCw, Warehouse, Home, Zap
+  Activity, FileSpreadsheet, AlertTriangle, Heart, Sparkles, Menu, X, Check, RefreshCw, Warehouse, Home, Zap,
+  ClipboardList, BarChart3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Session } from '@supabase/supabase-js';
@@ -108,6 +109,8 @@ export default function App() {
 
   // Modals state
   const [showMobileMenu, setShowMobileMenu] = useState<boolean>(false);
+  const [centrosFocusCenterId, setCentrosFocusCenterId] = useState<string | null>(null);
+  const [centrosPanelView, setCentrosPanelView] = useState<'centros' | 'ledger'>('centros');
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [newPasswordInput, setNewPasswordInput] = useState<string>('');
   const [settingsSuccess, setSettingsSuccess] = useState<string>('');
@@ -444,6 +447,8 @@ export default function App() {
 
   const handleMetricDrillDown = (action: MetricDrillDown) => {
     if (action.target === 'centros') {
+      setCentrosFocusCenterId(action.centerId ?? null);
+      setCentrosPanelView(action.panelView ?? 'centros');
       setCurrentView('centros');
       return;
     }
@@ -577,8 +582,7 @@ export default function App() {
   const handleBottomNav = (key: BottomNavKey) => {
     if (key === 'admin' && !isAppAdministrator) return;
     if (key === 'create') {
-      setQuickCarryOver(null);
-      setCurrentView('quick-create');
+      goToQuickCreate();
     } else if (key === 'admin') {
       setCurrentView('admin');
     } else {
@@ -587,17 +591,58 @@ export default function App() {
     }
   };
 
+  const goToListado = () => {
+    setCurrentView('list');
+    setActiveTab('listado');
+  };
+
+  const goToEstadisticas = () => {
+    setCurrentView('list');
+    setActiveTab('estadisticas');
+  };
+
+  const goToQuickCreate = () => {
+    setQuickCarryOver(null);
+    setCurrentView('quick-create');
+  };
+
+  const goToFullCreate = () => {
+    setCurrentView('create');
+  };
+
+  const isListadoActive = currentView === 'list' && activeTab === 'listado';
+  const isEstadisticasActive = currentView === 'list' && activeTab === 'estadisticas';
+
   const mobileDrawerItems = useMemo<MobileDrawerItem[]>(() => {
     const items: MobileDrawerItem[] = [
       {
-        id: 'home',
-        label: 'Inicio',
-        icon: Home,
-        active: currentView === 'list',
-        onSelect: () => {
-          setCurrentView('list');
-          setActiveTab(defaultHomeTab(userRole));
-        },
+        id: 'quick-create',
+        label: 'Triaje rápido',
+        icon: Zap,
+        tone: 'default',
+        active: currentView === 'quick-create',
+        onSelect: goToQuickCreate,
+      },
+      {
+        id: 'full-create',
+        label: 'Triaje completo',
+        icon: Plus,
+        active: currentView === 'create',
+        onSelect: goToFullCreate,
+      },
+      {
+        id: 'listado',
+        label: isRegistrador(userRole) ? 'Listado de triajes' : 'Listado de pacientes',
+        icon: ClipboardList,
+        active: isListadoActive,
+        onSelect: goToListado,
+      },
+      {
+        id: 'estadisticas',
+        label: 'Estadísticas',
+        icon: BarChart3,
+        active: isEstadisticasActive,
+        onSelect: goToEstadisticas,
       },
       {
         id: 'quick-supply',
@@ -605,6 +650,16 @@ export default function App() {
         icon: AlertTriangle,
         tone: 'amber',
         onSelect: () => setQuickSupplyType('necesidad'),
+      },
+      {
+        id: 'home',
+        label: 'Inicio',
+        icon: Home,
+        active: currentView === 'list' && activeTab === defaultHomeTab(userRole),
+        onSelect: () => {
+          setCurrentView('list');
+          setActiveTab(defaultHomeTab(userRole));
+        },
       },
       {
         id: 'centros',
@@ -658,9 +713,12 @@ export default function App() {
     return items;
   }, [
     currentView,
+    activeTab,
     dataRefreshing,
     handleLockSession,
     isAppAdministrator,
+    isEstadisticasActive,
+    isListadoActive,
     pendingSupplyCount,
     refreshAllData,
     userRole,
@@ -740,8 +798,74 @@ export default function App() {
             </div>
           </div>
 
-          {/* Quick Actions Header (desktop) */}
-          <div className="hidden md:flex items-center gap-2">
+          {/* Navegación principal + acciones rápidas (desktop) */}
+          <div className="hidden md:flex items-center gap-2 flex-1 justify-center max-w-2xl mx-4">
+            <div className="flex items-center bg-slate-100 rounded-xl p-1">
+              <button
+                type="button"
+                onClick={goToEstadisticas}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                  isEstadisticasActive
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                Estadísticas
+              </button>
+              <button
+                type="button"
+                onClick={goToListado}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                  isListadoActive
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <ClipboardList className="w-3.5 h-3.5" />
+                Listado
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={goToQuickCreate}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-all shadow-sm ${
+                currentView === 'quick-create'
+                  ? 'bg-blue-700 text-white'
+                  : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5" />
+              Triaje rápido
+            </button>
+
+            <button
+              type="button"
+              onClick={goToFullCreate}
+              className={`hidden lg:flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+                currentView === 'create'
+                  ? 'border-blue-200 bg-blue-50 text-blue-700'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Completo
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setQuickSupplyType('necesidad')}
+              className="hidden xl:flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition-all"
+              title="Registro rápido de insumos"
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              Insumo
+            </button>
+          </div>
+
+          {/* Utilidades (desktop) */}
+          <div className="hidden md:flex items-center gap-1 shrink-0">
             <button
               type="button"
               onClick={() => {
@@ -749,38 +873,26 @@ export default function App() {
                 setActiveTab(defaultHomeTab(userRole));
               }}
               title="Inicio"
-              className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-                currentView === 'list'
+              className={`p-2 rounded-xl transition-all cursor-pointer ${
+                currentView === 'list' && activeTab === defaultHomeTab(userRole)
                   ? 'bg-blue-50 text-blue-700'
                   : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
               }`}
             >
               <Home className="w-4 h-4" />
-              <span className="text-xs font-semibold hidden md:inline">Home</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setQuickSupplyType('necesidad')}
-              title="Registro rápido de insumos"
-              className="p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
-            >
-              <AlertTriangle className="w-4 h-4" />
-              <span className="text-xs font-semibold hidden lg:inline">Insumo rápido</span>
             </button>
 
             <button
               type="button"
               onClick={() => setCurrentView('centros')}
               title="Centros de acopio"
-              className={`relative p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+              className={`relative p-2 rounded-xl transition-all cursor-pointer ${
                 currentView === 'centros'
                   ? 'bg-teal-50 text-teal-700'
                   : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
               }`}
             >
               <Warehouse className="w-4 h-4" />
-              <span className="text-xs font-semibold hidden md:inline">Centros</span>
               {pendingSupplyCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-white">
                   {pendingSupplyCount > 9 ? '9+' : pendingSupplyCount}
@@ -789,30 +901,26 @@ export default function App() {
             </button>
 
             {isAppAdministrator && (
-              <>
-                <button
-                  onClick={() => setCurrentView('admin')}
-                  title="Panel de Administración"
-                  className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-                    currentView === 'admin'
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
-                  }`}
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span className="text-xs font-semibold hidden md:inline">Admin</span>
-                </button>
-              </>
+              <button
+                onClick={() => setCurrentView('admin')}
+                title="Panel de Administración"
+                className={`p-2 rounded-xl transition-all cursor-pointer ${
+                  currentView === 'admin'
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+              </button>
             )}
 
             <button
               onClick={refreshAllData}
               disabled={dataRefreshing}
               title="Actualizar datos"
-              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RefreshCw className={`w-4 h-4 ${dataRefreshing ? 'animate-spin' : ''}`} />
-              <span className="text-xs font-semibold hidden md:inline">Actualizar</span>
             </button>
 
             <button
@@ -822,23 +930,77 @@ export default function App() {
             >
               <Settings className="w-4 h-4" />
             </button>
-            
+
             <button
               onClick={handleLockSession}
               title="Cerrar Sesión Segura"
-              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
-              <span className="text-xs font-semibold hidden md:inline">Bloquear</span>
             </button>
           </div>
 
+        </div>
+
+        {/* Acciones rápidas (móvil) */}
+        <div className="md:hidden border-t border-slate-100 bg-slate-50/90 px-3 py-2">
+          <div className="flex gap-2 overflow-x-auto scrollbar-none">
+            <button
+              type="button"
+              onClick={goToQuickCreate}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-sm active:scale-95"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              Triaje rápido
+            </button>
+            <button
+              type="button"
+              onClick={goToListado}
+              className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold ${
+                isListadoActive
+                  ? 'border-blue-200 bg-blue-50 text-blue-700'
+                  : 'border-slate-200 bg-white text-slate-700'
+              }`}
+            >
+              <ClipboardList className="w-3.5 h-3.5" />
+              Listado
+            </button>
+            <button
+              type="button"
+              onClick={goToEstadisticas}
+              className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold ${
+                isEstadisticasActive
+                  ? 'border-blue-200 bg-blue-50 text-blue-700'
+                  : 'border-slate-200 bg-white text-slate-700'
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              Estadísticas
+            </button>
+            <button
+              type="button"
+              onClick={goToFullCreate}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Completo
+            </button>
+            <button
+              type="button"
+              onClick={() => setQuickSupplyType('necesidad')}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800"
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              Insumo
+            </button>
+          </div>
         </div>
       </header>
 
       <MobileOptionsDrawer
         open={showMobileMenu}
         onClose={() => setShowMobileMenu(false)}
+        title="Acceso rápido"
         items={mobileDrawerItems}
       />
 
@@ -857,8 +1019,8 @@ export default function App() {
               exit={{ opacity: 0 }}
               className="space-y-6"
             >
-              {/* Top Banner introducing statistics & interactive patient registration */}
-              <div className="bg-white rounded-2xl p-6 border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm">
+              {/* Intro banner — acciones rápidas están en la barra superior */}
+              <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200 shadow-sm">
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-mono font-bold uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full">
@@ -873,27 +1035,9 @@ export default function App() {
                   </h2>
                   <p className="text-xs text-slate-500 max-w-xl leading-relaxed">
                     {isRegistrador(userRole)
-                      ? 'Realice triaje en centros de acopio o jornadas comunitarias. Puede consultar fichas, pero el seguimiento clínico lo realiza el personal médico autorizado.'
-                      : 'Realice triaje, controle esquemas de vacunación, haga seguimiento pondoestatural de peso/talla y acceda a la historia de consultas.'}
+                      ? 'Use la barra superior para triaje rápido, listado o estadísticas.'
+                      : 'Use la barra superior para triaje rápido, consultar el listado o revisar estadísticas.'}
                   </p>
-                </div>
-                
-                <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
-                  <button
-                    onClick={() => {
-                      setQuickCarryOver(null);
-                      setCurrentView('quick-create');
-                    }}
-                    className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-5 py-3 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95 sm:w-auto"
-                  >
-                    <Zap className="h-4 w-4 stroke-[2px]" /> Triaje rápido
-                  </button>
-                  <button
-                    onClick={() => setCurrentView('create')}
-                    className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-95 sm:w-auto"
-                  >
-                    <Plus className="h-4 w-4 stroke-[2px]" /> Triaje completo
-                  </button>
                 </div>
               </div>
 
@@ -1431,7 +1575,13 @@ export default function App() {
             >
               <CollectionCentersPanel
                 canManageCenters={isAppAdministrator}
+                initialCenterId={centrosFocusCenterId}
+                onInitialCenterConsumed={() => setCentrosFocusCenterId(null)}
+                initialPanelView={centrosPanelView}
+                onInitialPanelViewConsumed={() => setCentrosPanelView('centros')}
                 onBack={() => {
+                  setCentrosFocusCenterId(null);
+                  setCentrosPanelView('centros');
                   setCurrentView('list');
                   setActiveTab(defaultHomeTab(userRole));
                   refreshCollectionCenters();

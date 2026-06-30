@@ -4,6 +4,7 @@ import {
   computeSupplyDashboardStats,
   entryRegisteredOnDifferentDay,
   formatQty,
+  listGlobalOpenSupplyNeeds,
   projectReception,
   type CenterSupplyEntry,
 } from './centerSupplyApi';
@@ -51,6 +52,32 @@ describe('aggregateSupplyBalances', () => {
       baseEntry({ id: '2', categoryId: 'cat-ins', categoryName: 'Insumos', quantity: 3 }),
     ]);
     expect(balances).toHaveLength(2);
+  });
+});
+
+describe('listGlobalOpenSupplyNeeds', () => {
+  it('lista faltantes por centro con nombre del punto', () => {
+    const rows = listGlobalOpenSupplyNeeds([
+      baseEntry({ id: '1', collectionCenterId: 'c1', collectionCenterName: 'Centro A', entryType: 'necesidad', quantity: 10 }),
+      baseEntry({ id: '2', collectionCenterId: 'c1', collectionCenterName: 'Centro A', entryType: 'recepcion', quantity: 4 }),
+      baseEntry({
+        id: '3',
+        collectionCenterId: 'c2',
+        collectionCenterName: 'Centro B',
+        itemName: 'Jeringas',
+        entryType: 'necesidad',
+        quantity: 2,
+      }),
+    ]);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      collectionCenterName: 'Centro A',
+      balance: 6,
+    });
+    expect(rows[1]).toMatchObject({
+      collectionCenterName: 'Centro B',
+      balance: 2,
+    });
   });
 });
 

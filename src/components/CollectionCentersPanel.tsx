@@ -24,6 +24,7 @@ import ListPagination from './ListPagination';
 import { paginate, useListPageSize } from '../lib/pagination';
 
 import CenterSupplyPanel from './CenterSupplyPanel';
+import GlobalSupplyLedger from './GlobalSupplyLedger';
 import QuickSupplyRegisterModal from './QuickSupplyRegisterModal';
 import type { SupplyEntryType } from '../lib/centerSupplyApi';
 import {
@@ -35,7 +36,13 @@ import {
 interface CollectionCentersPanelProps {
   onBack?: () => void;
   canManageCenters?: boolean;
+  initialCenterId?: string | null;
+  onInitialCenterConsumed?: () => void;
+  initialPanelView?: 'centros' | 'ledger';
+  onInitialPanelViewConsumed?: () => void;
 }
+
+type PanelView = 'centros' | 'ledger';
 
 type FormState = {
   name: string;
@@ -56,7 +63,12 @@ const emptyForm = (): FormState => ({
 export default function CollectionCentersPanel({
   onBack,
   canManageCenters = false,
+  initialCenterId = null,
+  onInitialCenterConsumed,
+  initialPanelView = 'centros',
+  onInitialPanelViewConsumed,
 }: CollectionCentersPanelProps) {
+  const [panelView, setPanelView] = useState<PanelView>(initialPanelView);
   const [centers, setCenters] = useState<CollectionCenter[]>([]);
   const [selectedCenter, setSelectedCenter] = useState<CollectionCenter | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,6 +87,7 @@ export default function CollectionCentersPanel({
   const [centersPage, setCentersPage] = useState(1);
   const [listPageSize, setListPageSize] = useListPageSize();
   const [quickSupplyType, setQuickSupplyType] = useState<SupplyEntryType | null>(null);
+  const [ledgerRefreshKey, setLedgerRefreshKey] = useState(0);
   const [centerNeedCounts, setCenterNeedCounts] = useState<Map<string, { openItems: number; pendingUnits: number }>>(
     new Map()
   );
@@ -108,6 +121,26 @@ export default function CollectionCentersPanel({
   useEffect(() => {
     loadCenters();
   }, []);
+
+  useEffect(() => {
+    if (!initialCenterId || centers.length === 0) return;
+    const center = centers.find((item) => item.id === initialCenterId);
+    if (center) {
+      setSelectedCenter(center);
+      onInitialCenterConsumed?.();
+    }
+  }, [initialCenterId, centers, onInitialCenterConsumed]);
+
+  useEffect(() => {
+    if (!initialPanelView) return;
+    setPanelView(initialPanelView);
+    onInitialPanelViewConsumed?.();
+  }, [initialPanelView, onInitialPanelViewConsumed]);
+
+  const openCenterById = (centerId: string) => {
+    const center = centers.find((item) => item.id === centerId);
+    if (center) setSelectedCenter(center);
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -293,6 +326,26 @@ export default function CollectionCentersPanel({
               Volver
             </button>
           )}
+          <div className="inline-flex rounded-xl border border-white/10 bg-white/5 p-1">
+            <button
+              type="button"
+              onClick={() => setPanelView('centros')}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                panelView === 'centros' ? 'bg-white text-slate-900' : 'text-slate-200 hover:text-white'
+              }`}
+            >
+              Centros
+            </button>
+            <button
+              type="button"
+              onClick={() => setPanelView('ledger')}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                panelView === 'ledger' ? 'bg-white text-slate-900' : 'text-slate-200 hover:text-white'
+              }`}
+            >
+              Necesidades y entregas
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => setQuickSupplyType('necesidad')}
@@ -329,6 +382,11 @@ export default function CollectionCentersPanel({
         </div>
       )}
 
+      {panelView === 'ledger' ? (
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
+          <GlobalSupplyLedger refreshToken={ledgerRefreshKey} onOpenCenter={openCenterById} />
+        </div>
+      ) : (
       <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1">
@@ -478,6 +536,7 @@ export default function CollectionCentersPanel({
           </div>
         )}
       </div>
+      )}
 
       {showForm && canManageCenters && (
         <motion.div
@@ -657,6 +716,7 @@ export default function CollectionCentersPanel({
         onClose={() => setQuickSupplyType(null)}
         onSaved={() => {
           setNotice({ type: 'success', message: 'Registro guardado correctamente.' });
+          setLedgerRefreshKey((k) => k + 1);
           void loadCenters();
         }}
       />
