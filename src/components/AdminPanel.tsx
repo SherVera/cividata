@@ -648,6 +648,7 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [signupPrefill, setSignupPrefill] = useState<StaffSignupRequest | null>(null);
   const [pendingSignups, setPendingSignups] = useState<StaffSignupRequest[]>([]);
+  const [signupLoadError, setSignupLoadError] = useState('');
   const [notice, setNotice] = useState<Notice>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -678,9 +679,10 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
     if (nextNotice) window.setTimeout(() => setNotice(null), 3500);
   };
 
-  const loadPendingSignups = async () => {
-    const requests = await listPendingSignupRequests();
-    setPendingSignups(requests);
+  const loadPendingSignups = async (accessToken?: string) => {
+    const result = await listPendingSignupRequests(accessToken);
+    setPendingSignups(result.signups);
+    setSignupLoadError(result.error || '');
   };
 
   const loadUsers = async (accessToken: string) => {
@@ -689,7 +691,7 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
       const [result, auditResult] = await Promise.all([
         requestUsers(accessToken, 'GET'),
         requestAudit(accessToken),
-        loadPendingSignups(),
+        loadPendingSignups(accessToken),
       ]);
       if (result.error) {
         showNotice({ type: 'error', message: result.error });
@@ -865,7 +867,7 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
     }
 
     if (signupId) {
-      const statusResult = await updateSignupRequestStatus(signupId, 'approved');
+      const statusResult = await updateSignupRequestStatus(signupId, 'approved', token);
       if (!statusResult.ok) {
         showNotice({
           type: 'info',
@@ -883,7 +885,7 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
   const handleRejectSignup = async (request: StaffSignupRequest) => {
     if (!token) return;
     setIsSaving(true);
-    const result = await updateSignupRequestStatus(request.id, 'rejected');
+    const result = await updateSignupRequestStatus(request.id, 'rejected', token);
     setIsSaving(false);
 
     if (!result.ok) {
@@ -892,7 +894,7 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
     }
 
     showNotice({ type: 'success', message: 'Solicitud rechazada.' });
-    await loadPendingSignups();
+    await loadPendingSignups(token);
   };
 
   const handleApproveSignup = (request: StaffSignupRequest) => {
@@ -1086,14 +1088,25 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
         </div>
       )}
 
-      {pendingSignups.length > 0 && (
-        <div className="rounded-3xl border border-amber-200 bg-amber-50/80 shadow-sm">
-          <div className="border-b border-amber-100 px-5 py-4">
-            <h3 className="text-sm font-bold text-amber-950">Solicitudes de acceso</h3>
-            <p className="text-xs text-amber-800/80">
-              {pendingSignups.length} pendiente(s). Apruebe para crear la cuenta; hasta entonces no pueden entrar.
+      <div className="rounded-3xl border border-amber-200 bg-amber-50/80 shadow-sm">
+        <div className="border-b border-amber-100 px-5 py-4">
+          <h3 className="text-sm font-bold text-amber-950">Solicitudes de acceso</h3>
+          <p className="text-xs text-amber-800/80">
+            {pendingSignups.length > 0
+              ? `${pendingSignups.length} pendiente(s). Apruebe para crear la cuenta; hasta entonces no pueden entrar.`
+              : 'Revise y apruebe nuevas solicitudes desde el formulario público.'}
+          </p>
+          {signupLoadError && (
+            <p className="mt-2 text-xs font-medium text-rose-700">
+              {signupLoadError} Ejecute el SQL de `staff_signup_requests` en Supabase si la tabla no existe.
             </p>
-          </div>
+          )}
+        </div>
+        {pendingSignups.length === 0 ? (
+          <p className="px-5 py-4 text-xs text-amber-900/70">
+            No hay solicitudes pendientes por ahora.
+          </p>
+        ) : (
           <div className="divide-y divide-amber-100">
             {pendingSignups.map((request) => (
               <div
@@ -1133,8 +1146,8 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
         <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
