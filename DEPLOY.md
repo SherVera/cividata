@@ -96,21 +96,21 @@ feature branch
 
 ### Secrets en GitHub (Actions)
 
-| Secret | Uso |
-|--------|-----|
-| `SUPABASE_ACCESS_TOKEN` | Token de cuenta (compartido) |
-| `SUPABASE_DEV_PROJECT_ID` | Ref del proyecto **dev** |
-| `SUPABASE_DEV_DB_PASSWORD` | Password DB **dev** |
-| `SUPABASE_PROD_PROJECT_ID` | Ref del proyecto **prod** |
-| `SUPABASE_PROD_DB_PASSWORD` | Password DB **prod** |
+| Secret | Dónde | Uso |
+|--------|-------|-----|
+| `SUPABASE_ACCESS_TOKEN` | Repo (Actions secrets) | Token de cuenta (compartido) |
+| `SUPABASE_PROJECT_ID` | Environment **dev** / **prod** | Ref del proyecto (`qlzrfvmfuzwbkytnqmdq`, etc.) |
+| `SUPABASE_DB_PASSWORD` | Environment **dev** / **prod** | Password **Database** de ese proyecto |
+
+Los workflows usan `environment: dev` y `environment: prod`. Cada environment lleva su propio `SUPABASE_PROJECT_ID` y `SUPABASE_DB_PASSWORD` (mismo nombre, distinto valor).
 
 **Importante:** es la contraseña de **Database** (usuario `postgres`), **no** la anon key ni la service_role key. Se obtiene o resetea en Supabase → **Project Settings → Database → Database password**.
 
 Si el workflow falla con `password authentication failed (28P01)`:
 
 1. En Supabase del proyecto que falla (dev o prod) → **Reset database password** → copia la nueva.
-2. Actualiza el secret correspondiente en GitHub (`SUPABASE_DEV_DB_PASSWORD` o `SUPABASE_PROD_DB_PASSWORD`).
-3. Verifica que `SUPABASE_*_PROJECT_ID` sea el **ref** de ese mismo proyecto (URL del dashboard).
+2. Actualiza el secret `SUPABASE_DB_PASSWORD` en el GitHub Environment correspondiente (**dev** o **prod**).
+3. Verifica que `SUPABASE_PROJECT_ID` en ese environment sea el **ref** del mismo proyecto Supabase.
 4. Si la contraseña tiene caracteres raros (`@`, `#`, `$`), prueba resetear a una alfanumérica larga.
 5. Supabase → **Database → Network Bans**: quita IPs bloqueadas por intentos fallidos.
 6. Re-ejecuta el workflow (**Actions → Run workflow**).

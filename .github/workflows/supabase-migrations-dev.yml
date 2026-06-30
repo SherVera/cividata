@@ -1,5 +1,5 @@
 # Aplica migraciones en Supabase DEV al mergear en la rama dev.
-# Secrets: SUPABASE_ACCESS_TOKEN, SUPABASE_DEV_PROJECT_ID, SUPABASE_DEV_DB_PASSWORD
+# Secrets en GitHub Environment "dev" (o repo): SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_ID, SUPABASE_DB_PASSWORD
 
 name: Supabase migrations (dev)
 
@@ -21,11 +21,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: dev
 
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DEV_DB_PASSWORD }}
-      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_DEV_PROJECT_ID }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
 
     steps:
       - name: Checkout
