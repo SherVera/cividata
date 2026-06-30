@@ -22,6 +22,7 @@ import ListPagination from './ListPagination';
 import SelectField from './SelectField';
 import { paginate, useListPageSize } from '../lib/pagination';
 import { ROLE_OPTIONS } from '../lib/selectOptions';
+import type { AdminUserRoleFilter } from '../lib/metricDrillDown';
 import {
   normalizeSpecialty,
   profileSpecialtyForDisplay,
@@ -564,9 +565,10 @@ function PasswordResetModal({
 
 interface AdminPanelProps {
   onBack?: () => void;
+  initialRoleFilter?: AdminUserRoleFilter;
 }
 
-export default function AdminPanel({ onBack }: AdminPanelProps) {
+export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminPanelProps) {
   const [token, setToken] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentRole, setCurrentRole] = useState<UserRole | null>(null);
@@ -585,7 +587,25 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [usersPage, setUsersPage] = useState(1);
   const [auditPage, setAuditPage] = useState(1);
+  const [roleFilter, setRoleFilter] = useState<AdminUserRoleFilter>(initialRoleFilter);
   const [listPageSize, setListPageSize] = useListPageSize();
+
+  useEffect(() => {
+    setRoleFilter(initialRoleFilter);
+  }, [initialRoleFilter]);
+
+  const filteredUsers = useMemo(() => {
+    if (roleFilter === 'all') return users;
+    if (roleFilter === 'disabled') return users.filter((user) => user.disabled);
+    return users.filter((user) => user.role === roleFilter);
+  }, [users, roleFilter]);
+
+  const roleFilterLabel =
+    roleFilter === 'all'
+      ? 'Todos los roles'
+      : roleFilter === 'disabled'
+        ? 'Cuentas suspendidas'
+        : roleLabel(roleFilter);
 
   const showNotice = (nextNotice: Notice) => {
     setNotice(nextNotice);
@@ -626,8 +646,8 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   };
 
   const usersPagination = useMemo(
-    () => paginate(users, usersPage, listPageSize),
-    [users, usersPage, listPageSize]
+    () => paginate(filteredUsers, usersPage, listPageSize),
+    [filteredUsers, usersPage, listPageSize]
   );
 
   const auditPagination = useMemo(
@@ -643,7 +663,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
 
   useEffect(() => {
     setUsersPage(1);
-  }, [users.length]);
+  }, [filteredUsers.length, roleFilter]);
 
   useEffect(() => {
     if (usersPage > usersPagination.totalPages) {
@@ -1037,12 +1057,29 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
       )}
 
       <div className="rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+        <div className="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-sm font-bold text-slate-900">Usuarios del sistema</h3>
-            <p className="text-xs text-slate-400">{users.length} cuentas cargadas</p>
+            <p className="text-xs text-slate-400">
+              {filteredUsers.length} de {users.length} cuentas
+              {roleFilter !== 'all' ? ` · ${roleFilterLabel}` : ''}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <SelectField
+              value={roleFilter}
+              onChange={(value) => setRoleFilter(value as AdminUserRoleFilter)}
+              options={[
+                { value: 'all', label: 'Todos los roles' },
+                { value: 'personal_medico', label: 'Personal médico' },
+                { value: 'registrador', label: 'Registradores' },
+                { value: 'admin', label: 'Administradores' },
+                { value: 'disabled', label: 'Suspendidas' },
+              ]}
+              size="sm"
+              accent="blue"
+              className="min-w-[11rem]"
+            />
             <button
               onClick={() => {
                 setSignupPrefill(null);

@@ -407,6 +407,7 @@ export default function QuickSupplyRegisterModal({
                   value={categoryName}
                   onChange={setCategoryName}
                   disabled={loading || saving || linkedToNeed}
+                  menuZIndex={1400}
                 />
               </div>
 

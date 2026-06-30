@@ -31,11 +31,23 @@ import { paginate, useListPageSize } from './lib/pagination';
 import {
   centroFilterOptions,
   FILTER_AGE_RANGE_OPTIONS,
+  FILTER_EDAD_OPTIONS,
+  FILTER_ESCUELA_OPTIONS,
   FILTER_GENDER_OPTIONS,
   FILTER_GRUPO_ETARIO_OPTIONS,
+  FILTER_HISTORIA_OPTIONS,
+  FILTER_REGISTRO_OPTIONS,
+  FILTER_SALUD_OPTIONS,
   FILTER_VACUNA_OPTIONS,
   SORT_OPTIONS,
 } from './lib/selectOptions';
+import {
+  DEFAULT_PATIENT_LIST_FILTERS,
+  mergePatientListFilters,
+  type AdminUserRoleFilter,
+  type MetricDrillDown,
+} from './lib/metricDrillDown';
+import { isRegistroToday, isRegistroWithinDays } from './lib/registroDates';
 import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
 import { listCollectionCenters } from './lib/collectionCentersApi';
 import { countOpenSupplyNeeds } from './lib/centerSupplyApi';
@@ -76,6 +88,12 @@ export default function App() {
   const [filterAgeRange, setFilterAgeRange] = useState<string>('All');
   const [filterGrupoEtario, setFilterGrupoEtario] = useState<string>('All');
   const [filterCentro, setFilterCentro] = useState<string>('All');
+  const [filterSalud, setFilterSalud] = useState<string>('All');
+  const [filterRegistro, setFilterRegistro] = useState<string>('All');
+  const [filterHistoria, setFilterHistoria] = useState<string>('All');
+  const [filterEdad, setFilterEdad] = useState<string>('All');
+  const [filterEscuela, setFilterEscuela] = useState<string>('All');
+  const [adminRoleFilter, setAdminRoleFilter] = useState<AdminUserRoleFilter>('all');
   const [collectionCenters, setCollectionCenters] = useState<{ id: string; name: string }[]>([]);
   const [totalCentrosRegistrados, setTotalCentrosRegistrados] = useState(0);
   const [superAdminStats, setSuperAdminStats] = useState<SuperAdminDashboardStats | null>(null);
@@ -387,6 +405,53 @@ export default function App() {
   };
 
   // Filters & Search processing
+  const resetPatientListFilters = () => {
+    setSearchQuery(DEFAULT_PATIENT_LIST_FILTERS.searchQuery);
+    setFilterGender(DEFAULT_PATIENT_LIST_FILTERS.filterGender);
+    setFilterVacuna(DEFAULT_PATIENT_LIST_FILTERS.filterVacuna);
+    setFilterAgeRange(DEFAULT_PATIENT_LIST_FILTERS.filterAgeRange);
+    setFilterGrupoEtario(DEFAULT_PATIENT_LIST_FILTERS.filterGrupoEtario);
+    setFilterCentro(DEFAULT_PATIENT_LIST_FILTERS.filterCentro);
+    setFilterSalud(DEFAULT_PATIENT_LIST_FILTERS.filterSalud);
+    setFilterRegistro(DEFAULT_PATIENT_LIST_FILTERS.filterRegistro);
+    setFilterHistoria(DEFAULT_PATIENT_LIST_FILTERS.filterHistoria);
+    setFilterEdad(DEFAULT_PATIENT_LIST_FILTERS.filterEdad);
+    setFilterEscuela(DEFAULT_PATIENT_LIST_FILTERS.filterEscuela);
+  };
+
+  const applyPatientListFilters = (partial?: Partial<typeof DEFAULT_PATIENT_LIST_FILTERS>) => {
+    const filters = mergePatientListFilters(partial);
+    setSearchQuery(filters.searchQuery);
+    setFilterGender(filters.filterGender);
+    setFilterVacuna(filters.filterVacuna);
+    setFilterAgeRange(filters.filterAgeRange);
+    setFilterGrupoEtario(filters.filterGrupoEtario);
+    setFilterCentro(filters.filterCentro);
+    setFilterSalud(filters.filterSalud);
+    setFilterRegistro(filters.filterRegistro);
+    setFilterHistoria(filters.filterHistoria);
+    setFilterEdad(filters.filterEdad);
+    setFilterEscuela(filters.filterEscuela);
+  };
+
+  const handleMetricDrillDown = (action: MetricDrillDown) => {
+    if (action.target === 'centros') {
+      setCurrentView('centros');
+      return;
+    }
+    if (action.target === 'admin') {
+      if (isAppAdministrator) {
+        setAdminRoleFilter(action.roleFilter ?? 'all');
+        setCurrentView('admin');
+      }
+      return;
+    }
+    applyPatientListFilters(action.filters);
+    setCurrentView('list');
+    setActiveTab('listado');
+    setShowFiltersMobile(true);
+  };
+
   const filteredPatients = useMemo(() => {
     return patients.filter(p => {
       // 1. Search Query
@@ -428,7 +493,31 @@ export default function App() {
       const matchGrupo =
         filterGrupoEtario === 'All' || resolveGrupoEtario(p) === filterGrupoEtario;
 
-      return matchQuery && matchGender && matchVacuna && matchAge && matchCentro && matchGrupo;
+      const matchSalud =
+        filterSalud === 'All' ||
+        (filterSalud === 'AtencionEspecial' && (p.tieneAlergias || p.tieneCondicionMedica));
+
+      const matchRegistro =
+        filterRegistro === 'All' ||
+        (filterRegistro === 'Hoy' && isRegistroToday(p.fechaRegistro)) ||
+        (filterRegistro === 'Ultimos7' && isRegistroWithinDays(p.fechaRegistro, 7));
+
+      const matchHistoria =
+        filterHistoria === 'All' ||
+        (filterHistoria === 'ConNotas' && p.notasClinicas.length > 0) ||
+        (filterHistoria === 'SinNotas' && p.notasClinicas.length === 0);
+
+      const matchEdadKnown =
+        filterEdad === 'All' ||
+        (filterEdad === 'SinEdad' && !pacienteTieneEdad(p));
+
+      const matchEscuela =
+        filterEscuela === 'All' ||
+        (filterEscuela === 'Asiste' && p.asisteEscuela) ||
+        (filterEscuela === 'NoAsiste' && !p.asisteEscuela);
+
+      return matchQuery && matchGender && matchVacuna && matchAge && matchCentro && matchGrupo
+        && matchSalud && matchRegistro && matchHistoria && matchEdadKnown && matchEscuela;
     }).sort((a, b) => {
       // Sorting
       if (sortBy === 'alphabetical') {
@@ -445,11 +534,11 @@ export default function App() {
       // default: recent (by registration date/id reverse order)
       return b.fechaRegistro.localeCompare(a.fechaRegistro) || b.id.localeCompare(a.id);
     });
-  }, [patients, searchQuery, filterGender, filterVacuna, filterAgeRange, filterGrupoEtario, filterCentro, sortBy]);
+  }, [patients, searchQuery, filterGender, filterVacuna, filterAgeRange, filterGrupoEtario, filterCentro, filterSalud, filterRegistro, filterHistoria, filterEdad, filterEscuela, sortBy]);
 
   useEffect(() => {
     setListPage(1);
-  }, [searchQuery, filterGender, filterVacuna, filterAgeRange, filterGrupoEtario, filterCentro, sortBy]);
+  }, [searchQuery, filterGender, filterVacuna, filterAgeRange, filterGrupoEtario, filterCentro, filterSalud, filterRegistro, filterHistoria, filterEdad, filterEscuela, sortBy]);
 
   const patientListPagination = useMemo(
     () => paginate(filteredPatients, listPage, listPageSize),
@@ -822,7 +911,7 @@ export default function App() {
 
                     {/* Multi-Filters Panel (Expanded on desktop, toggleable on mobile) */}
                     <div className={`${showFiltersMobile ? 'block' : 'hidden'} md:block pt-3 border-t border-slate-200`}>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 text-xs">
                         
                         {/* Gender filter */}
                         <div className="space-y-1">
@@ -879,6 +968,61 @@ export default function App() {
                             value={filterAgeRange}
                             onChange={setFilterAgeRange}
                             options={FILTER_AGE_RANGE_OPTIONS}
+                            size="sm"
+                            accent="blue"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Salud</span>
+                          <SelectField
+                            value={filterSalud}
+                            onChange={setFilterSalud}
+                            options={FILTER_SALUD_OPTIONS}
+                            size="sm"
+                            accent="blue"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Fecha registro</span>
+                          <SelectField
+                            value={filterRegistro}
+                            onChange={setFilterRegistro}
+                            options={FILTER_REGISTRO_OPTIONS}
+                            size="sm"
+                            accent="blue"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Historia clínica</span>
+                          <SelectField
+                            value={filterHistoria}
+                            onChange={setFilterHistoria}
+                            options={FILTER_HISTORIA_OPTIONS}
+                            size="sm"
+                            accent="blue"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Edad registrada</span>
+                          <SelectField
+                            value={filterEdad}
+                            onChange={setFilterEdad}
+                            options={FILTER_EDAD_OPTIONS}
+                            size="sm"
+                            accent="blue"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Escolaridad</span>
+                          <SelectField
+                            value={filterEscuela}
+                            onChange={setFilterEscuela}
+                            options={FILTER_ESCUELA_OPTIONS}
                             size="sm"
                             accent="blue"
                           />
@@ -1060,12 +1204,7 @@ export default function App() {
                       </div>
                       
                       <button
-                        onClick={() => {
-                          setSearchQuery('');
-                          setFilterGender('All');
-                          setFilterVacuna('All');
-                          setFilterAgeRange('All');
-                        }}
+                        onClick={resetPatientListFilters}
                         className="text-xs text-teal-700 font-bold hover:underline cursor-pointer"
                       >
                         Limpiar todos los filtros
@@ -1083,6 +1222,7 @@ export default function App() {
                   totalCentrosRegistrados={totalCentrosRegistrados}
                   role={userRole}
                   superAdminStats={superAdminStats}
+                  onDrillDown={handleMetricDrillDown}
                 />
               )}
 
@@ -1169,9 +1309,11 @@ export default function App() {
               exit={{ opacity: 0 }}
             >
               <AdminPanel
+                initialRoleFilter={adminRoleFilter}
                 onBack={() => {
                   setCurrentView('list');
                   setActiveTab('listado');
+                  setAdminRoleFilter('all');
                 }}
               />
             </motion.div>
