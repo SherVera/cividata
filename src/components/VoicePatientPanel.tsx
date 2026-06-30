@@ -40,7 +40,9 @@ export default function VoicePatientPanel({
   collectionCenters,
   onApply,
 }: VoicePatientPanelProps) {
-  const speech = useSpeechRecognition(voiceConfig.speechLang);
+  const speech = useSpeechRecognition(voiceConfig.speechLang, {
+    maxSeconds: voiceConfig.speechMaxSeconds,
+  });
   const [parseError, setParseError] = useState('');
   const [parsing, setParsing] = useState(false);
   const [lastSummary, setLastSummary] = useState<VoiceApplyPayload | null>(null);
@@ -128,9 +130,21 @@ export default function VoicePatientPanel({
       )}
 
       {speech.listening && (
-        <p className="flex items-center gap-1.5 text-xs font-semibold text-red-600">
+        <p className="flex flex-wrap items-center gap-1.5 text-xs font-semibold text-red-600">
           <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
           Escuchando… hable con claridad
+          {speech.remainingSeconds !== null && (
+            <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
+              {speech.remainingSeconds}s restantes
+            </span>
+          )}
+        </p>
+      )}
+
+      {speech.limitReached && voiceConfig.speechMaxSeconds > 0 && (
+        <p className="text-xs font-medium text-amber-800">
+          Tiempo máximo de dictado alcanzado ({voiceConfig.speechMaxSeconds}s). Revise el texto y
+          analice con IA.
         </p>
       )}
 
