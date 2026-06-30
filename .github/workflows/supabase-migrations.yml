@@ -1,0 +1,44 @@
+# Aplica migraciones en Supabase PROD al mergear en main.
+# Flujo: probar en dev → PR dev → main. Ver supabase-migrations-pr-guard.yml.
+# Secrets: SUPABASE_ACCESS_TOKEN, SUPABASE_PROD_PROJECT_ID, SUPABASE_PROD_DB_PASSWORD
+
+name: Supabase migrations (production)
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/config.toml'
+      - '.github/workflows/supabase-migrations.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-migrations-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_PROD_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROD_PROJECT_ID }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v2
+        with:
+          version: latest
+
+      - name: Link project (prod)
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - name: Push migrations (prod)
+        run: supabase db push

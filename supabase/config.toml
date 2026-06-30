@@ -1,0 +1,29 @@
+# Supabase CLI — https://supabase.com/docs/guides/cli/config
+# project_id se define al hacer `supabase link` (local) o vía secret en GitHub Actions.
+
+project_id = ""
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.migrations]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+
+[storage]
+enabled = true

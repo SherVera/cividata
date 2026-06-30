@@ -745,10 +745,10 @@ export default function App() {
       <AnimatePresence>
         {notification && (
           <motion.div 
-            initial={{ opacity: 0, y: -50 }}
+            initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className="fixed top-5 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 print:hidden"
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 pb-safe print:hidden"
           >
             <div className={`p-4 rounded-xl shadow-lg border flex items-center gap-3 ${
               notification.type === 'success' 

@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "test": "vitest run",
+    "db:migration:new": "bash scripts/new-sql-migration.sh",
+    "db:repair-baseline": "bash scripts/supabase-repair-baseline.sh",
     "generate:logos": "node scripts/generate-logos.mjs",
     "generate:whatsapp-status": "node scripts/generate-whatsapp-status.mjs",
     "generate:og": "node scripts/generate-og-image.mjs",

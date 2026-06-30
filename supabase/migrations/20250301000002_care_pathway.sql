@@ -1,6 +1,5 @@
--- Care pathway: normalized clinical episodes (parallel layer to patients).
--- CANONICAL: supabase/migrations/20250301000002_care_pathway.sql (GitHub Actions / supabase db push).
--- Este archivo se mantiene como referencia; no editar aquí — usar migraciones nuevas.
+-- Care pathway: episodios clínicos, triaje, diagnósticos y tratamientos.
+-- Idempotente (IF NOT EXISTS). Origen: supabase/care_pathway.sql
 
 -- =========================================================
 -- Episode header (one row per visit)
@@ -29,7 +28,6 @@ create index if not exists care_episodes_status_idx
 create index if not exists care_episodes_previous_idx
   on public.care_episodes (previous_episode_id);
 
--- Solo un episodio abierto por paciente
 create unique index if not exists care_episodes_one_open_per_patient_idx
   on public.care_episodes (patient_id)
   where patient_id is not null
@@ -200,6 +198,13 @@ end $$;
 
 grant select on table public.care_treatment_kinds to authenticated;
 
--- Migración incremental: columna de episodio previo en DBs ya creadas
 alter table public.care_episodes
   add column if not exists previous_episode_id uuid references public.care_episodes(id) on delete set null;
+
+insert into public.schema_migrations (version, name, notes)
+values (
+  '20250301000002',
+  'care_pathway',
+  'Episodios clínicos, triaje, diagnósticos y tratamientos'
+)
+on conflict (version) do nothing;
