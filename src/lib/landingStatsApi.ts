@@ -32,7 +32,12 @@ function mapNeedRow(raw: Record<string, unknown>): LandingOpenNeed {
   };
 }
 
-function mapLandingStatsRow(data: Record<string, unknown>): LandingStats {
+function mapLandingStatsRow(data: Record<string, unknown>): LandingStats | null {
+  // Versión antigua (pacientes) antes de insumos por centro
+  if ('total_patients' in data && !('needs' in data)) {
+    return null;
+  }
+
   const needsRaw = Array.isArray(data.needs) ? data.needs : [];
   const needs = needsRaw
     .filter((row): row is Record<string, unknown> => row !== null && typeof row === 'object')

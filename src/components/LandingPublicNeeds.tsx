@@ -128,7 +128,8 @@ export default function LandingPublicNeeds({ needs, loading, loadError = false }
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-8 text-center">
           <p className="text-sm font-semibold text-amber-900">No se pudieron cargar las necesidades.</p>
           <p className="mt-1 text-xs text-amber-800/80">
-            Si acaba de actualizar la app, ejecute la función <code className="font-mono">landing_stats</code> en Supabase.
+            Actualice la función <code className="font-mono">landing_stats</code> en Supabase
+            (migración <code className="font-mono">20250630120000_landing_stats_supply</code>).
           </p>
         </div>
       ) : needs.length === 0 ? (
