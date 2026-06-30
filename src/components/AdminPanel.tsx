@@ -599,21 +599,30 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
 
   const loadUsers = async (accessToken: string) => {
     setIsLoading(true);
-    const [result, auditResult] = await Promise.all([
-      requestUsers(accessToken, 'GET'),
-      requestAudit(accessToken),
-      loadPendingSignups(),
-    ]);
-    if (result.error) {
-      showNotice({ type: 'error', message: result.error });
+    try {
+      const [result, auditResult] = await Promise.all([
+        requestUsers(accessToken, 'GET'),
+        requestAudit(accessToken),
+        loadPendingSignups(),
+      ]);
+      if (result.error) {
+        showNotice({ type: 'error', message: result.error });
+        setUsers([]);
+      } else {
+        setUsers(result.users || []);
+        setCurrentRole((result.role || null) as UserRole | null);
+        setCanCreateRoles(result.canCreateRoles || []);
+      }
+      if (!auditResult.error) setAuditLog(auditResult.audit || []);
+    } catch {
+      showNotice({
+        type: 'error',
+        message: 'No se pudo cargar usuarios. Verifique la API local (/api/users) y SUPABASE_SERVICE_ROLE_KEY.',
+      });
       setUsers([]);
-    } else {
-      setUsers(result.users || []);
-      setCurrentRole((result.role || null) as UserRole | null);
-      setCanCreateRoles(result.canCreateRoles || []);
+    } finally {
+      setIsLoading(false);
     }
-    if (!auditResult.error) setAuditLog(auditResult.audit || []);
-    setIsLoading(false);
   };
 
   const usersPagination = useMemo(
