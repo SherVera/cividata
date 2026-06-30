@@ -179,7 +179,7 @@ export default function AuthScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col p-4 md:p-6 relative overflow-hidden select-none pt-safe pb-safe">
+    <div className="min-h-screen bg-slate-50 flex flex-col p-4 md:p-6 relative overflow-hidden pt-safe pb-safe">
       <div className="absolute top-0 left-0 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-100/40 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
 
