@@ -242,7 +242,7 @@ export default function DashboardStats({
         {/* Metric 1: Total Pacientes */}
         <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200 shadow-sm flex items-center justify-between">
           <div className="space-y-1">
-            <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider block">Total registros</span>
+            <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider block">Total triajes</span>
             <span className="text-2xl md:text-3xl font-bold font-mono text-slate-800 block">{stats.totalPacientes}</span>
             <span className="text-[10px] text-blue-600 font-semibold flex items-center gap-0.5">
               <Smile className="w-3.5 h-3.5" /> Pacientes registrados
@@ -380,7 +380,7 @@ export default function DashboardStats({
                         </span>
                         <div className="mt-1 font-mono text-3xl font-bold text-slate-800">{val}</div>
                         <p className="mt-1 text-[11px] text-slate-500">
-                          {pct}% de registros · {val} paciente{val === 1 ? '' : 's'}
+                          {pct}% de triajes · {val} paciente{val === 1 ? '' : 's'}
                         </p>
                       </div>
                       <div className={`h-3 w-3 rounded-full ${color}`} />
@@ -593,9 +593,9 @@ export default function DashboardStats({
         >
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
-              label="Registros hoy"
+              label="Triajes hoy"
               value={adminFieldStats.registrosHoy}
-              hint="Capturas del día"
+              hint="Triajes del día"
               hintClass="text-blue-600"
               icon={CalendarDays}
               iconClass="bg-blue-50 text-blue-600"

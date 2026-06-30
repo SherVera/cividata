@@ -1,13 +1,17 @@
 /** Nombre público de la app (repositorio npm: kids-alive). */
 export const APP_NAME = 'Cividata';
 
-export const APP_TAGLINE = 'Historia clínica y registro de pacientes';
+export const APP_TAGLINE = 'Triaje médico y seguimiento de pacientes';
 
 /** Versión visible en la app. */
 export const APP_VERSION = '2.0';
 
 export const APP_DESCRIPTION =
-  'Cividata: historia clínica y censo de pacientes, optimizado para uso en teléfonos.';
+  'Cividata: triaje médico, censo y seguimiento clínico, optimizado para uso en teléfonos.';
+
+/** Etiqueta corta del flujo de captura inicial (antes «registro»). */
+export const TRIAGE_LABEL = 'Triaje';
+export const TRIAGE_MEDICAL_LABEL = 'Triaje médico';
 
 export const CONTACT_EMAIL =
   (import.meta.env.VITE_CONTACT_EMAIL as string | undefined)?.trim() || '';

@@ -20,13 +20,14 @@ import PatientDetails from './components/PatientDetails';
 import DashboardStats, { SuperAdminDashboardStats } from './components/DashboardStats';
 import AdminPanel from './components/AdminPanel';
 import CollectionCentersPanel from './components/CollectionCentersPanel';
+import QuickSupplyRegisterModal from './components/QuickSupplyRegisterModal';
 import BottomNav, { BottomNavKey } from './components/BottomNav';
 import AppLogo from './components/AppLogo';
 import PatientPhoto from './components/PatientPhoto';
 import ListPagination from './components/ListPagination';
 import SelectField from './components/SelectField';
 import { supabase } from './lib/supabaseClient';
-import { paginate, PATIENT_LIST_PAGE_SIZE } from './lib/pagination';
+import { paginate, useListPageSize } from './lib/pagination';
 import {
   centroFilterOptions,
   FILTER_AGE_RANGE_OPTIONS,
@@ -37,6 +38,8 @@ import {
 } from './lib/selectOptions';
 import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
 import { listCollectionCenters } from './lib/collectionCentersApi';
+import { countOpenSupplyNeeds } from './lib/centerSupplyApi';
+import type { SupplyEntryType } from './lib/centerSupplyApi';
 import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin, canManageClinicalData, isRegistrador } from './lib/authRoles';
 import { APP_NAME, APP_TAGLINE } from './brand';
 
@@ -78,7 +81,10 @@ export default function App() {
   const [superAdminStats, setSuperAdminStats] = useState<SuperAdminDashboardStats | null>(null);
   const [sortBy, setSortBy] = useState<string>('recent'); // 'recent' | 'alphabetical' | 'age-asc' | 'age-desc'
   const [listPage, setListPage] = useState(1);
+  const [listPageSize, setListPageSize] = useListPageSize();
   const [showFiltersMobile, setShowFiltersMobile] = useState<boolean>(false);
+  const [pendingSupplyCount, setPendingSupplyCount] = useState(0);
+  const [quickSupplyType, setQuickSupplyType] = useState<SupplyEntryType | null>(null);
 
   // Modals state
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
@@ -147,10 +153,10 @@ export default function App() {
     }
   }, [isAuthenticated, homeTabInitialized, userRole]);
 
-  // Sin permisos admin: bloquear vistas de administración
+  // Sin permisos admin: bloquear panel de administración
   useEffect(() => {
     if (!isAuthenticated || isAppAdministrator) return;
-    if (currentView === 'admin' || currentView === 'centros') {
+    if (currentView === 'admin') {
       setCurrentView('list');
       setActiveTab('estadisticas');
     }
@@ -169,12 +175,21 @@ export default function App() {
     }
   };
 
+  const refreshPendingSupplyCount = async () => {
+    try {
+      setPendingSupplyCount(await countOpenSupplyNeeds());
+    } catch {
+      setPendingSupplyCount(0);
+    }
+  };
+
   const refreshAllData = async () => {
     if (dataRefreshing) return;
     setDataRefreshing(true);
     try {
       await loadPatients({ silent: true });
       await refreshCollectionCenters();
+      await refreshPendingSupplyCount();
       await loadSuperAdminStats();
       showNotification('success', 'Datos actualizados correctamente.');
     } catch {
@@ -189,10 +204,12 @@ export default function App() {
     if (isAuthenticated) {
       loadPatients();
       refreshCollectionCenters();
+      refreshPendingSupplyCount();
     } else {
       setPatients([]);
       setCollectionCenters([]);
       setTotalCentrosRegistrados(0);
+      setPendingSupplyCount(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
@@ -265,12 +282,12 @@ export default function App() {
     try {
       await savePatient(savedPatient);
     } catch (err: any) {
-      showNotification('error', 'Error al guardar el registro: ' + (err?.message || err));
+      showNotification('error', 'Error al guardar el triaje: ' + (err?.message || err));
       return;
     }
     if (wasEditing) {
       setPatients(prev => prev.map(p => p.id === savedPatient.id ? savedPatient : p));
-      showNotification('success', `Registro de ${patientDisplayName(savedPatient)} actualizado correctamente.`);
+      showNotification('success', `Triaje de ${patientDisplayName(savedPatient)} actualizado correctamente.`);
       setSelectedPatient(savedPatient);
       setCurrentView('details');
       return;
@@ -289,7 +306,7 @@ export default function App() {
       return;
     }
 
-    showNotification('success', `Se ha registrado a ${patientDisplayName(savedPatient)} en ${APP_NAME}.`);
+    showNotification('success', `Triaje de ${patientDisplayName(savedPatient)} guardado en ${APP_NAME}.`);
     setSelectedPatient(savedPatient);
     setCurrentView('details');
   };
@@ -303,7 +320,7 @@ export default function App() {
     }
     setPatients(prev => prev.map(p => p.id === updatedPatient.id ? updatedPatient : p));
     setSelectedPatient(updatedPatient);
-    showNotification('success', 'Evolución clínica y nota de consulta registradas con éxito.');
+    showNotification('success', 'Seguimiento clínico guardado con éxito.');
   };
 
   const handleDeletePatient = async (id: string) => {
@@ -311,13 +328,13 @@ export default function App() {
     try {
       await deletePatient(id);
     } catch (err: any) {
-      showNotification('error', 'Error al eliminar el registro: ' + (err?.message || err));
+      showNotification('error', 'Error al eliminar el triaje: ' + (err?.message || err));
       setShowDeleteConfirm(null);
       return;
     }
     if (p) {
       setPatients(prev => prev.filter(patient => patient.id !== id));
-      showNotification('error', `Se eliminó el registro de ${p.nombres} ${p.apellidos}.`);
+      showNotification('error', `Se eliminó el triaje de ${p.nombres} ${p.apellidos}.`);
     }
     setShowDeleteConfirm(null);
     if (currentView === 'details') {
@@ -435,9 +452,14 @@ export default function App() {
   }, [searchQuery, filterGender, filterVacuna, filterAgeRange, filterGrupoEtario, filterCentro, sortBy]);
 
   const patientListPagination = useMemo(
-    () => paginate(filteredPatients, listPage, PATIENT_LIST_PAGE_SIZE),
-    [filteredPatients, listPage]
+    () => paginate(filteredPatients, listPage, listPageSize),
+    [filteredPatients, listPage, listPageSize]
   );
+
+  const handleListPageSizeChange = (size: number) => {
+    setListPageSize(size);
+    setListPage(1);
+  };
 
   useEffect(() => {
     if (listPage > patientListPagination.totalPages) {
@@ -553,21 +575,37 @@ export default function App() {
               <span className="text-xs font-semibold hidden md:inline">Home</span>
             </button>
 
+            <button
+              type="button"
+              onClick={() => setQuickSupplyType('necesidad')}
+              title="Registro rápido de insumos"
+              className="p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              <span className="text-xs font-semibold hidden lg:inline">Insumo rápido</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCurrentView('centros')}
+              title="Centros de acopio"
+              className={`relative p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                currentView === 'centros'
+                  ? 'bg-teal-50 text-teal-700'
+                  : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
+              }`}
+            >
+              <Warehouse className="w-4 h-4" />
+              <span className="text-xs font-semibold hidden md:inline">Centros</span>
+              {pendingSupplyCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-white">
+                  {pendingSupplyCount > 9 ? '9+' : pendingSupplyCount}
+                </span>
+              )}
+            </button>
+
             {isAppAdministrator && (
               <>
-                <button
-                  onClick={() => setCurrentView('centros')}
-                  title="Centros de acopio"
-                  className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-                    currentView === 'centros'
-                      ? 'bg-teal-50 text-teal-700'
-                      : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
-                  }`}
-                >
-                  <Warehouse className="w-4 h-4" />
-                  <span className="text-xs font-semibold hidden md:inline">Centros</span>
-                </button>
-
                 <button
                   onClick={() => setCurrentView('admin')}
                   title="Panel de Administración"
@@ -634,7 +672,7 @@ export default function App() {
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-mono font-bold uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full">
-                      Registro de Salud Comunitaria
+                      Triaje médico comunitario
                     </span>
                     <span className="flex items-center gap-0.5 text-[10px] text-blue-600 font-semibold">
                       <Sparkles className="w-3 h-3 animate-pulse text-blue-500" /> Datos en línea
@@ -645,8 +683,8 @@ export default function App() {
                   </h2>
                   <p className="text-xs text-slate-500 max-w-xl leading-relaxed">
                     {isRegistrador(userRole)
-                      ? 'Registre pacientes en centros de acopio o jornadas comunitarias. Puede consultar fichas, pero la evolución clínica la realiza el personal médico autorizado.'
-                      : 'Registre pacientes, controle esquemas de vacunación, realice el seguimiento pondoestatural de peso/talla y acceda rápidamente a la historia de consultas.'}
+                      ? 'Realice triaje en centros de acopio o jornadas comunitarias. Puede consultar fichas, pero el seguimiento clínico lo realiza el personal médico autorizado.'
+                      : 'Realice triaje, controle esquemas de vacunación, haga seguimiento pondoestatural de peso/talla y acceda a la historia de consultas.'}
                   </p>
                 </div>
                 
@@ -658,13 +696,13 @@ export default function App() {
                     }}
                     className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-5 py-3 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95 sm:w-auto"
                   >
-                    <Zap className="h-4 w-4 stroke-[2px]" /> Registro rápido
+                    <Zap className="h-4 w-4 stroke-[2px]" /> Triaje rápido
                   </button>
                   <button
                     onClick={() => setCurrentView('create')}
                     className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-95 sm:w-auto"
                   >
-                    <Plus className="h-4 w-4 stroke-[2px]" /> Ficha completa
+                    <Plus className="h-4 w-4 stroke-[2px]" /> Triaje completo
                   </button>
                 </div>
               </div>
@@ -693,8 +731,8 @@ export default function App() {
                     {isAppAdministrator
                       ? `Listado de Pacientes (${filteredPatients.length})`
                       : isRegistrador(userRole)
-                        ? `Registros (${filteredPatients.length})`
-                        : `Mis registros (${filteredPatients.length})`}
+                        ? `Triajes (${filteredPatients.length})`
+                        : `Mis triajes (${filteredPatients.length})`}
                   </button>
                 </div>
 
@@ -886,6 +924,8 @@ export default function App() {
                         startIndex={patientListPagination.startIndex}
                         endIndex={patientListPagination.endIndex}
                         onPageChange={setListPage}
+                        pageSize={listPageSize}
+                        onPageSizeChange={handleListPageSizeChange}
                       />
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {patientListPagination.pageItems.map((p, idx) => (
@@ -968,7 +1008,7 @@ export default function App() {
                               {isAppAdministrator && (
                                 <button
                                   onClick={() => { setShowDeleteConfirm(p); }}
-                                  title="Eliminar Registro"
+                                  title="Eliminar triaje"
                                   className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -989,7 +1029,7 @@ export default function App() {
                                 onClick={() => { setSelectedPatient(p); setCurrentView('details'); }}
                                 className="flex items-center gap-1 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg font-bold text-xs transition-colors cursor-pointer"
                               >
-                                <Eye className="w-3.5 h-3.5" /> Ver Ficha
+                                <Eye className="w-3.5 h-3.5" /> Ver triaje
                               </button>
                             </div>
                           </div>
@@ -1003,6 +1043,8 @@ export default function App() {
                         startIndex={patientListPagination.startIndex}
                         endIndex={patientListPagination.endIndex}
                         onPageChange={setListPage}
+                        pageSize={listPageSize}
+                        onPageSizeChange={handleListPageSizeChange}
                       />
                     </div>
                   ) : (
@@ -1013,7 +1055,7 @@ export default function App() {
                       <div>
                         <h3 className="font-sans font-bold text-slate-700 text-sm">No se encontraron pacientes</h3>
                         <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                          No hay ningún registro de paciente que coincida con los criterios de búsqueda o filtros activos seleccionados.
+                          No hay ningún triaje que coincida con los criterios de búsqueda o filtros activos seleccionados.
                         </p>
                       </div>
                       
@@ -1136,7 +1178,7 @@ export default function App() {
           )}
 
           {/* 6. COLLECTION CENTERS VIEW */}
-          {currentView === 'centros' && isAppAdministrator && (
+          {currentView === 'centros' && (
             <motion.div
               key="centros-view"
               initial={{ opacity: 0, y: 10 }}
@@ -1144,10 +1186,12 @@ export default function App() {
               exit={{ opacity: 0 }}
             >
               <CollectionCentersPanel
+                canManageCenters={isAppAdministrator}
                 onBack={() => {
                   setCurrentView('list');
-                  setActiveTab('listado');
+                  setActiveTab(defaultHomeTab(userRole));
                   refreshCollectionCenters();
+                  refreshPendingSupplyCount();
                 }}
               />
             </motion.div>
@@ -1162,7 +1206,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 text-center space-y-2">
           <div className="flex items-center justify-center gap-1 text-[11px] text-slate-400 font-medium">
             <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-            <span>{APP_NAME} &bull; Registro de pacientes</span>
+            <span>{APP_NAME} &bull; Triaje y seguimiento de pacientes</span>
           </div>
           <p className="text-[10px] text-slate-300">
             Acceso protegido con autenticación segura. Los datos clínicos se gestionan de forma centralizada.
@@ -1249,11 +1293,11 @@ export default function App() {
             >
               <div className="flex items-center gap-2.5 text-rose-600">
                 <AlertTriangle className="w-5 h-5" />
-                <h3 className="font-sans font-bold text-slate-800 text-base">¿Eliminar Registro?</h3>
+                <h3 className="font-sans font-bold text-slate-800 text-base">¿Eliminar triaje?</h3>
               </div>
 
               <p className="text-xs text-slate-500 leading-relaxed">
-                Está a punto de eliminar de forma permanente la ficha de registro de:
+                Está a punto de eliminar de forma permanente el triaje de:
                 <br />
                 <strong className="text-slate-800 font-bold block mt-1.5 text-sm">
                   {showDeleteConfirm.nombres} {showDeleteConfirm.apellidos}
@@ -1279,6 +1323,16 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      <QuickSupplyRegisterModal
+        open={quickSupplyType !== null}
+        entryType={quickSupplyType ?? 'necesidad'}
+        onClose={() => setQuickSupplyType(null)}
+        onSaved={() => {
+          refreshPendingSupplyCount();
+          showNotification('success', 'Registro de insumo guardado.');
+        }}
+      />
 
       {/* APP-LIKE BOTTOM NAVIGATION (mobile) */}
       <BottomNav

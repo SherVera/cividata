@@ -20,7 +20,7 @@ import type { StaffAuditEntry, StaffProfile, StaffSignupRequest } from '../types
 import { listPendingSignupRequests, updateSignupRequestStatus } from '../lib/preSignupApi';
 import ListPagination from './ListPagination';
 import SelectField from './SelectField';
-import { paginate, TABLE_LIST_PAGE_SIZE } from '../lib/pagination';
+import { paginate, useListPageSize } from '../lib/pagination';
 import { ROLE_OPTIONS } from '../lib/selectOptions';
 import {
   normalizeSpecialty,
@@ -442,7 +442,7 @@ function CreateUserModal({
                 />
                 {role === 'registrador' && (
                   <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-                    Personal no médico autorizado por una entidad o el equipo clínico para registrar pacientes en campo.
+                    Personal no médico autorizado por una entidad o el equipo clínico para realizar triaje en campo.
                   </p>
                 )}
               </label>
@@ -585,6 +585,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [usersPage, setUsersPage] = useState(1);
   const [auditPage, setAuditPage] = useState(1);
+  const [listPageSize, setListPageSize] = useListPageSize();
 
   const showNotice = (nextNotice: Notice) => {
     setNotice(nextNotice);
@@ -616,14 +617,20 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
   };
 
   const usersPagination = useMemo(
-    () => paginate(users, usersPage, TABLE_LIST_PAGE_SIZE),
-    [users, usersPage]
+    () => paginate(users, usersPage, listPageSize),
+    [users, usersPage, listPageSize]
   );
 
   const auditPagination = useMemo(
-    () => paginate(auditLog, auditPage, TABLE_LIST_PAGE_SIZE),
-    [auditLog, auditPage]
+    () => paginate(auditLog, auditPage, listPageSize),
+    [auditLog, auditPage, listPageSize]
   );
+
+  const handleListPageSizeChange = (size: number) => {
+    setListPageSize(size);
+    setUsersPage(1);
+    setAuditPage(1);
+  };
 
   useEffect(() => {
     setUsersPage(1);
@@ -874,7 +881,7 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
           </span>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Panel de administración</h2>
           <p className="max-w-xl text-sm leading-relaxed text-slate-500">
-            Gestiona las cuentas autorizadas para acceder al registro clínico.
+            Gestiona las cuentas autorizadas para acceder al triaje y seguimiento clínico.
           </p>
         </div>
 
@@ -1060,6 +1067,8 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
                 startIndex={usersPagination.startIndex}
                 endIndex={usersPagination.endIndex}
                 onPageChange={setUsersPage}
+                pageSize={listPageSize}
+                onPageSizeChange={handleListPageSizeChange}
               />
             </div>
             <table className="w-full min-w-[900px] text-left text-sm">
@@ -1180,6 +1189,8 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
               startIndex={usersPagination.startIndex}
               endIndex={usersPagination.endIndex}
               onPageChange={setUsersPage}
+              pageSize={listPageSize}
+              onPageSizeChange={handleListPageSizeChange}
             />
           </div>
         )}
@@ -1256,6 +1267,8 @@ export default function AdminPanel({ onBack }: AdminPanelProps) {
               startIndex={auditPagination.startIndex}
               endIndex={auditPagination.endIndex}
               onPageChange={setAuditPage}
+              pageSize={listPageSize}
+              onPageSizeChange={handleListPageSizeChange}
             />
           </div>
           </div>

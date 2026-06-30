@@ -121,7 +121,7 @@ export const VOICE_FIELD_LABELS: Record<VoicePatientFieldKey, string> = {
   nivelEducativo: 'Nivel educativo',
   gradoAnio: 'Grado / año',
   nombreInstitucion: 'Institución',
-  puntoRegistroTipo: 'Punto de registro',
+  puntoRegistroTipo: 'Punto de triaje',
   centroAcopioNombre: 'Centro de acopio',
 };
 

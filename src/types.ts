@@ -152,11 +152,18 @@ export function normalizeGrupoEtario(value: unknown): GrupoEtario | null {
 export function edadPacienteTexto(
   p: Pick<Paciente, 'fechaNacimiento' | 'edadAnios' | 'edadMeses'>
 ): string {
+  const yearsLabel = (years: number) => `${years} ${years === 1 ? 'año' : 'años'}`;
+  const monthsLabel = (months: number) => `${months} ${months === 1 ? 'mes' : 'meses'}`;
+
   if (p.fechaNacimiento) {
-    return `${p.edadAnios} ${p.edadAnios === 1 ? 'año' : 'años'} y ${p.edadMeses} ${p.edadMeses === 1 ? 'mes' : 'meses'}`;
+    if (p.edadAnios === 0) return monthsLabel(p.edadMeses);
+    return yearsLabel(p.edadAnios);
   }
-  if (p.edadAnios > 0 || p.edadMeses > 0) {
-    return `~${p.edadAnios} ${p.edadAnios === 1 ? 'año' : 'años'} y ${p.edadMeses} ${p.edadMeses === 1 ? 'mes' : 'meses'} (aprox.)`;
+  if (p.edadAnios > 0) {
+    return `~${yearsLabel(p.edadAnios)} (aprox.)`;
+  }
+  if (p.edadMeses > 0) {
+    return `~${monthsLabel(p.edadMeses)} (aprox.)`;
   }
   return 'Sin registrar';
 }

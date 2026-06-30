@@ -179,7 +179,7 @@ export default function AuthScreen() {
               <span className="text-blue-600">hoy</span>?
             </h1>
             <p className="text-xl md:text-2xl font-semibold text-slate-600 max-w-lg leading-snug">
-              ¿Los tiene todos registrados?
+              ¿Llevó el triaje de todos?
             </p>
             <button
               type="button"

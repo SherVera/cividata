@@ -131,10 +131,16 @@ describe('edadPacienteTexto', () => {
   it('distingue edad exacta, tentativa y sin registrar', () => {
     expect(
       edadPacienteTexto({ fechaNacimiento: '2020-01-01', edadAnios: 6, edadMeses: 2 })
-    ).toContain('años');
+    ).toBe('6 años');
     expect(
-      edadPacienteTexto({ fechaNacimiento: '', edadAnios: 4, edadMeses: 0 })
-    ).toContain('aprox.');
+      edadPacienteTexto({ fechaNacimiento: '2024-01-01', edadAnios: 0, edadMeses: 8 })
+    ).toBe('8 meses');
+    expect(
+      edadPacienteTexto({ fechaNacimiento: '', edadAnios: 4, edadMeses: 3 })
+    ).toBe('~4 años (aprox.)');
+    expect(
+      edadPacienteTexto({ fechaNacimiento: '', edadAnios: 0, edadMeses: 6 })
+    ).toBe('~6 meses (aprox.)');
     expect(edadPacienteTexto({ fechaNacimiento: '', edadAnios: 0, edadMeses: 0 })).toBe(
       'Sin registrar'
     );
