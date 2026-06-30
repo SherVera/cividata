@@ -15,8 +15,10 @@ dist/
 web/config.js
 .vercel
 
-# Supabase CLI / enlace local (no versionar)
+# Supabase CLI — estado local del enlace (no subir; los .sql sí van en git)
 supabase/.temp/
+supabase/.branches/
+.supabase/
 
 # Respaldos locales (pueden contener datos clínicos)
 backup/*

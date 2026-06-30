@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   aggregateSupplyBalances,
+  entryRegisteredOnDifferentDay,
   formatQty,
   type CenterSupplyEntry,
 } from './centerSupplyApi';
@@ -48,5 +49,22 @@ describe('aggregateSupplyBalances', () => {
       baseEntry({ id: '2', categoryId: 'cat-ins', categoryName: 'Insumos', quantity: 3 }),
     ]);
     expect(balances).toHaveLength(2);
+  });
+});
+
+describe('entryRegisteredOnDifferentDay', () => {
+  it('detects when movement date differs from registration date', () => {
+    expect(
+      entryRegisteredOnDifferentDay({
+        entryDate: '2026-06-28',
+        createdAt: '2026-06-30T10:00:00Z',
+      })
+    ).toBe(true);
+    expect(
+      entryRegisteredOnDifferentDay({
+        entryDate: '2026-06-30',
+        createdAt: '2026-06-30T10:00:00Z',
+      })
+    ).toBe(false);
   });
 });

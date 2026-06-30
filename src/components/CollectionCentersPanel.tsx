@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
-  AlertTriangle,
   Check,
   Loader2,
   MapPin,
+  Package,
   Plus,
   Search,
   Warehouse,
@@ -280,10 +280,11 @@ export default function CollectionCentersPanel({
           <button
             type="button"
             onClick={() => setQuickSupplyType('necesidad')}
+            title="Registrar necesidad o recepción de insumos"
             className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300/30 bg-amber-500/20 px-4 py-2 text-xs font-bold text-amber-100 transition-colors hover:bg-amber-500/30"
           >
-            <AlertTriangle className="h-3.5 w-3.5" />
-            Registro rápido
+            <Package className="h-3.5 w-3.5" />
+            Insumo rápido
           </button>
           {canManageCenters && (
             <button

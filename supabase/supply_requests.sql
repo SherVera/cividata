@@ -42,6 +42,15 @@ create table if not exists public.center_supply_entries (
   created_at            timestamptz not null default now()
 );
 
+comment on column public.center_supply_entries.entry_date is
+  'Fecha del movimiento (necesidad/recepción), elegida por el usuario.';
+comment on column public.center_supply_entries.created_at is
+  'Momento en que se guardó el registro en el sistema.';
+comment on column public.center_supply_entries.created_by is
+  'Usuario autenticado al guardar (no se muestra en la app).';
+
+alter table public.center_supply_entries drop column if exists created_by_email;
+
 alter table public.center_supply_entries add column if not exists category_id uuid;
 
 -- Migración: columna legacy category (text) → category_id
@@ -146,6 +155,24 @@ create index if not exists center_supply_entries_center_idx
 
 create index if not exists center_supply_entries_category_idx
   on public.center_supply_entries (collection_center_id, category_id, entry_date desc);
+
+-- Asignar siempre al usuario autenticado (sin datos visibles en la UI).
+create or replace function public.set_center_supply_entry_registrar()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  new.created_by := auth.uid();
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_center_supply_entry_registrar on public.center_supply_entries;
+create trigger trg_center_supply_entry_registrar
+  before insert on public.center_supply_entries
+  for each row execute function public.set_center_supply_entry_registrar();
 
 -- =========================================================
 -- RLS

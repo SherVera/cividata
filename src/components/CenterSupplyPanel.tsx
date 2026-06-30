@@ -13,7 +13,10 @@ import {
   SupplyCategory,
   SupplyEntryType,
   aggregateSupplyBalances,
+  entryRegisteredOnDifferentDay,
   formatQty,
+  formatSupplyEntryDate,
+  formatSupplyRegisteredAt,
   listCenterSupplyEntries,
   listSupplyCategories,
 } from '../lib/centerSupplyApi';
@@ -28,15 +31,7 @@ interface CenterSupplyPanelProps {
 type CategoryFilter = 'all' | string;
 
 function formatDateLabel(iso: string): string {
-  const d = new Date(`${iso}T12:00:00`);
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleString('es-VE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return formatSupplyEntryDate(iso);
 }
 
 export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelProps) {
@@ -232,6 +227,9 @@ export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelP
             )}
 
             <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">Historial</h3>
+            <p className="mb-3 text-[11px] text-slate-400">
+              Agrupado por fecha del movimiento. Si se anotó días después, se indica aparte.
+            </p>
             {dayGroups.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center">
                 <Package className="mx-auto mb-2 h-8 w-8 text-slate-300" />
@@ -248,7 +246,9 @@ export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelP
                       {group.label}
                     </div>
                     <ul className="divide-y divide-slate-100">
-                      {group.items.map((entry) => (
+                      {group.items.map((entry) => {
+                        const backdated = entryRegisteredOnDifferentDay(entry);
+                        return (
                         <li key={entry.id} className="flex items-start justify-between gap-3 px-4 py-3">
                           <div>
                             <div className="flex flex-wrap items-center gap-2">
@@ -266,13 +266,21 @@ export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelP
                               </span>
                             </div>
                             <p className="mt-1 text-sm font-semibold text-slate-900">{entry.itemName}</p>
-                            <p className="text-[11px] text-slate-400">{formatDateTime(entry.createdAt)}</p>
+                            <p className="text-[11px] text-slate-500">
+                              Fecha del movimiento: {formatSupplyEntryDate(entry.entryDate)}
+                            </p>
+                            {backdated && (
+                              <p className="text-[11px] text-slate-400">
+                                Anotado en sistema: {formatSupplyRegisteredAt(entry.createdAt)}
+                              </p>
+                            )}
                           </div>
                           <span className="shrink-0 text-sm font-bold text-slate-800">
                             {formatQty(entry.quantity)}
                           </span>
                         </li>
-                      ))}
+                        );
+                      })}
                     </ul>
                   </section>
                 ))}

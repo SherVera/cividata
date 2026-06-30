@@ -84,6 +84,37 @@ const SELECT_QUERY = `
   category:supply_categories(id, name)
 `;
 
+export function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export function formatSupplyEntryDate(iso: string): string {
+  if (!iso) return '—';
+  const d = new Date(`${iso}T12:00:00`);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+export function formatSupplyRegisteredAt(iso: string): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleString('es-VE', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export function entryRegisteredOnDifferentDay(
+  entry: Pick<CenterSupplyEntry, 'entryDate' | 'createdAt'>
+): boolean {
+  if (!entry.entryDate || !entry.createdAt) return false;
+  return entry.entryDate !== entry.createdAt.slice(0, 10);
+}
+
 export function formatQty(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1).replace(/\.0$/, '');
 }
@@ -217,6 +248,10 @@ export async function createCenterSupplyEntry(
   if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
     throw new Error('La cantidad debe ser mayor a cero.');
   }
+  const entryDate = (input.entryDate || todayIsoDate()).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(entryDate)) {
+    throw new Error('Indique una fecha válida.');
+  }
 
   const categoryId = await resolveCategoryId(input);
 
@@ -224,7 +259,7 @@ export async function createCenterSupplyEntry(
     .from('center_supply_entries')
     .insert({
       collection_center_id: input.collectionCenterId,
-      entry_date: input.entryDate || new Date().toISOString().slice(0, 10),
+      entry_date: entryDate,
       category_id: categoryId,
       item_name: itemName,
       quantity: input.quantity,

@@ -10,6 +10,7 @@ import {
   SupplyEntryType,
   createCenterSupplyEntry,
   listSupplyCategories,
+  todayIsoDate,
 } from '../lib/centerSupplyApi';
 import CenterPicker from './CenterPicker';
 import SelectField from './SelectField';
@@ -45,6 +46,7 @@ export default function QuickSupplyRegisterModal({
   const [newCategoryName, setNewCategoryName] = useState('');
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('1');
+  const [entryDate, setEntryDate] = useState(todayIsoDate());
 
   const selectedCenterName = useMemo(
     () =>
@@ -70,6 +72,7 @@ export default function QuickSupplyRegisterModal({
     setNewCategoryName('');
     setItemName('');
     setQuantity('1');
+    setEntryDate(todayIsoDate());
     setError('');
   };
 
@@ -116,6 +119,7 @@ export default function QuickSupplyRegisterModal({
         itemName,
         quantity: Number(quantity),
         entryType,
+        entryDate,
       });
       onSaved?.();
       handleClose();
@@ -140,8 +144,8 @@ export default function QuickSupplyRegisterModal({
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Registro rápido</h3>
-            <p className="text-[11px] text-slate-500">Sin entrar al detalle del centro</p>
+            <h3 className="text-sm font-bold text-slate-900">Registro rápido de insumos</h3>
+            <p className="text-[11px] text-slate-500">Necesidad o recepción · elija el centro en el formulario</p>
           </div>
           <button type="button" onClick={handleClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
             <X className="h-4 w-4" />
@@ -200,6 +204,22 @@ export default function QuickSupplyRegisterModal({
                   Centro: {presetCenter.name}
                 </div>
               )}
+
+              <div>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Fecha del movimiento
+                </label>
+                <input
+                  type="date"
+                  value={entryDate}
+                  onChange={(e) => setEntryDate(e.target.value)}
+                  required
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-500/10"
+                />
+                <p className="mt-1 text-[10px] text-slate-400">
+                  Día al que corresponde la necesidad o recepción. Por defecto, hoy.
+                </p>
+              </div>
 
               <div className="space-y-1">
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -277,6 +297,7 @@ export default function QuickSupplyRegisterModal({
               saving ||
               !itemName.trim() ||
               !quantity ||
+              !entryDate ||
               !categoryId ||
               (categoryId === NEW_SUPPLY_CATEGORY && !newCategoryName.trim()) ||
               (!presetCenter && !selectedCenterId)
