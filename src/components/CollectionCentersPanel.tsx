@@ -21,8 +21,11 @@ import { DEFAULT_MAP_CENTER, formatDistance, haversineMeters } from '../lib/geo'
 import { GeocodeResult, searchPlaces } from '../lib/geocodeApi';
 import GeoMapPicker from './GeoMapPicker';
 import ListPagination from './ListPagination';
+import ListViewToggle from './ListViewToggle';
+import CollectionCentersTable from './CollectionCentersTable';
 import { CAPTURE_POINT_LABEL } from '../brand';
 import { paginate, useListPageSize } from '../lib/pagination';
+import { useListViewMode } from '../lib/listViewMode';
 
 import CenterSupplyPanel from './CenterSupplyPanel';
 import GlobalSupplyLedger from './GlobalSupplyLedger';
@@ -87,6 +90,7 @@ export default function CollectionCentersPanel({
   const [notice, setNotice] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
   const [centersPage, setCentersPage] = useState(1);
   const [listPageSize, setListPageSize] = useListPageSize();
+  const [centersListView, setCentersListView] = useListViewMode('centers');
   const [quickSupplyType, setQuickSupplyType] = useState<SupplyEntryType | null>(null);
   const [ledgerRefreshKey, setLedgerRefreshKey] = useState(0);
   const [centerNeedCounts, setCenterNeedCounts] = useState<Map<string, { openItems: number; pendingUnits: number }>>(
@@ -412,6 +416,7 @@ export default function CollectionCentersPanel({
             </>
             )}
           </label>
+          <ListViewToggle value={centersListView} onChange={setCentersListView} />
         </div>
 
         {mapCenters.length > 0 && (
@@ -458,6 +463,17 @@ export default function CollectionCentersPanel({
             pageSize={listPageSize}
             onPageSizeChange={handleListPageSizeChange}
           />
+          {centersListView === 'table' ? (
+            <CollectionCentersTable
+              centers={centersPagination.pageItems}
+              centerNeedCounts={centerNeedCounts}
+              canManage={canManageCenters}
+              saving={saving}
+              onOpen={setSelectedCenter}
+              onEdit={openEdit}
+              onToggleActive={handleToggleActive}
+            />
+          ) : (
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {centersPagination.pageItems.map((center) => (
               <motion.button
@@ -524,6 +540,7 @@ export default function CollectionCentersPanel({
               </motion.button>
             ))}
           </div>
+          )}
           <ListPagination
             page={centersPagination.page}
             totalPages={centersPagination.totalPages}

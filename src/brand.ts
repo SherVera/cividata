@@ -18,6 +18,17 @@ export const CAPTURE_POINT_LABEL = 'Punto de captura';
 /** Evaluación clínica de urgencia por visita (care_pathway). */
 export const CLINICAL_TRIAGE_LABEL = 'Triaje clínico';
 
+/** Punto físico de captura e insumos (centro de apoyo = mismo concepto). */
+export const COLLECTION_CENTER_LABEL = 'Centro de acopio';
+export const COLLECTION_CENTER_LABEL_PLURAL = 'Centros de acopio';
+
+export type FacilityType = 'acopio' | 'hospital';
+
+export const FACILITY_TYPE_LABELS: Record<FacilityType, string> = {
+  acopio: COLLECTION_CENTER_LABEL,
+  hospital: 'Hospital',
+};
+
 /** @deprecated Use CAPTURE_LABEL */
 export const TRIAGE_LABEL = CAPTURE_LABEL;
 /** @deprecated Use APP_TAGLINE */

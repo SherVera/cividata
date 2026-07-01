@@ -1,3 +1,4 @@
+import type { FacilityType } from '../brand';
 import { supabase } from './supabaseClient';
 import { roundGeo } from './geo';
 
@@ -8,6 +9,7 @@ export interface CollectionCenter {
   geo_lat: number;
   geo_lng: number;
   active: boolean;
+  facility_type: FacilityType;
   created_at: string;
   updated_at: string;
 }
@@ -18,6 +20,7 @@ export type CollectionCenterInput = {
   geo_lat: number;
   geo_lng: number;
   active?: boolean;
+  facility_type?: FacilityType;
 };
 
 export type SaveCollectionCenterResult = {
@@ -36,6 +39,10 @@ function ensureClient() {
   return supabase;
 }
 
+function normalizeFacilityType(value: unknown): FacilityType {
+  return value === 'hospital' ? 'hospital' : 'acopio';
+}
+
 function normalizeRow(row: any): CollectionCenter {
   return {
     id: row.id,
@@ -44,6 +51,7 @@ function normalizeRow(row: any): CollectionCenter {
     geo_lat: row.geo_lat,
     geo_lng: row.geo_lng,
     active: row.active !== false,
+    facility_type: normalizeFacilityType(row.facility_type),
     created_at: row.created_at || '',
     updated_at: row.updated_at || '',
   };
@@ -89,6 +97,7 @@ export async function saveCollectionCenter(
     geo_lat: coords.lat,
     geo_lng: coords.lng,
     active: input.active !== false,
+    facility_type: normalizeFacilityType(input.facility_type),
     updated_at: new Date().toISOString(),
   };
 

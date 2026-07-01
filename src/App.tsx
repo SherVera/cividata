@@ -28,9 +28,12 @@ import MobileOptionsDrawer, { MobileDrawerItem } from './components/MobileOption
 import AppLogo from './components/AppLogo';
 import PatientPhoto from './components/PatientPhoto';
 import ListPagination from './components/ListPagination';
+import ListViewToggle from './components/ListViewToggle';
+import PatientListTable from './components/PatientListTable';
 import SelectField from './components/SelectField';
 import { supabase } from './lib/supabaseClient';
 import { paginate, useListPageSize } from './lib/pagination';
+import { useListViewMode } from './lib/listViewMode';
 import {
   centroFilterOptions,
   FILTER_AGE_RANGE_OPTIONS,
@@ -57,7 +60,7 @@ import { listCollectionCenters } from './lib/collectionCentersApi';
 import { computeSupplyDashboardStats, listCenterSupplyEntries, type SupplyDashboardStats } from './lib/centerSupplyApi';
 import type { SupplyEntryType } from './lib/centerSupplyApi';
 import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin, canManageClinicalData, isRegistrador } from './lib/authRoles';
-import { APP_NAME, APP_TAGLINE, CAPTURE_FULL_LABEL, CAPTURE_LABEL, CAPTURE_QUICK_LABEL } from './brand';
+import { APP_NAME, APP_TAGLINE, CAPTURE_FULL_LABEL, CAPTURE_LABEL, CAPTURE_QUICK_LABEL, COLLECTION_CENTER_LABEL_PLURAL } from './brand';
 
 export default function App() {
   // Authentication via Supabase
@@ -105,6 +108,7 @@ export default function App() {
   const [sortBy, setSortBy] = useState<string>('recent'); // 'recent' | 'alphabetical' | 'age-asc' | 'age-desc'
   const [listPage, setListPage] = useState(1);
   const [listPageSize, setListPageSize] = useListPageSize();
+  const [patientListView, setPatientListView] = useListViewMode('patients');
   const [showFiltersMobile, setShowFiltersMobile] = useState<boolean>(false);
   const [pendingSupplyCount, setPendingSupplyCount] = useState(0);
   const [supplyStats, setSupplyStats] = useState<SupplyDashboardStats | null>(null);
@@ -673,7 +677,7 @@ export default function App() {
       },
       {
         id: 'centros',
-        label: 'Centros de acopio',
+        label: COLLECTION_CENTER_LABEL_PLURAL,
         icon: Warehouse,
         tone: 'teal',
         active: currentView === 'centros',
@@ -895,7 +899,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setCurrentView('centros')}
-              title="Centros de acopio"
+              title={COLLECTION_CENTER_LABEL_PLURAL}
               className={`relative p-2 rounded-xl transition-all cursor-pointer ${
                 currentView === 'centros'
                   ? 'bg-teal-50 text-teal-700'
@@ -1161,6 +1165,8 @@ export default function App() {
                           className="w-full md:min-w-[12rem]"
                         />
 
+                        <ListViewToggle value={patientListView} onChange={setPatientListView} />
+
                         {/* Mobile filters toggle button */}
                         <button
                           onClick={() => setShowFiltersMobile(!showFiltersMobile)}
@@ -1339,6 +1345,22 @@ export default function App() {
                         pageSize={listPageSize}
                         onPageSizeChange={handleListPageSizeChange}
                       />
+                      {patientListView === 'table' ? (
+                        <PatientListTable
+                          patients={patientListPagination.pageItems}
+                          canEdit={canEditPatients}
+                          canDelete={isAppAdministrator}
+                          onView={(p) => {
+                            setSelectedPatient(p);
+                            setCurrentView('details');
+                          }}
+                          onEdit={(p) => {
+                            setSelectedPatient(p);
+                            setCurrentView('edit');
+                          }}
+                          onDelete={(p) => setShowDeleteConfirm(p)}
+                        />
+                      ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {patientListPagination.pageItems.map((p, idx) => (
                         <motion.div
@@ -1448,6 +1470,7 @@ export default function App() {
                         </motion.div>
                       ))}
                       </div>
+                      )}
                       <ListPagination
                         page={patientListPagination.page}
                         totalPages={patientListPagination.totalPages}

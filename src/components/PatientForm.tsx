@@ -19,7 +19,7 @@ import { CollectionCenter, listCollectionCenters } from '../lib/collectionCenter
 import { DEFAULT_MAP_CENTER, findNearest, formatDistance, GeoNamedPoint } from '../lib/geo';
 import GeoMapPicker from './GeoMapPicker';
 import { requestDeviceLocation } from '../lib/geo';
-import { CAPTURE_FULL_LABEL, CAPTURE_LABEL, CAPTURE_POINT_LABEL } from '../brand';
+import { CAPTURE_FULL_LABEL, CAPTURE_LABEL, CAPTURE_POINT_LABEL, COLLECTION_CENTER_LABEL } from '../brand';
 import QuickCenterRegister from './QuickCenterRegister';
 import CenterPicker from './CenterPicker';
 import SelectField from './SelectField';
@@ -900,7 +900,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 <h4 className="text-sm font-bold text-teal-900">{CAPTURE_POINT_LABEL} del paciente</h4>
               </div>
               <p className="text-xs text-teal-800/80 leading-relaxed">
-                Indique si la atención fue en un centro de acopio o apoyo, o si un médico atendió en la calle u otro lugar sin centro.
+                Indique si la atención fue en un {COLLECTION_CENTER_LABEL.toLowerCase()}, o si un médico atendió en la calle u otro lugar sin centro.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -917,7 +917,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                   }`}
                 >
                   <Warehouse className="w-4 h-4 shrink-0" />
-                  Centro de acopio / apoyo
+                  {COLLECTION_CENTER_LABEL}
                 </button>
                 <button
                   type="button"
@@ -964,7 +964,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
               {formData.puntoRegistroTipo === 'centro' && (
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Centro de acopio <span className="font-normal normal-case text-slate-400">(opcional)</span>
+                  {COLLECTION_CENTER_LABEL} <span className="font-normal normal-case text-slate-400">(opcional)</span>
                 </label>
                 <CenterPicker
                   collectionCenters={collectionCenters}

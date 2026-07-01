@@ -22,7 +22,7 @@ import {
   compressPatientPhoto,
   uploadPatientPhoto,
 } from '../lib/patientPhotosApi';
-import { CAPTURE_FULL_LABEL, CAPTURE_POINT_LABEL, CAPTURE_QUICK_LABEL } from '../brand';
+import { CAPTURE_FULL_LABEL, CAPTURE_POINT_LABEL, CAPTURE_QUICK_LABEL, COLLECTION_CENTER_LABEL } from '../brand';
 import QuickCenterRegister from './QuickCenterRegister';
 import CenterPicker from './CenterPicker';
 import SelectField from './SelectField';
@@ -527,7 +527,7 @@ export default function QuickPatientRegister({
               }`}
             >
               <Warehouse className="h-4 w-4 shrink-0" />
-              Centro de acopio
+              {COLLECTION_CENTER_LABEL}
             </button>
             <button
               type="button"

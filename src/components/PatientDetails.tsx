@@ -191,7 +191,7 @@ export default function PatientDetails({
             <div className="flex justify-between items-start mb-6 gap-4">
               <div>
                 <span className="text-[10px] font-mono font-bold tracking-widest bg-white/20 px-2 py-0.5 rounded-md uppercase">
-                  {tituloHistoriaClinica(patient).toUpperCase()}
+                  {(canAddClinicalNotes ? tituloHistoriaClinica(patient) : CAPTURE_LABEL).toUpperCase()}
                 </span>
                 <p className="text-[10px] text-blue-200 font-mono mt-1">ID: {patient.id.toUpperCase()}</p>
               </div>
@@ -271,7 +271,7 @@ export default function PatientDetails({
                     <span className="text-xs text-slate-500 font-medium">cm</span>
                   </div>
                 </div>
-                {progression.heightDiff !== 0 && (
+                {canAddClinicalNotes && progression.heightDiff !== 0 && (
                   <span className={`text-[10px] font-bold mt-2 flex items-center gap-0.5 ${
                     progression.heightDiff > 0 ? 'text-green-600' : 'text-red-500'
                   }`}>
@@ -289,7 +289,7 @@ export default function PatientDetails({
                     <span className="text-xs text-slate-500 font-medium">kg</span>
                   </div>
                 </div>
-                {progression.weightDiff !== 0 && (
+                {canAddClinicalNotes && progression.weightDiff !== 0 && (
                   <span className={`text-[10px] font-bold mt-2 flex items-center gap-0.5 ${
                     progression.weightDiff > 0 ? 'text-green-600' : 'text-red-500'
                   }`}>
@@ -588,7 +588,7 @@ export default function PatientDetails({
             <ClinicalTriagePanel patient={patient} canManage={canAddClinicalNotes} />
           )}
 
-          {/* HISTORIAL CLÍNICO - EVOLUCIÓN (CRITICAL FOR CLINICAL RECORD TRACKING) */}
+          {canAddClinicalNotes && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden print:hidden">
             <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
@@ -792,6 +792,7 @@ export default function PatientDetails({
               )}
             </div>
           </div>
+          )}
 
         </div>
       </div>
