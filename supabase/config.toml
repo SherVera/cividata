@@ -1,7 +1,8 @@
 # Supabase CLI — https://supabase.com/docs/guides/cli/config
-# project_id se define al hacer `supabase link` (local) o vía secret en GitHub Actions.
+# project_id: identificador local del proyecto (Docker/CLI). El ref remoto real
+# lo pasan los workflows de deploy vía `--project-ref` desde el secret.
 
-project_id = ""
+project_id = "cividata"
 
 [api]
 enabled = true
