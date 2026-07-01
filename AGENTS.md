@@ -21,6 +21,24 @@ Use constants from `src/brand.ts` (`CAPTURE_*`, `CLINICAL_TRIAGE_LABEL`). Do not
 
 **Permissions:** `canManageClinicalData()` in `src/lib/authRoles.ts` — personal médico, admin, super admin only. Registradores (`registrador`) capture patients but cannot do clinical triage or add clinical notes.
 
+## Establecimientos: acopio vs hospital
+
+Una sola tabla `collection_centers` con columna `facility_type`: `'acopio'` | `'hospital'` (migración `20260630181553_collection_center_facility_type_.sql`).
+
+| Tipo | UI label | Hoy en producción |
+|------|----------|-------------------|
+| Acopio | **Centro de acopio** | Captura en censo, insumos/necesidades, listado principal |
+| Hospital | **Hospital** | Solo alta/edición por admin; **sin** insumos ni picker en captura |
+
+**Reglas actuales (no ampliar sin acuerdo):**
+
+- Nuevos centros por defecto: `acopio`.
+- `CenterPicker` / captura / insumos: filtrar `isAcopioCenter()` — hospitales no son punto de captura ni de insumos todavía.
+- Hospitales: ficha informativa en `CollectionCentersPanel`; módulo clínico completo y navegación propia quedan para una fase posterior.
+- Derivación a hospital: texto en historial clínico; no asignar `hospital_id` ni mover episodio automáticamente.
+
+Constantes: `FacilityType`, `FACILITY_TYPE_LABELS` en `src/brand.ts`; helper `isAcopioCenter()` en `src/lib/collectionCentersApi.ts`.
+
 ## Repository Layout
 
 ```

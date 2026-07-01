@@ -57,6 +57,10 @@ function normalizeRow(row: any): CollectionCenter {
   };
 }
 
+export function isAcopioCenter(center: Pick<CollectionCenter, 'facility_type'>): boolean {
+  return center.facility_type === 'acopio';
+}
+
 export async function listCollectionCenters(activeOnly = false): Promise<CollectionCenter[]> {
   const client = ensureClient();
   let query = client.from('collection_centers').select('*').order('name');

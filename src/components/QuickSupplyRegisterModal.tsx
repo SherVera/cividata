@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import {
   CollectionCenter,
   listCollectionCenters,
+  isAcopioCenter,
 } from '../lib/collectionCentersApi';
 import {
   MANUAL_SUPPLY_NEED_KEY,
@@ -100,7 +101,7 @@ export default function QuickSupplyRegisterModal({
     setLoading(true);
     Promise.all([listCollectionCenters(true), listSupplyCategories()])
       .then(([ctrs, cats]) => {
-        setCenters(ctrs);
+        setCenters(ctrs.filter(isAcopioCenter));
         setCategories(cats);
         const defaultName =
           cats.find((c) => c.name.toLowerCase() === 'insumos')?.name || cats[0]?.name || '';

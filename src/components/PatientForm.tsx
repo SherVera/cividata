@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Catalogs, GuardianOption, fetchCatalogs } from '../lib/catalogsApi';
 import { parseMultiValue } from '../lib/multiValue';
 import CatalogMultiPicker from './CatalogMultiPicker';
-import { CollectionCenter, listCollectionCenters } from '../lib/collectionCentersApi';
+import { CollectionCenter, listCollectionCenters, isAcopioCenter } from '../lib/collectionCentersApi';
 import { DEFAULT_MAP_CENTER, findNearest, formatDistance, GeoNamedPoint } from '../lib/geo';
 import GeoMapPicker from './GeoMapPicker';
 import { requestDeviceLocation } from '../lib/geo';
@@ -164,7 +164,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       .then(setCatalogs)
       .catch(() => {/* sin catálogos: el formulario sigue funcionando con texto libre */});
     listCollectionCenters(true)
-      .then(setCollectionCenters)
+      .then((rows) => setCollectionCenters(rows.filter(isAcopioCenter)))
       .catch(() => {/* sin centros: el formulario sigue con texto */});
   }, []);
 

@@ -57,7 +57,7 @@ import {
 import { isRegistroToday, isRegistroWithinDays } from './lib/registroDates';
 import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
 import { useStaffNameMap } from './lib/usersApi';
-import { listCollectionCenters } from './lib/collectionCentersApi';
+import { listCollectionCenters, isAcopioCenter } from './lib/collectionCentersApi';
 import { computeSupplyDashboardStats, listCenterSupplyEntries, type SupplyDashboardStats } from './lib/centerSupplyApi';
 import type { SupplyEntryType } from './lib/centerSupplyApi';
 import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin, canManageClinicalData, isRegistrador, resolvePatientExportTier } from './lib/authRoles';
@@ -199,7 +199,7 @@ export default function App() {
     try {
       const centers = await listCollectionCenters(false);
       setCollectionCenters(
-        centers.filter((c) => c.active).map((c) => ({ id: c.id, name: c.name }))
+        centers.filter((c) => c.active && isAcopioCenter(c)).map((c) => ({ id: c.id, name: c.name }))
       );
       setTotalCentrosRegistrados(centers.length);
     } catch {

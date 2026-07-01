@@ -13,7 +13,7 @@ import {
 import { Paciente, GRUPOS_ETARIOS, grupoEtarioFromAge, grupoEtarioLabel, pacienteTieneEdad, pacienteRequiereRepresentante, EMPTY_GUARDIAN_FIELDS } from '../types';
 import { parseFormNumber, validatePatientSection1 } from '../lib/patientValidation';
 import AppLogo from './AppLogo';
-import { CollectionCenter, listCollectionCenters } from '../lib/collectionCentersApi';
+import { CollectionCenter, listCollectionCenters, isAcopioCenter } from '../lib/collectionCentersApi';
 import { createEmptyPatient, PatientCarryOver } from '../lib/patientDefaults';
 import { findNearest, GeoNamedPoint, requestDeviceLocation } from '../lib/geo';
 import { getRecentCenterIds, recordRecentCenter } from '../lib/recentCenters';
@@ -88,7 +88,7 @@ export default function QuickPatientRegister({
 
   useEffect(() => {
     listCollectionCenters(true)
-      .then(setCollectionCenters)
+      .then((rows) => setCollectionCenters(rows.filter(isAcopioCenter)))
       .catch(() => undefined);
   }, []);
 
