@@ -107,6 +107,7 @@ function rowToPaciente(row: any): Paciente {
     nombreInstitucion: row.institution?.name || '',
     notasClinicas: notes,
     fechaRegistro: row.registered_at || '',
+    registradoPorId: row.created_by || null,
     puntoRegistroTipo: row.registration_site_type === 'medico' ? 'medico' : 'centro',
     centroAcopioId: row.registration_site_type === 'medico' ? '' : (row.collection_center_id || row.collection_center?.id || ''),
     centroAcopioNombre: row.registration_site_type === 'medico' ? '' : (row.collection_center?.name || ''),

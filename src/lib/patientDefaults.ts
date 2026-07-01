@@ -60,6 +60,7 @@ const BASE_DEFAULTS: Omit<Paciente, 'id' | 'fechaRegistro' | 'notasClinicas'> = 
   registroLng: DEFAULT_MAP_CENTER.lng,
   registrantLat: null,
   registrantLng: null,
+  registradoPorId: null,
 };
 
 export function createEmptyPatient(carryOver?: Partial<PatientCarryOver>): Paciente {

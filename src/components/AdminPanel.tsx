@@ -858,22 +858,12 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
     if (!token) return;
     const signupId = signupPrefill?.id;
     setIsSaving(true);
-    const result = await requestUsers(token, 'POST', payload);
+    const result = await requestUsers(token, 'POST', { ...payload, ...(signupId ? { signupId } : {}) });
     setIsSaving(false);
 
     if (result.error) {
       showNotice({ type: 'error', message: result.error });
       return;
-    }
-
-    if (signupId) {
-      const statusResult = await updateSignupRequestStatus(signupId, 'approved', token);
-      if (!statusResult.ok) {
-        showNotice({
-          type: 'info',
-          message: 'Usuario creado, pero no se pudo marcar la solicitud como aprobada.',
-        });
-      }
     }
 
     setShowCreateUser(false);

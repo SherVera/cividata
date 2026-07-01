@@ -97,6 +97,7 @@ const emptyPatient: Omit<Paciente, 'id' | 'fechaRegistro' | 'notasClinicas'> = {
   registroLng: DEFAULT_MAP_CENTER.lng,
   registrantLat: null,
   registrantLng: null,
+  registradoPorId: null,
 };
 
 export default function PatientForm({ initialPatient, onSave, onCancel }: PatientFormProps) {

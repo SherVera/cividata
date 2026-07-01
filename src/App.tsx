@@ -8,7 +8,7 @@ import {
   Plus, Search, SlidersHorizontal, Download, Upload, Lock, 
   ShieldCheck, Eye, Settings, Trash2, LogOut, Edit, Filter, Database, 
   Activity, FileSpreadsheet, AlertTriangle, Heart, Sparkles, Menu, X, Check, RefreshCw, Warehouse, Home, Zap,
-  ClipboardList, BarChart3
+  ClipboardList, BarChart3, Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Session } from '@supabase/supabase-js';
@@ -20,6 +20,7 @@ import { extractPatientCarryOver, PatientCarryOver, patientDisplayName } from '.
 import PatientDetails from './components/PatientDetails';
 import DashboardStats, { SuperAdminDashboardStats } from './components/DashboardStats';
 import AdminPanel from './components/AdminPanel';
+import TeamPanel from './components/TeamPanel';
 import CollectionCentersPanel from './components/CollectionCentersPanel';
 import QuickSupplyRegisterModal from './components/QuickSupplyRegisterModal';
 import BottomNav, { BottomNavKey } from './components/BottomNav';
@@ -51,6 +52,7 @@ import {
 } from './lib/metricDrillDown';
 import { isRegistroToday, isRegistroWithinDays } from './lib/registroDates';
 import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
+import { useStaffNameMap } from './lib/usersApi';
 import { listCollectionCenters } from './lib/collectionCentersApi';
 import { computeSupplyDashboardStats, listCenterSupplyEntries, type SupplyDashboardStats } from './lib/centerSupplyApi';
 import type { SupplyEntryType } from './lib/centerSupplyApi';
@@ -65,6 +67,7 @@ export default function App() {
   const userRole = resolveAppRole(session?.user);
   const isAppAdministrator = isAppAdmin(userRole);
   const canEditPatients = canManageClinicalData(userRole);
+  const staffNameMap = useStaffNameMap(session?.access_token);
   const [homeTabInitialized, setHomeTabInitialized] = useState(false);
 
   // Patient database state (source of truth: Supabase)
@@ -74,7 +77,7 @@ export default function App() {
 
   // Views state: 'list' | 'quick-create' | 'create' | 'edit' | 'details' | 'admin' | 'centros'
   const [currentView, setCurrentView] = useState<
-    'list' | 'quick-create' | 'create' | 'edit' | 'details' | 'admin' | 'centros'
+    'list' | 'quick-create' | 'create' | 'edit' | 'details' | 'admin' | 'centros' | 'equipo'
   >('list');
   const [selectedPatient, setSelectedPatient] = useState<Paciente | null>(null);
   const [quickCarryOver, setQuickCarryOver] = useState<PatientCarryOver | null>(null);
@@ -652,6 +655,13 @@ export default function App() {
         onSelect: () => setQuickSupplyType('necesidad'),
       },
       {
+        id: 'equipo',
+        label: 'Equipo',
+        icon: Users,
+        active: currentView === 'equipo',
+        onSelect: () => setCurrentView('equipo'),
+      },
+      {
         id: 'home',
         label: 'Inicio',
         icon: Home,
@@ -898,6 +908,19 @@ export default function App() {
                   {pendingSupplyCount > 9 ? '9+' : pendingSupplyCount}
                 </span>
               )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCurrentView('equipo')}
+              title="Equipo"
+              className={`p-2 rounded-xl transition-all cursor-pointer ${
+                currentView === 'equipo'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+              }`}
+            >
+              <Users className="w-4 h-4" />
             </button>
 
             {isAppAdministrator && (
@@ -1539,6 +1562,7 @@ export default function App() {
                 patient={selectedPatient}
                 canEdit={canEditPatients}
                 canAddClinicalNotes={canEditPatients}
+                staffNameMap={staffNameMap}
                 onEdit={(p) => { setSelectedPatient(p); setCurrentView('edit'); }}
                 onBack={() => setCurrentView('list')}
                 onUpdatePatient={handleUpdatePatientDetails}
@@ -1560,6 +1584,23 @@ export default function App() {
                   setCurrentView('list');
                   setActiveTab('listado');
                   setAdminRoleFilter('all');
+                }}
+              />
+            </motion.div>
+          )}
+
+          {currentView === 'equipo' && (
+            <motion.div
+              key="equipo-view"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+            >
+              <TeamPanel
+                currentUserId={session?.user?.id}
+                onBack={() => {
+                  setCurrentView('list');
+                  setActiveTab(defaultHomeTab(userRole));
                 }}
               />
             </motion.div>

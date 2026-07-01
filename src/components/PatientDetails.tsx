@@ -17,6 +17,7 @@ import GeoMapPicker from './GeoMapPicker';
 import { formatDistance, haversineMeters } from '../lib/geo';
 import { parseFormNumber, validateClinicalNote } from '../lib/patientValidation';
 import { CAPTURE_LABEL, CAPTURE_POINT_LABEL } from '../brand';
+import { staffDisplayName } from '../lib/usersApi';
 import PatientPhoto from './PatientPhoto';
 import ClinicalTriagePanel from './ClinicalTriagePanel';
 
@@ -24,6 +25,7 @@ interface PatientDetailsProps {
   patient: Paciente;
   canEdit?: boolean;
   canAddClinicalNotes?: boolean;
+  staffNameMap?: Map<string, string>;
   onEdit: (paciente: Paciente) => void;
   onBack: () => void;
   onUpdatePatient: (updatedPatient: Paciente) => void;
@@ -33,6 +35,7 @@ export default function PatientDetails({
   patient,
   canEdit = true,
   canAddClinicalNotes = true,
+  staffNameMap,
   onEdit,
   onBack,
   onUpdatePatient,
@@ -415,6 +418,14 @@ export default function PatientDetails({
                         {puntoRegistroEtiqueta(patient) || 'No especificado'}
                       </span>
                     </div>
+                    {patient.registradoPorId && staffNameMap && (
+                      <div className="sm:col-span-3">
+                        <span className="text-slate-400 block mb-0.5">Registrado por</span>
+                        <span className="font-semibold text-slate-700">
+                          {staffDisplayName(staffNameMap, patient.registradoPorId) || 'Personal del sistema'}
+                        </span>
+                      </div>
+                    )}
                     {patient.registroLat != null && patient.registroLng != null && (
                       <div className="sm:col-span-3">
                         <span className="text-slate-400 block mb-0.5">Ubicación aproximada</span>
