@@ -37,7 +37,7 @@ export const SIGNUP_PROFILE_OPTIONS: { value: SignupProfileType; label: string; 
   {
     value: 'registrador',
     label: 'Asistente',
-    description: 'Apoyo en campo: triaje y captura de datos, sin evolución clínica.',
+    description: 'Apoyo en campo: captura de datos en censo, sin evolución clínica.',
   },
 ];
 
@@ -49,9 +49,18 @@ export function appRoleLabel(role: string): string {
   return role;
 }
 
-/** Puede editar fichas de paciente y registrar evolución clínica. */
+/** Puede editar fichas, triaje clínico, historial y tratamientos (no asistentes/registradores). */
 export function canManageClinicalData(role: AppRole): boolean {
   return isPersonalMedico(role) || isAppAdmin(role);
+}
+
+/** Nivel de detalle al exportar la ficha individual en PDF. */
+export type PatientExportTier = 'asistente' | 'clinico' | 'admin';
+
+export function resolvePatientExportTier(role: AppRole): PatientExportTier {
+  if (isAppAdmin(role)) return 'admin';
+  if (isPersonalMedico(role)) return 'clinico';
+  return 'asistente';
 }
 
 export function defaultHomeTab(role: AppRole): 'listado' | 'estadisticas' {

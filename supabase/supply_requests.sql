@@ -1,6 +1,6 @@
 -- Registro de necesidades y recepciones por centro de acopio.
--- Clasificaciones en tabla aparte (creables por usuarios).
--- Ejecutar en Supabase → SQL Editor (seguro re-ejecutar).
+-- LEGACY: incluido en supabase/migrations/20250101000000_bootstrap_schema.sql.
+-- No editar aquí; usar npm run db:migration:new para cambios nuevos.
 
 -- =========================================================
 -- Catálogo de clasificaciones

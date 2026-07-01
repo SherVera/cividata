@@ -509,7 +509,7 @@ function CreateUserModal({
                 />
                 {role === 'registrador' && (
                   <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-                    Asistente: personal no médico autorizado para triaje y captura en campo, sin evolución clínica.
+                    Asistente: personal no médico autorizado para captura en campo, sin evolución clínica.
                   </p>
                 )}
               </label>
@@ -858,22 +858,12 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
     if (!token) return;
     const signupId = signupPrefill?.id;
     setIsSaving(true);
-    const result = await requestUsers(token, 'POST', payload);
+    const result = await requestUsers(token, 'POST', { ...payload, ...(signupId ? { signupId } : {}) });
     setIsSaving(false);
 
     if (result.error) {
       showNotice({ type: 'error', message: result.error });
       return;
-    }
-
-    if (signupId) {
-      const statusResult = await updateSignupRequestStatus(signupId, 'approved', token);
-      if (!statusResult.ok) {
-        showNotice({
-          type: 'info',
-          message: 'Usuario creado, pero no se pudo marcar la solicitud como aprobada.',
-        });
-      }
     }
 
     setShowCreateUser(false);
@@ -989,7 +979,7 @@ export default function AdminPanel({ onBack, initialRoleFilter = 'all' }: AdminP
           </span>
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Panel de administración</h2>
           <p className="max-w-xl text-sm leading-relaxed text-slate-500">
-            Gestiona las cuentas autorizadas para acceder al triaje y seguimiento clínico.
+            Gestiona las cuentas autorizadas para acceder al censo y seguimiento clínico.
           </p>
         </div>
 

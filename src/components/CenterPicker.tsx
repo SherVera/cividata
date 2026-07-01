@@ -49,6 +49,7 @@ export default function CenterPicker({
   const showRecentHint = !centerFilter.trim() && recentCenters.length > 0;
 
   const handleSelect = (center: CollectionCenter) => {
+    onCenterFilterChange('');
     onSelectCenter(center);
     setListOpen(false);
   };
@@ -110,6 +111,7 @@ export default function CenterPicker({
               key={center.id}
               type="button"
               onMouseDown={(e) => e.preventDefault()}
+              onTouchStart={(e) => e.preventDefault()}
               onClick={() => handleSelect(center)}
               className={`block w-full px-3 py-2 text-left text-xs hover:bg-teal-50 ${
                 selectedCenterId === center.id

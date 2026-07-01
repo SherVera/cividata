@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { SupplyCategory } from '../lib/centerSupplyApi';
 import { cn } from '../lib/cn';
 import SelectField from './SelectField';
@@ -30,35 +30,44 @@ export default function SupplyCategoryField({
   menuZIndex = 300,
   size = 'md',
 }: SupplyCategoryFieldProps) {
+  const [creatingNew, setCreatingNew] = useState(false);
+
   const knownNames = useMemo(
     () => new Set(categories.map((category) => category.name.toLowerCase())),
     [categories]
   );
 
-  const isCustomValue = value.trim() !== '' && !knownNames.has(value.trim().toLowerCase());
+  const trimmedValue = value.trim();
+  const isCustomValue = trimmedValue !== '' && !knownNames.has(trimmedValue.toLowerCase());
+  const showCustomInput = creatingNew || isCustomValue;
+  const selectValue = showCustomInput ? CUSTOM_SUPPLY_CATEGORY_KEY : value;
 
-  const selectValue = isCustomValue ? CUSTOM_SUPPLY_CATEGORY_KEY : value;
+  useEffect(() => {
+    if (trimmedValue && knownNames.has(trimmedValue.toLowerCase())) {
+      setCreatingNew(false);
+    }
+  }, [trimmedValue, knownNames]);
 
   const options = useMemo(
     () => [
+      { value: CUSTOM_SUPPLY_CATEGORY_KEY, label: 'Nueva clasificación…' },
       ...categories.map((category) => ({
         value: category.name,
         label: category.name,
       })),
-      { value: CUSTOM_SUPPLY_CATEGORY_KEY, label: 'Otra clasificación…' },
     ],
     [categories]
   );
 
   const handleSelectChange = (next: string) => {
     if (next === CUSTOM_SUPPLY_CATEGORY_KEY) {
+      setCreatingNew(true);
       if (!isCustomValue) onChange('');
       return;
     }
+    setCreatingNew(false);
     onChange(next);
   };
-
-  const showCustomInput = selectValue === CUSTOM_SUPPLY_CATEGORY_KEY;
 
   return (
     <div className="space-y-2">
@@ -79,12 +88,13 @@ export default function SupplyCategoryField({
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
           required
-          placeholder="Escriba la nueva clasificación…"
+          autoFocus
+          placeholder="Nombre de la nueva clasificación…"
           className={customInputClass}
         />
       )}
       <p className="text-[10px] leading-relaxed text-slate-400">
-        Elija una clasificación existente o escriba una nueva; se guardará en el catálogo del centro.
+        Elija una clasificación existente o use «Nueva clasificación»; se guardará en el catálogo al registrar.
       </p>
     </div>
   );

@@ -172,24 +172,11 @@ export async function updateSignupRequestStatus(
       });
       const data = (await response.json().catch(() => ({}))) as { error?: string };
       if (response.ok) return { ok: true };
-      if (response.status !== 404) {
-        return { ok: false, error: data.error || 'No se pudo actualizar la solicitud.' };
-      }
+      return { ok: false, error: data.error || 'No se pudo actualizar la solicitud.' };
     } catch {
-      // fallback to direct Supabase below
+      return { ok: false, error: 'No se pudo actualizar la solicitud.' };
     }
   }
 
-  if (!supabase) return { ok: false, error: 'Servicio no disponible.' };
-
-  const { error } = await supabase
-    .from('staff_signup_requests')
-    .update({
-      status,
-      reviewed_at: new Date().toISOString(),
-    })
-    .eq('id', id);
-
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  return { ok: false, error: 'Sesión requerida para revisar solicitudes.' };
 }

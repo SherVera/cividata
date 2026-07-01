@@ -1,0 +1,24 @@
+# Bloquea PRs a main con cambios SQL que no vengan desde la rama dev.
+
+name: Supabase migrations (PR guard)
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'supabase/migrations/**'
+
+jobs:
+  require-dev-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Requerir merge desde dev
+        if: github.head_ref != 'dev'
+        run: |
+          echo "::error::Los cambios en supabase/migrations/ a main deben llegar vía PR desde la rama dev (después de probar en Supabase dev)."
+          exit 1
+
+      - name: OK — PR desde dev
+        if: github.head_ref == 'dev'
+        run: echo "PR de migraciones desde dev → main."

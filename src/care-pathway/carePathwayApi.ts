@@ -469,6 +469,25 @@ export async function upsertCareTriage(
   return rowToTriage(data);
 }
 
+/** Abre o crea un episodio en triaje clínico para un paciente ya capturado en censo. */
+export async function ensureClinicalTriageEpisode(
+  patientId: string,
+  collectionCenterId?: string | null
+): Promise<CareEpisode> {
+  let episode = await getActiveEpisodeForPatient(patientId);
+  if (!episode) {
+    return createCareEpisode({
+      patientId,
+      collectionCenterId: collectionCenterId ?? null,
+      status: 'triage_in_progress',
+    });
+  }
+  if (episode.status === 'registered') {
+    return transitionCareEpisode(episode.id, 'triage_in_progress');
+  }
+  return episode;
+}
+
 export async function ensureBackgroundSnapshot(episodeId: string): Promise<string> {
   const client = ensureClient();
   const existing = await client

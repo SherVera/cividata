@@ -7,7 +7,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Plus, Search, SlidersHorizontal, Download, Upload, Lock, 
   ShieldCheck, Eye, Settings, Trash2, LogOut, Edit, Filter, Database, 
-  Activity, FileSpreadsheet, AlertTriangle, Heart, Sparkles, Menu, X, Check, RefreshCw, Warehouse, Home, Zap
+  Activity, FileSpreadsheet, AlertTriangle, Heart, Sparkles, Menu, X, Check, RefreshCw, Warehouse, Home, Zap,
+  ClipboardList, BarChart3, Users
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { Session } from '@supabase/supabase-js';
@@ -19,16 +20,21 @@ import { extractPatientCarryOver, PatientCarryOver, patientDisplayName } from '.
 import PatientDetails from './components/PatientDetails';
 import DashboardStats, { SuperAdminDashboardStats } from './components/DashboardStats';
 import AdminPanel from './components/AdminPanel';
+import TeamPanel from './components/TeamPanel';
 import CollectionCentersPanel from './components/CollectionCentersPanel';
 import QuickSupplyRegisterModal from './components/QuickSupplyRegisterModal';
+import ExportFormatModal from './components/ExportFormatModal';
 import BottomNav, { BottomNavKey } from './components/BottomNav';
 import MobileOptionsDrawer, { MobileDrawerItem } from './components/MobileOptionsDrawer';
 import AppLogo from './components/AppLogo';
 import PatientPhoto from './components/PatientPhoto';
 import ListPagination from './components/ListPagination';
+import ListViewToggle from './components/ListViewToggle';
+import PatientListTable from './components/PatientListTable';
 import SelectField from './components/SelectField';
 import { supabase } from './lib/supabaseClient';
 import { paginate, useListPageSize } from './lib/pagination';
+import { useListViewMode } from './lib/listViewMode';
 import {
   centroFilterOptions,
   FILTER_AGE_RANGE_OPTIONS,
@@ -50,11 +56,12 @@ import {
 } from './lib/metricDrillDown';
 import { isRegistroToday, isRegistroWithinDays } from './lib/registroDates';
 import { listPatients, savePatient, deletePatient, bulkUpsertPatients } from './lib/patientsApi';
-import { listCollectionCenters } from './lib/collectionCentersApi';
+import { useStaffNameMap } from './lib/usersApi';
+import { listCollectionCenters, isAcopioCenter } from './lib/collectionCentersApi';
 import { computeSupplyDashboardStats, listCenterSupplyEntries, type SupplyDashboardStats } from './lib/centerSupplyApi';
 import type { SupplyEntryType } from './lib/centerSupplyApi';
-import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin, canManageClinicalData, isRegistrador } from './lib/authRoles';
-import { APP_NAME, APP_TAGLINE } from './brand';
+import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin, canManageClinicalData, isRegistrador, resolvePatientExportTier } from './lib/authRoles';
+import { APP_NAME, APP_TAGLINE, CAPTURE_FULL_LABEL, CAPTURE_LABEL, CAPTURE_QUICK_LABEL, COLLECTION_CENTER_LABEL_PLURAL } from './brand';
 
 export default function App() {
   // Authentication via Supabase
@@ -64,6 +71,7 @@ export default function App() {
   const userRole = resolveAppRole(session?.user);
   const isAppAdministrator = isAppAdmin(userRole);
   const canEditPatients = canManageClinicalData(userRole);
+  const staffNameMap = useStaffNameMap(session?.access_token);
   const [homeTabInitialized, setHomeTabInitialized] = useState(false);
 
   // Patient database state (source of truth: Supabase)
@@ -73,7 +81,7 @@ export default function App() {
 
   // Views state: 'list' | 'quick-create' | 'create' | 'edit' | 'details' | 'admin' | 'centros'
   const [currentView, setCurrentView] = useState<
-    'list' | 'quick-create' | 'create' | 'edit' | 'details' | 'admin' | 'centros'
+    'list' | 'quick-create' | 'create' | 'edit' | 'details' | 'admin' | 'centros' | 'equipo'
   >('list');
   const [selectedPatient, setSelectedPatient] = useState<Paciente | null>(null);
   const [quickCarryOver, setQuickCarryOver] = useState<PatientCarryOver | null>(null);
@@ -101,6 +109,7 @@ export default function App() {
   const [sortBy, setSortBy] = useState<string>('recent'); // 'recent' | 'alphabetical' | 'age-asc' | 'age-desc'
   const [listPage, setListPage] = useState(1);
   const [listPageSize, setListPageSize] = useListPageSize();
+  const [patientListView, setPatientListView] = useListViewMode('patients');
   const [showFiltersMobile, setShowFiltersMobile] = useState<boolean>(false);
   const [pendingSupplyCount, setPendingSupplyCount] = useState(0);
   const [supplyStats, setSupplyStats] = useState<SupplyDashboardStats | null>(null);
@@ -108,10 +117,13 @@ export default function App() {
 
   // Modals state
   const [showMobileMenu, setShowMobileMenu] = useState<boolean>(false);
+  const [centrosFocusCenterId, setCentrosFocusCenterId] = useState<string | null>(null);
+  const [centrosPanelView, setCentrosPanelView] = useState<'centros' | 'ledger'>('centros');
   const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
   const [newPasswordInput, setNewPasswordInput] = useState<string>('');
   const [settingsSuccess, setSettingsSuccess] = useState<string>('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Paciente | null>(null);
+  const [showListExportModal, setShowListExportModal] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'info' | 'error', message: string } | null>(null);
 
   // Hidden file input ref for JSON restore
@@ -187,7 +199,7 @@ export default function App() {
     try {
       const centers = await listCollectionCenters(false);
       setCollectionCenters(
-        centers.filter((c) => c.active).map((c) => ({ id: c.id, name: c.name }))
+        centers.filter((c) => c.active && isAcopioCenter(c)).map((c) => ({ id: c.id, name: c.name }))
       );
       setTotalCentrosRegistrados(centers.length);
     } catch {
@@ -308,12 +320,12 @@ export default function App() {
     try {
       await savePatient(savedPatient);
     } catch (err: any) {
-      showNotification('error', 'Error al guardar el triaje: ' + (err?.message || err));
+      showNotification('error', 'Error al guardar la captura: ' + (err?.message || err));
       return;
     }
     if (wasEditing) {
       setPatients(prev => prev.map(p => p.id === savedPatient.id ? savedPatient : p));
-      showNotification('success', `Triaje de ${patientDisplayName(savedPatient)} actualizado correctamente.`);
+      showNotification('success', `Captura de ${patientDisplayName(savedPatient)} actualizada correctamente.`);
       setSelectedPatient(savedPatient);
       setCurrentView('details');
       return;
@@ -332,7 +344,7 @@ export default function App() {
       return;
     }
 
-    showNotification('success', `Triaje de ${patientDisplayName(savedPatient)} guardado en ${APP_NAME}.`);
+    showNotification('success', `Captura de ${patientDisplayName(savedPatient)} guardada en ${APP_NAME}.`);
     setSelectedPatient(savedPatient);
     setCurrentView('details');
   };
@@ -354,13 +366,13 @@ export default function App() {
     try {
       await deletePatient(id);
     } catch (err: any) {
-      showNotification('error', 'Error al eliminar el triaje: ' + (err?.message || err));
+      showNotification('error', 'Error al eliminar la captura: ' + (err?.message || err));
       setShowDeleteConfirm(null);
       return;
     }
     if (p) {
       setPatients(prev => prev.filter(patient => patient.id !== id));
-      showNotification('error', `Se eliminó el triaje de ${p.nombres} ${p.apellidos}.`);
+      showNotification('error', `Se eliminó la captura de ${p.nombres} ${p.apellidos}.`);
     }
     setShowDeleteConfirm(null);
     if (currentView === 'details') {
@@ -444,6 +456,8 @@ export default function App() {
 
   const handleMetricDrillDown = (action: MetricDrillDown) => {
     if (action.target === 'centros') {
+      setCentrosFocusCenterId(action.centerId ?? null);
+      setCentrosPanelView(action.panelView ?? 'centros');
       setCurrentView('centros');
       return;
     }
@@ -577,8 +591,7 @@ export default function App() {
   const handleBottomNav = (key: BottomNavKey) => {
     if (key === 'admin' && !isAppAdministrator) return;
     if (key === 'create') {
-      setQuickCarryOver(null);
-      setCurrentView('quick-create');
+      goToQuickCreate();
     } else if (key === 'admin') {
       setCurrentView('admin');
     } else {
@@ -587,17 +600,58 @@ export default function App() {
     }
   };
 
+  const goToListado = () => {
+    setCurrentView('list');
+    setActiveTab('listado');
+  };
+
+  const goToEstadisticas = () => {
+    setCurrentView('list');
+    setActiveTab('estadisticas');
+  };
+
+  const goToQuickCreate = () => {
+    setQuickCarryOver(null);
+    setCurrentView('quick-create');
+  };
+
+  const goToFullCreate = () => {
+    setCurrentView('create');
+  };
+
+  const isListadoActive = currentView === 'list' && activeTab === 'listado';
+  const isEstadisticasActive = currentView === 'list' && activeTab === 'estadisticas';
+
   const mobileDrawerItems = useMemo<MobileDrawerItem[]>(() => {
     const items: MobileDrawerItem[] = [
       {
-        id: 'home',
-        label: 'Inicio',
-        icon: Home,
-        active: currentView === 'list',
-        onSelect: () => {
-          setCurrentView('list');
-          setActiveTab(defaultHomeTab(userRole));
-        },
+        id: 'quick-create',
+        label: CAPTURE_QUICK_LABEL,
+        icon: Zap,
+        tone: 'default',
+        active: currentView === 'quick-create',
+        onSelect: goToQuickCreate,
+      },
+      {
+        id: 'full-create',
+        label: CAPTURE_FULL_LABEL,
+        icon: Plus,
+        active: currentView === 'create',
+        onSelect: goToFullCreate,
+      },
+      {
+        id: 'listado',
+        label: isRegistrador(userRole) ? 'Listado del censo' : 'Listado de pacientes',
+        icon: ClipboardList,
+        active: isListadoActive,
+        onSelect: goToListado,
+      },
+      {
+        id: 'estadisticas',
+        label: 'Estadísticas',
+        icon: BarChart3,
+        active: isEstadisticasActive,
+        onSelect: goToEstadisticas,
       },
       {
         id: 'quick-supply',
@@ -607,8 +661,25 @@ export default function App() {
         onSelect: () => setQuickSupplyType('necesidad'),
       },
       {
+        id: 'equipo',
+        label: 'Equipo',
+        icon: Users,
+        active: currentView === 'equipo',
+        onSelect: () => setCurrentView('equipo'),
+      },
+      {
+        id: 'home',
+        label: 'Inicio',
+        icon: Home,
+        active: currentView === 'list' && activeTab === defaultHomeTab(userRole),
+        onSelect: () => {
+          setCurrentView('list');
+          setActiveTab(defaultHomeTab(userRole));
+        },
+      },
+      {
         id: 'centros',
-        label: 'Centros de acopio',
+        label: COLLECTION_CENTER_LABEL_PLURAL,
         icon: Warehouse,
         tone: 'teal',
         active: currentView === 'centros',
@@ -658,9 +729,12 @@ export default function App() {
     return items;
   }, [
     currentView,
+    activeTab,
     dataRefreshing,
     handleLockSession,
     isAppAdministrator,
+    isEstadisticasActive,
+    isListadoActive,
     pendingSupplyCount,
     refreshAllData,
     userRole,
@@ -687,10 +761,10 @@ export default function App() {
       <AnimatePresence>
         {notification && (
           <motion.div 
-            initial={{ opacity: 0, y: -50 }}
+            initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className="fixed top-5 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 print:hidden"
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 pb-safe print:hidden"
           >
             <div className={`p-4 rounded-xl shadow-lg border flex items-center gap-3 ${
               notification.type === 'success' 
@@ -740,8 +814,74 @@ export default function App() {
             </div>
           </div>
 
-          {/* Quick Actions Header (desktop) */}
-          <div className="hidden md:flex items-center gap-2">
+          {/* Navegación principal + acciones rápidas (desktop) */}
+          <div className="hidden md:flex items-center gap-2 flex-1 justify-center max-w-2xl mx-4">
+            <div className="flex items-center bg-slate-100 rounded-xl p-1">
+              <button
+                type="button"
+                onClick={goToEstadisticas}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                  isEstadisticasActive
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                Estadísticas
+              </button>
+              <button
+                type="button"
+                onClick={goToListado}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                  isListadoActive
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <ClipboardList className="w-3.5 h-3.5" />
+                Listado
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={goToQuickCreate}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-all shadow-sm ${
+                currentView === 'quick-create'
+                  ? 'bg-blue-700 text-white'
+                  : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5" />
+              {CAPTURE_QUICK_LABEL}
+            </button>
+
+            <button
+              type="button"
+              onClick={goToFullCreate}
+              className={`hidden lg:flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+                currentView === 'create'
+                  ? 'border-blue-200 bg-blue-50 text-blue-700'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Completo
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setQuickSupplyType('necesidad')}
+              className="hidden xl:flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition-all"
+              title="Registro rápido de insumos"
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              Insumo
+            </button>
+          </div>
+
+          {/* Utilidades (desktop) */}
+          <div className="hidden md:flex items-center gap-1 shrink-0">
             <button
               type="button"
               onClick={() => {
@@ -749,38 +889,26 @@ export default function App() {
                 setActiveTab(defaultHomeTab(userRole));
               }}
               title="Inicio"
-              className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-                currentView === 'list'
+              className={`p-2 rounded-xl transition-all cursor-pointer ${
+                currentView === 'list' && activeTab === defaultHomeTab(userRole)
                   ? 'bg-blue-50 text-blue-700'
                   : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
               }`}
             >
               <Home className="w-4 h-4" />
-              <span className="text-xs font-semibold hidden md:inline">Home</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setQuickSupplyType('necesidad')}
-              title="Registro rápido de insumos"
-              className="p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-slate-400 hover:text-amber-600 hover:bg-amber-50"
-            >
-              <AlertTriangle className="w-4 h-4" />
-              <span className="text-xs font-semibold hidden lg:inline">Insumo rápido</span>
             </button>
 
             <button
               type="button"
               onClick={() => setCurrentView('centros')}
-              title="Centros de acopio"
-              className={`relative p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+              title={COLLECTION_CENTER_LABEL_PLURAL}
+              className={`relative p-2 rounded-xl transition-all cursor-pointer ${
                 currentView === 'centros'
                   ? 'bg-teal-50 text-teal-700'
                   : 'text-slate-400 hover:text-teal-600 hover:bg-teal-50'
               }`}
             >
               <Warehouse className="w-4 h-4" />
-              <span className="text-xs font-semibold hidden md:inline">Centros</span>
               {pendingSupplyCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-white">
                   {pendingSupplyCount > 9 ? '9+' : pendingSupplyCount}
@@ -788,31 +916,40 @@ export default function App() {
               )}
             </button>
 
+            <button
+              type="button"
+              onClick={() => setCurrentView('equipo')}
+              title="Equipo"
+              className={`p-2 rounded-xl transition-all cursor-pointer ${
+                currentView === 'equipo'
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+            </button>
+
             {isAppAdministrator && (
-              <>
-                <button
-                  onClick={() => setCurrentView('admin')}
-                  title="Panel de Administración"
-                  className={`p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
-                    currentView === 'admin'
-                      ? 'bg-blue-50 text-blue-700'
-                      : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
-                  }`}
-                >
-                  <ShieldCheck className="w-4 h-4" />
-                  <span className="text-xs font-semibold hidden md:inline">Admin</span>
-                </button>
-              </>
+              <button
+                onClick={() => setCurrentView('admin')}
+                title="Panel de Administración"
+                className={`p-2 rounded-xl transition-all cursor-pointer ${
+                  currentView === 'admin'
+                    ? 'bg-blue-50 text-blue-700'
+                    : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+              </button>
             )}
 
             <button
               onClick={refreshAllData}
               disabled={dataRefreshing}
               title="Actualizar datos"
-              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <RefreshCw className={`w-4 h-4 ${dataRefreshing ? 'animate-spin' : ''}`} />
-              <span className="text-xs font-semibold hidden md:inline">Actualizar</span>
             </button>
 
             <button
@@ -822,23 +959,77 @@ export default function App() {
             >
               <Settings className="w-4 h-4" />
             </button>
-            
+
             <button
               onClick={handleLockSession}
               title="Cerrar Sesión Segura"
-              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
-              <span className="text-xs font-semibold hidden md:inline">Bloquear</span>
             </button>
           </div>
 
+        </div>
+
+        {/* Acciones rápidas (móvil) */}
+        <div className="md:hidden border-t border-slate-100 bg-slate-50/90 px-3 py-2">
+          <div className="flex gap-2 overflow-x-auto scrollbar-none">
+            <button
+              type="button"
+              onClick={goToQuickCreate}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-sm active:scale-95"
+            >
+              <Zap className="w-3.5 h-3.5" />
+              {CAPTURE_QUICK_LABEL}
+            </button>
+            <button
+              type="button"
+              onClick={goToListado}
+              className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold ${
+                isListadoActive
+                  ? 'border-blue-200 bg-blue-50 text-blue-700'
+                  : 'border-slate-200 bg-white text-slate-700'
+              }`}
+            >
+              <ClipboardList className="w-3.5 h-3.5" />
+              Listado
+            </button>
+            <button
+              type="button"
+              onClick={goToEstadisticas}
+              className={`flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold ${
+                isEstadisticasActive
+                  ? 'border-blue-200 bg-blue-50 text-blue-700'
+                  : 'border-slate-200 bg-white text-slate-700'
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              Estadísticas
+            </button>
+            <button
+              type="button"
+              onClick={goToFullCreate}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Completo
+            </button>
+            <button
+              type="button"
+              onClick={() => setQuickSupplyType('necesidad')}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800"
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              Insumo
+            </button>
+          </div>
         </div>
       </header>
 
       <MobileOptionsDrawer
         open={showMobileMenu}
         onClose={() => setShowMobileMenu(false)}
+        title="Acceso rápido"
         items={mobileDrawerItems}
       />
 
@@ -857,12 +1048,12 @@ export default function App() {
               exit={{ opacity: 0 }}
               className="space-y-6"
             >
-              {/* Top Banner introducing statistics & interactive patient registration */}
-              <div className="bg-white rounded-2xl p-6 border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm">
+              {/* Intro banner — acciones rápidas están en la barra superior */}
+              <div className="bg-white rounded-2xl p-5 md:p-6 border border-slate-200 shadow-sm">
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-mono font-bold uppercase tracking-widest bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full">
-                      Triaje médico comunitario
+                      Captura en censo comunitario
                     </span>
                     <span className="flex items-center gap-0.5 text-[10px] text-blue-600 font-semibold">
                       <Sparkles className="w-3 h-3 animate-pulse text-blue-500" /> Datos en línea
@@ -873,27 +1064,9 @@ export default function App() {
                   </h2>
                   <p className="text-xs text-slate-500 max-w-xl leading-relaxed">
                     {isRegistrador(userRole)
-                      ? 'Realice triaje en centros de acopio o jornadas comunitarias. Puede consultar fichas, pero el seguimiento clínico lo realiza el personal médico autorizado.'
-                      : 'Realice triaje, controle esquemas de vacunación, haga seguimiento pondoestatural de peso/talla y acceda a la historia de consultas.'}
+                      ? 'Use la barra superior para captura rápida, listado o estadísticas.'
+                      : 'Use la barra superior para captura rápida, consultar el listado o revisar estadísticas.'}
                   </p>
-                </div>
-                
-                <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
-                  <button
-                    onClick={() => {
-                      setQuickCarryOver(null);
-                      setCurrentView('quick-create');
-                    }}
-                    className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-5 py-3 text-sm font-medium text-white shadow-sm transition-all hover:bg-blue-700 active:scale-95 sm:w-auto"
-                  >
-                    <Zap className="h-4 w-4 stroke-[2px]" /> Triaje rápido
-                  </button>
-                  <button
-                    onClick={() => setCurrentView('create')}
-                    className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 shadow-sm transition-all hover:bg-slate-50 active:scale-95 sm:w-auto"
-                  >
-                    <Plus className="h-4 w-4 stroke-[2px]" /> Triaje completo
-                  </button>
                 </div>
               </div>
 
@@ -921,8 +1094,8 @@ export default function App() {
                     {isAppAdministrator
                       ? `Listado de Pacientes (${filteredPatients.length})`
                       : isRegistrador(userRole)
-                        ? `Triajes (${filteredPatients.length})`
-                        : `Mis triajes (${filteredPatients.length})`}
+                        ? `En censo (${filteredPatients.length})`
+                        : `Mis capturas (${filteredPatients.length})`}
                   </button>
                 </div>
 
@@ -993,6 +1166,19 @@ export default function App() {
                           accent="blue"
                           className="w-full md:min-w-[12rem]"
                         />
+
+                        <ListViewToggle value={patientListView} onChange={setPatientListView} />
+
+                        <button
+                          type="button"
+                          onClick={() => setShowListExportModal(true)}
+                          disabled={filteredPatients.length === 0}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Exportar listado filtrado"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span className="hidden sm:inline">Exportar</span>
+                        </button>
 
                         {/* Mobile filters toggle button */}
                         <button
@@ -1172,6 +1358,22 @@ export default function App() {
                         pageSize={listPageSize}
                         onPageSizeChange={handleListPageSizeChange}
                       />
+                      {patientListView === 'table' ? (
+                        <PatientListTable
+                          patients={patientListPagination.pageItems}
+                          canEdit={canEditPatients}
+                          canDelete={isAppAdministrator}
+                          onView={(p) => {
+                            setSelectedPatient(p);
+                            setCurrentView('details');
+                          }}
+                          onEdit={(p) => {
+                            setSelectedPatient(p);
+                            setCurrentView('edit');
+                          }}
+                          onDelete={(p) => setShowDeleteConfirm(p)}
+                        />
+                      ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {patientListPagination.pageItems.map((p, idx) => (
                         <motion.div
@@ -1225,11 +1427,13 @@ export default function App() {
                             </div>
 
                             {/* Key credentials indicators */}
-                            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 pt-2 border-t border-slate-50">
+                            <div className={`grid gap-2 text-[11px] text-slate-500 pt-2 border-t border-slate-50 ${canEditPatients ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                              {canEditPatients && (
                               <div>
                                 <span className="text-slate-400 block text-[9px] uppercase tracking-wider">Documento</span>
                                 <span className="font-semibold text-slate-700 font-mono truncate block">{p.documentoIdentidad || 'Sin Cédula'}</span>
                               </div>
+                              )}
                               <div>
                                 <span className="text-slate-400 block text-[9px] uppercase tracking-wider">Representante</span>
                                 <span className="font-semibold text-slate-700 truncate block">
@@ -1253,7 +1457,7 @@ export default function App() {
                               {isAppAdministrator && (
                                 <button
                                   onClick={() => { setShowDeleteConfirm(p); }}
-                                  title="Eliminar triaje"
+                                  title="Eliminar captura"
                                   className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -1274,13 +1478,14 @@ export default function App() {
                                 onClick={() => { setSelectedPatient(p); setCurrentView('details'); }}
                                 className="flex items-center gap-1 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 hover:text-blue-700 text-slate-600 rounded-lg font-bold text-xs transition-colors cursor-pointer"
                               >
-                                <Eye className="w-3.5 h-3.5" /> Ver triaje
+                                <Eye className="w-3.5 h-3.5" /> Ver ficha
                               </button>
                             </div>
                           </div>
                         </motion.div>
                       ))}
                       </div>
+                      )}
                       <ListPagination
                         page={patientListPagination.page}
                         totalPages={patientListPagination.totalPages}
@@ -1300,7 +1505,7 @@ export default function App() {
                       <div>
                         <h3 className="font-sans font-bold text-slate-700 text-sm">No se encontraron pacientes</h3>
                         <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                          No hay ningún triaje que coincida con los criterios de búsqueda o filtros activos seleccionados.
+                          No hay ninguna captura que coincida con los criterios de búsqueda o filtros activos seleccionados.
                         </p>
                       </div>
                       
@@ -1393,8 +1598,11 @@ export default function App() {
             >
               <PatientDetails 
                 patient={selectedPatient}
+                userRole={userRole}
                 canEdit={canEditPatients}
                 canAddClinicalNotes={canEditPatients}
+                exportTier={resolvePatientExportTier(userRole)}
+                staffNameMap={staffNameMap}
                 onEdit={(p) => { setSelectedPatient(p); setCurrentView('edit'); }}
                 onBack={() => setCurrentView('list')}
                 onUpdatePatient={handleUpdatePatientDetails}
@@ -1421,6 +1629,23 @@ export default function App() {
             </motion.div>
           )}
 
+          {currentView === 'equipo' && (
+            <motion.div
+              key="equipo-view"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+            >
+              <TeamPanel
+                currentUserId={session?.user?.id}
+                onBack={() => {
+                  setCurrentView('list');
+                  setActiveTab(defaultHomeTab(userRole));
+                }}
+              />
+            </motion.div>
+          )}
+
           {/* 6. COLLECTION CENTERS VIEW */}
           {currentView === 'centros' && (
             <motion.div
@@ -1431,7 +1656,13 @@ export default function App() {
             >
               <CollectionCentersPanel
                 canManageCenters={isAppAdministrator}
+                initialCenterId={centrosFocusCenterId}
+                onInitialCenterConsumed={() => setCentrosFocusCenterId(null)}
+                initialPanelView={centrosPanelView}
+                onInitialPanelViewConsumed={() => setCentrosPanelView('centros')}
                 onBack={() => {
+                  setCentrosFocusCenterId(null);
+                  setCentrosPanelView('centros');
                   setCurrentView('list');
                   setActiveTab(defaultHomeTab(userRole));
                   refreshCollectionCenters();
@@ -1450,7 +1681,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 text-center space-y-2">
           <div className="flex items-center justify-center gap-1 text-[11px] text-slate-400 font-medium">
             <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-            <span>{APP_NAME} &bull; Triaje y seguimiento de pacientes</span>
+            <span>{APP_NAME} &bull; {APP_TAGLINE}</span>
           </div>
           <p className="text-[10px] text-slate-300">
             Acceso protegido con autenticación segura. Los datos clínicos se gestionan de forma centralizada.
@@ -1537,11 +1768,11 @@ export default function App() {
             >
               <div className="flex items-center gap-2.5 text-rose-600">
                 <AlertTriangle className="w-5 h-5" />
-                <h3 className="font-sans font-bold text-slate-800 text-base">¿Eliminar triaje?</h3>
+                <h3 className="font-sans font-bold text-slate-800 text-base">¿Eliminar captura?</h3>
               </div>
 
               <p className="text-xs text-slate-500 leading-relaxed">
-                Está a punto de eliminar de forma permanente el triaje de:
+                Está a punto de eliminar de forma permanente la captura de:
                 <br />
                 <strong className="text-slate-800 font-bold block mt-1.5 text-sm">
                   {showDeleteConfirm.nombres} {showDeleteConfirm.apellidos}
@@ -1575,6 +1806,24 @@ export default function App() {
         onSaved={() => {
           refreshPendingSupplyCount();
           showNotification('success', 'Registro de insumo guardado.');
+        }}
+      />
+
+      <ExportFormatModal
+        open={showListExportModal}
+        title="Exportar listado"
+        description="Incluye todos los pacientes que coinciden con la búsqueda y los filtros actuales."
+        itemCount={filteredPatients.length}
+        onClose={() => setShowListExportModal(false)}
+        onExport={async (format) => {
+          const { exportPatientList } = await import('./lib/documentExport');
+          await exportPatientList(filteredPatients, format, {
+            title: isRegistrador(userRole) ? 'Censo de pacientes' : 'Listado de pacientes',
+          });
+          showNotification(
+            'success',
+            format === 'pdf' ? 'Documento PDF generado.' : 'Archivo CSV descargado.'
+          );
         }}
       />
 

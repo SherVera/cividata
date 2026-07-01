@@ -2,8 +2,8 @@ import type { CareEpisode, CareEpisodeStatus, DiagnosisKind, TreatmentKindCode, 
 
 export const EPISODE_STATUS_LABELS: Record<CareEpisodeStatus, string> = {
   registered: 'Registrado',
-  triage_in_progress: 'Triaje en curso',
-  triage_completed: 'Triaje completado',
+  triage_in_progress: 'Triaje clínico en curso',
+  triage_completed: 'Triaje clínico completado',
   waiting: 'En espera',
   care_started: 'Atención iniciada',
   exams_pending: 'Exámenes pendientes',

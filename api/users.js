@@ -21,6 +21,13 @@ const admin = createClient(
 const ROLE_PERSONAL_MEDICO = 'personal_medico';
 const ROLE_REGISTRADOR = 'registrador';
 
+const ROLE_RANK = {
+  super_admin: 4,
+  admin: 3,
+  personal_medico: 2,
+  registrador: 1,
+};
+
 const PROFILE_KEYS = [
   'first_name',
   'last_name',
@@ -40,12 +47,20 @@ function userRole(user) {
   return role || ROLE_PERSONAL_MEDICO;
 }
 
+function roleRank(role) {
+  return ROLE_RANK[role] ?? ROLE_RANK[ROLE_PERSONAL_MEDICO];
+}
+
 function isPersonalMedico(role) {
   return role === ROLE_PERSONAL_MEDICO;
 }
 
 function isFieldStaff(role) {
   return role === ROLE_PERSONAL_MEDICO || role === ROLE_REGISTRADOR;
+}
+
+function isManager(role) {
+  return role === 'super_admin' || role === 'admin';
 }
 
 function staffProfile(user) {
@@ -81,19 +96,43 @@ function profileDiff(before, after) {
   return changes;
 }
 
-async function requireManager(req) {
+async function requireAuth(req) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   if (!token) return null;
   const { data, error } = await admin.auth.getUser(token);
   if (error || !data?.user) return null;
-  return ['super_admin', 'admin'].includes(userRole(data.user)) ? data.user : null;
+  return data.user;
 }
 
-function rolNormalizado(r) {
+async function requireManager(req) {
+  const user = await requireAuth(req);
+  if (!user) return null;
+  return isManager(userRole(user)) ? user : null;
+}
+
+function canSeeTarget(actor, target) {
+  const actorRole = userRole(actor);
+  const targetRole = userRole(target);
+  if (actor.id === target.id) return true;
+  if (targetRole === 'super_admin') return actorRole === 'super_admin';
+  return roleRank(actorRole) >= roleRank(targetRole);
+}
+
+function canManageOther(actor, target) {
+  if (actor.id === target.id) return false;
+  const actorRole = userRole(actor);
+  const targetRole = userRole(target);
+  if (!isManager(actorRole)) return false;
+  if (!canSeeTarget(actor, target)) return false;
+  if (targetRole === 'super_admin') return false;
+  return roleRank(targetRole) < roleRank(actorRole);
+}
+
+const rolNormalizado = (r) => {
   if (r === 'admin') return 'admin';
   if (r === ROLE_REGISTRADOR) return ROLE_REGISTRADOR;
   return ROLE_PERSONAL_MEDICO;
-}
+};
 const normalizePhone = normalizeAuthPhone;
 const normalizeSpecialty = (value) => String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es');
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -108,19 +147,19 @@ function actionPermissions(actor, target) {
   const actorRole = userRole(actor);
   const targetRole = userRole(target);
   const isSelf = actor.id === target.id;
-  const targetIsVisible = targetRole !== 'super_admin' || isSelf;
-  const canManageVisibleTarget =
-    targetIsVisible &&
-    !isSelf &&
-    (actorRole === 'super_admin' || (actorRole === 'admin' && isFieldStaff(targetRole)));
+  const visible = canSeeTarget(actor, target);
+  const canManageOtherUser = canManageOther(actor, target);
 
   return {
-    visible: targetIsVisible,
-    canEditContact: isSelf || canManageVisibleTarget,
-    canEditProfile: isSelf || canManageVisibleTarget,
-    canResetPassword: isSelf || canManageVisibleTarget,
-    canToggle: canManageVisibleTarget,
-    canChangeRole: actorRole === 'super_admin' && !isSelf && (targetRole === 'admin' || isFieldStaff(targetRole)),
+    visible,
+    canEditContact: isSelf || canManageOtherUser,
+    canEditProfile: isSelf || canManageOtherUser,
+    canResetPassword: isSelf || canManageOtherUser,
+    canToggle: canManageOtherUser,
+    canChangeRole:
+      actorRole === 'super_admin' &&
+      canManageOtherUser &&
+      (targetRole === 'admin' || isFieldStaff(targetRole)),
   };
 }
 
@@ -141,6 +180,7 @@ function serializeUser(u, permissions) {
     disabled: !!u.banned_until && new Date(u.banned_until) > new Date(),
     created_at: u.created_at,
     last_sign_in_at: u.last_sign_in_at || null,
+    created_by: u.app_metadata?.created_by || null,
     manageable:
       permissions.canEditContact ||
       permissions.canEditProfile ||
@@ -183,12 +223,14 @@ function hasCredential(email, phone, username) {
 }
 
 export default async function handler(req, res) {
-  const me = await requireManager(req);
+  const me = await requireAuth(req);
   if (!me) return res.status(401).json({ error: 'No autorizado' });
   const actorRole = userRole(me);
 
   if (req.method === 'GET') {
     if (req.query?.audit === '1') {
+      const manager = await requireManager(req);
+      if (!manager) return res.status(403).json({ error: 'No autorizado' });
       const { data, error } = await admin
         .from('staff_audit_log')
         .select('id,target_user_id,action,actor,actor_email,actor_role,changes,created_at')
@@ -199,6 +241,8 @@ export default async function handler(req, res) {
     }
 
     if (req.query?.signups === '1') {
+      const manager = await requireManager(req);
+      if (!manager) return res.status(403).json({ error: 'No autorizado' });
       const { data, error } = await admin
         .from('staff_signup_requests')
         .select('*')
@@ -217,14 +261,19 @@ export default async function handler(req, res) {
     return res.json({
       users,
       role: actorRole,
-      canCreateRoles: actorRole === 'super_admin'
-        ? ['admin', ROLE_PERSONAL_MEDICO, ROLE_REGISTRADOR]
-        : [ROLE_PERSONAL_MEDICO, ROLE_REGISTRADOR],
+      canCreateRoles: isManager(actorRole)
+        ? actorRole === 'super_admin'
+          ? ['admin', ROLE_PERSONAL_MEDICO, ROLE_REGISTRADOR]
+          : [ROLE_PERSONAL_MEDICO, ROLE_REGISTRADOR]
+        : [],
     });
   }
 
   if (req.method === 'POST') {
-    const { email, password, role } = req.body || {};
+    const manager = await requireManager(req);
+    if (!manager) return res.status(403).json({ error: 'No autorizado' });
+
+    const { email, password, role, signupId } = req.body || {};
     const phone = normalizePhone(req.body?.phone);
     const username = normalizeUsername(req.body?.username);
     const profile = extractProfile(req.body);
@@ -253,21 +302,36 @@ export default async function handler(req, res) {
       password,
       email_confirm: !!authEmail,
       phone_confirm: !!phone,
-      app_metadata: { role: newRole },
+      app_metadata: { role: newRole, created_by: manager.id },
       user_metadata: userMetadata,
     });
     if (error) return res.status(400).json({ error: error.message });
 
+    if (signupId) {
+      const { error: signupError } = await admin
+        .from('staff_signup_requests')
+        .update({
+          status: 'approved',
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: manager.id,
+          approved_user_id: data.user.id,
+        })
+        .eq('id', signupId);
+      if (signupError) console.error('staff_signup_requests approve:', signupError.message);
+    }
+
     await logStaffAudit({
       targetUserId: data.user.id,
       action: 'create',
-      actor: me,
+      actor: manager,
       changes: {
         role: { before: null, after: newRole },
         username: { before: null, after: username || null },
         email: { before: null, after: authEmail || null },
         phone: { before: null, after: phone || null },
         profile: { before: null, after: profile },
+        created_by: { before: null, after: manager.id },
+        ...(signupId ? { signup_id: { before: null, after: signupId } } : {}),
       },
     });
 
@@ -278,6 +342,8 @@ export default async function handler(req, res) {
     const { id, action, password, role, email, status } = req.body || {};
 
     if (action === 'signup_status') {
+      const manager = await requireManager(req);
+      if (!manager) return res.status(403).json({ error: 'No autorizado' });
       if (!id || !['approved', 'rejected'].includes(status)) {
         return res.status(400).json({ error: 'Solicitud o estado inválido' });
       }
@@ -286,7 +352,7 @@ export default async function handler(req, res) {
         .update({
           status,
           reviewed_at: new Date().toISOString(),
-          reviewed_by: me.id,
+          reviewed_by: manager.id,
         })
         .eq('id', id);
       if (error) return res.status(500).json({ error: error.message });

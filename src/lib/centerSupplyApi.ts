@@ -31,6 +31,11 @@ export interface SupplyItemBalance {
   balance: number;
 }
 
+export interface SupplyItemBalanceWithCenter extends SupplyItemBalance {
+  collectionCenterId: string;
+  collectionCenterName: string;
+}
+
 export interface CenterSupplyNeedSummary {
   centerId: string;
   centerName: string;
@@ -184,6 +189,36 @@ export function projectReception(
 
 export function listOpenSupplyNeeds(entries: CenterSupplyEntry[]): SupplyItemBalance[] {
   return aggregateSupplyBalances(entries).filter((row) => row.balance > 0);
+}
+
+/** Necesidades abiertas por centro (ítems con faltante en cada punto de acopio). */
+export function listGlobalOpenSupplyNeeds(entries: CenterSupplyEntry[]): SupplyItemBalanceWithCenter[] {
+  const byCenter = new Map<string, CenterSupplyEntry[]>();
+  for (const entry of entries) {
+    const list = byCenter.get(entry.collectionCenterId) || [];
+    list.push(entry);
+    byCenter.set(entry.collectionCenterId, list);
+  }
+
+  const rows: SupplyItemBalanceWithCenter[] = [];
+  for (const [centerId, centerEntries] of byCenter) {
+    const centerName = centerEntries[0]?.collectionCenterName || 'Centro sin nombre';
+    for (const row of listOpenSupplyNeeds(centerEntries)) {
+      rows.push({
+        ...row,
+        collectionCenterId: centerId,
+        collectionCenterName: centerName,
+      });
+    }
+  }
+
+  return rows.sort((a, b) => {
+    if (b.balance !== a.balance) return b.balance - a.balance;
+    return (
+      a.collectionCenterName.localeCompare(b.collectionCenterName, 'es') ||
+      a.itemName.localeCompare(b.itemName, 'es')
+    );
+  });
 }
 
 export function listSupplySurplus(entries: CenterSupplyEntry[]): SupplyItemBalance[] {

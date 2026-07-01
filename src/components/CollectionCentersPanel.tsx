@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
+  Building2,
   Check,
   Loader2,
   MapPin,
@@ -13,6 +14,7 @@ import {
 import { motion } from 'motion/react';
 import {
   CollectionCenter,
+  isAcopioCenter,
   listCollectionCenters,
   saveCollectionCenter,
   setCollectionCenterActive,
@@ -21,9 +23,14 @@ import { DEFAULT_MAP_CENTER, formatDistance, haversineMeters } from '../lib/geo'
 import { GeocodeResult, searchPlaces } from '../lib/geocodeApi';
 import GeoMapPicker from './GeoMapPicker';
 import ListPagination from './ListPagination';
+import ListViewToggle from './ListViewToggle';
+import CollectionCentersTable from './CollectionCentersTable';
+import { CAPTURE_POINT_LABEL, COLLECTION_CENTER_LABEL, FACILITY_TYPE_LABELS, type FacilityType } from '../brand';
 import { paginate, useListPageSize } from '../lib/pagination';
+import { useListViewMode } from '../lib/listViewMode';
 
 import CenterSupplyPanel from './CenterSupplyPanel';
+import GlobalSupplyLedger from './GlobalSupplyLedger';
 import QuickSupplyRegisterModal from './QuickSupplyRegisterModal';
 import type { SupplyEntryType } from '../lib/centerSupplyApi';
 import {
@@ -35,7 +42,13 @@ import {
 interface CollectionCentersPanelProps {
   onBack?: () => void;
   canManageCenters?: boolean;
+  initialCenterId?: string | null;
+  onInitialCenterConsumed?: () => void;
+  initialPanelView?: 'centros' | 'ledger';
+  onInitialPanelViewConsumed?: () => void;
 }
+
+type PanelView = 'centros' | 'ledger';
 
 type FormState = {
   name: string;
@@ -43,6 +56,7 @@ type FormState = {
   lat: number;
   lng: number;
   active: boolean;
+  facility_type: FacilityType;
 };
 
 const emptyForm = (): FormState => ({
@@ -51,12 +65,18 @@ const emptyForm = (): FormState => ({
   lat: DEFAULT_MAP_CENTER.lat,
   lng: DEFAULT_MAP_CENTER.lng,
   active: true,
+  facility_type: 'acopio',
 });
 
 export default function CollectionCentersPanel({
   onBack,
   canManageCenters = false,
+  initialCenterId = null,
+  onInitialCenterConsumed,
+  initialPanelView = 'centros',
+  onInitialPanelViewConsumed,
 }: CollectionCentersPanelProps) {
+  const [panelView, setPanelView] = useState<PanelView>(initialPanelView);
   const [centers, setCenters] = useState<CollectionCenter[]>([]);
   const [selectedCenter, setSelectedCenter] = useState<CollectionCenter | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,7 +94,9 @@ export default function CollectionCentersPanel({
   const [notice, setNotice] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
   const [centersPage, setCentersPage] = useState(1);
   const [listPageSize, setListPageSize] = useListPageSize();
+  const [centersListView, setCentersListView] = useListViewMode('centers');
   const [quickSupplyType, setQuickSupplyType] = useState<SupplyEntryType | null>(null);
+  const [ledgerRefreshKey, setLedgerRefreshKey] = useState(0);
   const [centerNeedCounts, setCenterNeedCounts] = useState<Map<string, { openItems: number; pendingUnits: number }>>(
     new Map()
   );
@@ -108,6 +130,26 @@ export default function CollectionCentersPanel({
   useEffect(() => {
     loadCenters();
   }, []);
+
+  useEffect(() => {
+    if (!initialCenterId || centers.length === 0) return;
+    const center = centers.find((item) => item.id === initialCenterId);
+    if (center) {
+      setSelectedCenter(center);
+      onInitialCenterConsumed?.();
+    }
+  }, [initialCenterId, centers, onInitialCenterConsumed]);
+
+  useEffect(() => {
+    if (!initialPanelView) return;
+    setPanelView(initialPanelView);
+    onInitialPanelViewConsumed?.();
+  }, [initialPanelView, onInitialPanelViewConsumed]);
+
+  const openCenterById = (centerId: string) => {
+    const center = centers.find((item) => item.id === centerId);
+    if (center) setSelectedCenter(center);
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -162,6 +204,7 @@ export default function CollectionCentersPanel({
       lat: center.geo_lat,
       lng: center.geo_lng,
       active: center.active,
+      facility_type: center.facility_type,
     });
     resetLocationSearch();
     setLocationConfirmed(true);
@@ -228,6 +271,7 @@ export default function CollectionCentersPanel({
           geo_lat: form.lat,
           geo_lng: form.lng,
           active: form.active,
+          facility_type: form.facility_type,
         },
         editingId || undefined
       );
@@ -267,7 +311,44 @@ export default function CollectionCentersPanel({
   return (
     <div className="space-y-6">
       {selectedCenter ? (
+        isAcopioCenter(selectedCenter) ? (
         <CenterSupplyPanel center={selectedCenter} onBack={() => setSelectedCenter(null)} />
+        ) : (
+        <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setSelectedCenter(null)}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" /> Volver a la lista
+          </button>
+          <div className="flex items-start gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
+              <Building2 className="h-5 w-5" />
+            </span>
+            <div>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Hospital</span>
+              <h2 className="text-lg font-bold text-slate-900">{selectedCenter.name}</h2>
+              {selectedCenter.address && (
+                <p className="mt-1 text-sm text-slate-500">{selectedCenter.address}</p>
+              )}
+            </div>
+          </div>
+          <p className="rounded-xl border border-indigo-100 bg-indigo-50/60 px-4 py-3 text-xs leading-relaxed text-indigo-900">
+            Este establecimiento está registrado para atención clínica futura. Por ahora no aparece en captura de censo ni en insumos.
+            El triaje y tratamientos avanzados por hospital se activarán en una fase posterior.
+          </p>
+          {canManageCenters && (
+            <button
+              type="button"
+              onClick={() => openEdit(selectedCenter)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+            >
+              Editar hospital
+            </button>
+          )}
+        </div>
+        )
       ) : (
         <>
       <div className="flex flex-col justify-between gap-4 rounded-3xl border border-slate-200 bg-slate-900 p-6 text-white shadow-xl md:flex-row md:items-center">
@@ -275,7 +356,7 @@ export default function CollectionCentersPanel({
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-teal-100">
             <Warehouse className="h-3.5 w-3.5" /> Centros de acopio
           </span>
-          <h2 className="mt-3 text-xl font-bold tracking-tight">Puntos de triaje</h2>
+          <h2 className="mt-3 text-xl font-bold tracking-tight">{CAPTURE_POINT_LABEL}s</h2>
           <p className="mt-1 max-w-xl text-sm text-slate-300">
             {canManageCenters
               ? 'Administre los centros y consulte necesidades y recepciones de insumos por punto.'
@@ -293,6 +374,26 @@ export default function CollectionCentersPanel({
               Volver
             </button>
           )}
+          <div className="inline-flex rounded-xl border border-white/10 bg-white/5 p-1">
+            <button
+              type="button"
+              onClick={() => setPanelView('centros')}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                panelView === 'centros' ? 'bg-white text-slate-900' : 'text-slate-200 hover:text-white'
+              }`}
+            >
+              Centros
+            </button>
+            <button
+              type="button"
+              onClick={() => setPanelView('ledger')}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                panelView === 'ledger' ? 'bg-white text-slate-900' : 'text-slate-200 hover:text-white'
+              }`}
+            >
+              Necesidades y entregas
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => setQuickSupplyType('necesidad')}
@@ -329,6 +430,11 @@ export default function CollectionCentersPanel({
         </div>
       )}
 
+      {panelView === 'ledger' ? (
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
+          <GlobalSupplyLedger refreshToken={ledgerRefreshKey} onOpenCenter={openCenterById} />
+        </div>
+      ) : (
       <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:p-6">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1">
@@ -353,6 +459,7 @@ export default function CollectionCentersPanel({
             </>
             )}
           </label>
+          <ListViewToggle value={centersListView} onChange={setCentersListView} />
         </div>
 
         {mapCenters.length > 0 && (
@@ -399,6 +506,17 @@ export default function CollectionCentersPanel({
             pageSize={listPageSize}
             onPageSizeChange={handleListPageSizeChange}
           />
+          {centersListView === 'table' ? (
+            <CollectionCentersTable
+              centers={centersPagination.pageItems}
+              centerNeedCounts={centerNeedCounts}
+              canManage={canManageCenters}
+              saving={saving}
+              onOpen={setSelectedCenter}
+              onEdit={openEdit}
+              onToggleActive={handleToggleActive}
+            />
+          ) : (
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
             {centersPagination.pageItems.map((center) => (
               <motion.button
@@ -414,8 +532,15 @@ export default function CollectionCentersPanel({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="truncate font-bold text-slate-800">{center.name}</h3>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                        isAcopioCenter(center)
+                          ? 'bg-teal-50 text-teal-700'
+                          : 'bg-indigo-50 text-indigo-700'
+                      }`}>
+                        {FACILITY_TYPE_LABELS[center.facility_type]}
+                      </span>
                       {!center.active && (
                         <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-600">
                           Inactivo
@@ -425,7 +550,7 @@ export default function CollectionCentersPanel({
                     {center.address && (
                       <p className="mt-1 text-xs text-slate-500">{center.address}</p>
                     )}
-                    {(() => {
+                    {isAcopioCenter(center) ? (() => {
                       const needs = centerNeedCounts.get(center.id);
                       if (needs && needs.openItems > 0) {
                         return (
@@ -440,7 +565,11 @@ export default function CollectionCentersPanel({
                           Ver necesidades y recepciones →
                         </p>
                       );
-                    })()}
+                    })() : (
+                      <p className="mt-2 text-[11px] font-medium text-indigo-700">
+                        Hospital registrado · sin insumos por ahora
+                      </p>
+                    )}
                   </div>
                   {canManageCenters && (
                   <div className="flex shrink-0 flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
@@ -465,6 +594,7 @@ export default function CollectionCentersPanel({
               </motion.button>
             ))}
           </div>
+          )}
           <ListPagination
             page={centersPagination.page}
             totalPages={centersPagination.totalPages}
@@ -478,6 +608,7 @@ export default function CollectionCentersPanel({
           </div>
         )}
       </div>
+      )}
 
       {showForm && canManageCenters && (
         <motion.div
@@ -494,10 +625,10 @@ export default function CollectionCentersPanel({
             <div className="flex items-start justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">
-                  {editingId ? 'Editar centro de acopio' : 'Nuevo centro de acopio'}
+                  {editingId ? 'Editar establecimiento' : 'Nuevo establecimiento'}
                 </h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Busque un lugar para mover el mapa, ajuste el marcador y asigne un nombre propio al centro.
+                  Elija el tipo, busque el lugar en el mapa y asigne un nombre.
                 </p>
               </div>
               <button
@@ -510,6 +641,44 @@ export default function CollectionCentersPanel({
             </div>
 
             <div className="space-y-4 overflow-y-auto p-5">
+              <div>
+                <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  Tipo de establecimiento
+                </span>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {(['acopio', 'hospital'] as FacilityType[]).map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setForm((prev) => ({ ...prev, facility_type: type }))}
+                      className={`flex items-start gap-2 rounded-xl border px-3 py-3 text-left text-xs font-bold transition-colors ${
+                        form.facility_type === type
+                          ? type === 'acopio'
+                            ? 'border-teal-600 bg-teal-600 text-white'
+                            : 'border-indigo-600 bg-indigo-600 text-white'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                      }`}
+                    >
+                      {type === 'acopio' ? (
+                        <Warehouse className="h-4 w-4 shrink-0 mt-0.5" />
+                      ) : (
+                        <Building2 className="h-4 w-4 shrink-0 mt-0.5" />
+                      )}
+                      <span>
+                        {FACILITY_TYPE_LABELS[type]}
+                        <span className={`mt-0.5 block text-[10px] font-normal ${
+                          form.facility_type === type ? 'text-white/80' : 'text-slate-500'
+                        }`}>
+                          {type === 'acopio'
+                            ? 'Captura en censo e insumos'
+                            : 'Atención clínica (sin insumos por ahora)'}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
                   Buscar lugar en el mapa
@@ -584,14 +753,14 @@ export default function CollectionCentersPanel({
                   className="mt-0.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                 />
                 <span>
-                  Confirmo que el marcador azul indica el punto correcto para este centro de acopio.
+                  Confirmo que el marcador azul indica el punto correcto para este {form.facility_type === 'hospital' ? 'hospital' : 'centro de acopio'}.
                   Puede arrastrarlo en el mapa antes de confirmar.
                 </span>
               </label>
 
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-slate-600">
-                  Nombre del centro de acopio *
+                  Nombre del {form.facility_type === 'hospital' ? 'hospital' : 'centro'} *
                 </label>
                 <input
                   value={form.name}
@@ -624,7 +793,7 @@ export default function CollectionCentersPanel({
                   onChange={(e) => setForm((prev) => ({ ...prev, active: e.target.checked }))}
                   className="rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                 />
-                Centro activo para nuevos triajes
+                Centro activo para nuevas capturas
               </label>
             </div>
 
@@ -657,6 +826,7 @@ export default function CollectionCentersPanel({
         onClose={() => setQuickSupplyType(null)}
         onSaved={() => {
           setNotice({ type: 'success', message: 'Registro guardado correctamente.' });
+          setLedgerRefreshKey((k) => k + 1);
           void loadCenters();
         }}
       />

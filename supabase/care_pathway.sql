@@ -1,6 +1,6 @@
 -- Care pathway: normalized clinical episodes (parallel layer to patients).
--- Run in Supabase SQL Editor after schema.sql.
--- Safe to re-run: uses IF NOT EXISTS.
+-- CANONICAL: supabase/migrations/20250301000002_care_pathway.sql (GitHub Actions / supabase db push).
+-- Este archivo se mantiene como referencia; no editar aquí — usar migraciones nuevas.
 
 -- =========================================================
 -- Episode header (one row per visit)

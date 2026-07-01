@@ -7,21 +7,33 @@ import React, { useState, useEffect } from 'react';
 import { Paciente, NotaClinica, puntoRegistroEtiqueta, grupoEtarioLabel, edadPacienteTexto, resolveGrupoEtario, pacienteRequiereRepresentante, tituloHistoriaClinica, tituloDatosPersonales } from '../types';
 import { 
   User, MapPin, ShieldAlert, Heart, 
-  ArrowLeft, Edit3, Printer, Plus, Calendar, Activity, 
-  ShieldCheck, FileText, ChevronRight, Phone, Mail, FileClock, ClipboardList, Warehouse, Stethoscope
+  ArrowLeft, Edit3, FileDown, Loader2, Plus, Calendar, Activity, 
+  ShieldCheck, FileText, ChevronRight, Phone, Mail, FileClock, ClipboardList, Warehouse, Stethoscope, GraduationCap, Shield
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { fetchCatalogs } from '../lib/catalogsApi';
 import { parseMultiValue } from '../lib/multiValue';
-import GeoMapPicker from './GeoMapPicker';
-import { formatDistance, haversineMeters } from '../lib/geo';
 import { parseFormNumber, validateClinicalNote } from '../lib/patientValidation';
+import { CAPTURE_POINT_LABEL, PATIENT_FILE_LABEL } from '../brand';
+import type { AppRole, PatientExportTier } from '../lib/authRoles';
+import {
+  canViewClinicalRecord,
+  canViewClinicalResidence,
+  canViewPatientAuditGeolocation,
+  canViewPatientRegistrantAudit,
+  canViewSensitivePatientPii,
+} from '../lib/patientPrivacy';
+import { staffDisplayName } from '../lib/usersApi';
 import PatientPhoto from './PatientPhoto';
+import ClinicalTriagePanel from './ClinicalTriagePanel';
 
 interface PatientDetailsProps {
   patient: Paciente;
+  userRole: AppRole;
   canEdit?: boolean;
   canAddClinicalNotes?: boolean;
+  exportTier?: PatientExportTier;
+  staffNameMap?: Map<string, string>;
   onEdit: (paciente: Paciente) => void;
   onBack: () => void;
   onUpdatePatient: (updatedPatient: Paciente) => void;
@@ -29,8 +41,11 @@ interface PatientDetailsProps {
 
 export default function PatientDetails({
   patient,
+  userRole,
   canEdit = true,
   canAddClinicalNotes = true,
+  exportTier = 'asistente',
+  staffNameMap,
   onEdit,
   onBack,
   onUpdatePatient,
@@ -45,6 +60,8 @@ export default function PatientDetails({
     tratamiento: ""
   });
   const [noteError, setNoteError] = useState("");
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportError, setExportError] = useState("");
 
   // Catálogos de salud para diagnóstico/tratamiento (filtrar existentes o crear nuevo).
   const [diagnosisOptions, setDiagnosisOptions] = useState<string[]>([]);
@@ -60,9 +77,34 @@ export default function PatientDetails({
   }, []);
 
   const requiereRepresentante = pacienteRequiereRepresentante(patient);
+  const canViewClinical = canViewClinicalRecord(userRole);
+  const canViewResidence = canViewClinicalResidence(userRole);
+  const canViewContactPii = canViewSensitivePatientPii(userRole);
+  const canViewAudit = canViewPatientRegistrantAudit(userRole);
+  const canViewAuditGeo = canViewPatientAuditGeolocation(userRole);
 
-  const handlePrint = () => {
-    window.print();
+  const formatAuditCoords = (lat: number | null, lng: number | null) => {
+    if (lat == null || lng == null) return '—';
+    return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  };
+
+  const handleDownloadPdf = async () => {
+    setExportError('');
+    setExportingPdf(true);
+    try {
+      const { exportPatientCardPdf } = await import('../lib/documentExport');
+      await exportPatientCardPdf(patient, {
+        exportTier,
+        registradoPorName:
+          canViewAudit && patient.registradoPorId
+            ? staffDisplayName(staffNameMap, patient.registradoPorId)
+            : null,
+      });
+    } catch (err: unknown) {
+      setExportError(err instanceof Error ? err.message : 'No se pudo generar el PDF.');
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   const handleNoteSubmit = (e: React.FormEvent) => {
@@ -160,17 +202,29 @@ export default function PatientDetails({
             onClick={() => onEdit(patient)}
             className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-semibold bg-white text-blue-700 hover:bg-blue-50 border border-blue-200 transition-all cursor-pointer active:scale-95"
           >
-            <Edit3 className="w-4 h-4" /> Editar triaje
+            <Edit3 className="w-4 h-4" /> Editar captura
           </button>
           )}
           
           <button
-            onClick={handlePrint}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all cursor-pointer active:scale-95 shadow-sm"
+            type="button"
+            onClick={() => void handleDownloadPdf()}
+            disabled={exportingPdf}
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all cursor-pointer active:scale-95 shadow-sm disabled:opacity-60"
           >
-            <Printer className="w-4 h-4" /> Imprimir Carnet
+            {exportingPdf ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <FileDown className="w-4 h-4" />
+            )}
+            {exportingPdf ? 'Generando PDF…' : exportTier === 'asistente' ? 'Descargar ficha PDF' : 'Descargar PDF completo'}
           </button>
         </div>
+        {exportError && (
+          <p className="text-xs font-medium text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+            {exportError}
+          </p>
+        )}
       </div>
 
       {/* Main Clinical File Grid */}
@@ -186,9 +240,8 @@ export default function PatientDetails({
             <div className="flex justify-between items-start mb-6 gap-4">
               <div>
                 <span className="text-[10px] font-mono font-bold tracking-widest bg-white/20 px-2 py-0.5 rounded-md uppercase">
-                  {tituloHistoriaClinica(patient).toUpperCase()}
+                  {(canAddClinicalNotes ? tituloHistoriaClinica(patient) : PATIENT_FILE_LABEL).toUpperCase()}
                 </span>
-                <p className="text-[10px] text-blue-200 font-mono mt-1">ID: {patient.id.toUpperCase()}</p>
               </div>
               <div className="flex items-start gap-3">
                 {patient.fotoPath && (
@@ -214,10 +267,12 @@ export default function PatientDetails({
               </div>
 
               <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/10 text-xs font-mono">
+                {canViewContactPii && (
                 <div>
                   <span className="text-blue-300 block text-[9px] uppercase tracking-wider">Documento</span>
                   <span className="font-semibold text-white">{patient.documentoIdentidad || "Sin Documento"}</span>
                 </div>
+                )}
                 <div>
                   <span className="text-blue-300 block text-[9px] uppercase tracking-wider">Género</span>
                   <span className="font-semibold text-white">{patient.genero}</span>
@@ -244,9 +299,9 @@ export default function PatientDetails({
             {/* Quick Badge Status bar */}
             <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-xs">
               <span className="flex items-center gap-1 font-medium">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Triaje validado
+                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Captura validada
               </span>
-              <span className="font-mono text-[10px] text-blue-200">Triaje: {patient.fechaRegistro}</span>
+              <span className="font-mono text-[10px] text-blue-200">Censo: {patient.fechaRegistro}</span>
             </div>
           </div>
 
@@ -266,7 +321,7 @@ export default function PatientDetails({
                     <span className="text-xs text-slate-500 font-medium">cm</span>
                   </div>
                 </div>
-                {progression.heightDiff !== 0 && (
+                {canAddClinicalNotes && progression.heightDiff !== 0 && (
                   <span className={`text-[10px] font-bold mt-2 flex items-center gap-0.5 ${
                     progression.heightDiff > 0 ? 'text-green-600' : 'text-red-500'
                   }`}>
@@ -284,7 +339,7 @@ export default function PatientDetails({
                     <span className="text-xs text-slate-500 font-medium">kg</span>
                   </div>
                 </div>
-                {progression.weightDiff !== 0 && (
+                {canAddClinicalNotes && progression.weightDiff !== 0 && (
                   <span className={`text-[10px] font-bold mt-2 flex items-center gap-0.5 ${
                     progression.weightDiff > 0 ? 'text-green-600' : 'text-red-500'
                   }`}>
@@ -309,7 +364,7 @@ export default function PatientDetails({
           </div>
 
           {/* Quick Contacts (solo niños/as con representante) */}
-          {requiereRepresentante && (
+          {requiereRepresentante && canViewContactPii && (
           <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3">
             <h3 className="text-xs font-bold text-slate-700 uppercase tracking-widest">
               Contacto de Emergencia
@@ -346,7 +401,7 @@ export default function PatientDetails({
             <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 flex items-center justify-between">
               <h3 className="font-sans font-bold text-slate-700 text-sm flex items-center gap-2">
                 <ClipboardList className="w-4 h-4 text-blue-600" />
-                Detalles completos del triaje
+                {canViewClinical ? 'Datos clínicos y captura' : 'Detalles de la captura'}
               </h3>
             </div>
 
@@ -370,10 +425,12 @@ export default function PatientDetails({
                     <span className="text-slate-400 block mb-0.5">Fecha Nacimiento</span>
                     <span className="font-bold text-slate-700 font-mono">{patient.fechaNacimiento || 'Sin registrar'}</span>
                   </div>
+                  {canViewContactPii && (
                   <div>
                     <span className="text-slate-400 block mb-0.5">Documento Identidad</span>
                     <span className="font-semibold text-slate-700 font-mono">{patient.documentoIdentidad || "No posee / En trámite"}</span>
                   </div>
+                  )}
                   <div>
                     <span className="text-slate-400 block mb-0.5">Edad Registrada</span>
                     <span className="font-semibold text-slate-700">
@@ -393,8 +450,8 @@ export default function PatientDetails({
                 </div>
               </div>
 
-              {/* Seccion 2: Triaje y Centro de Acopio */}
-              {(patient.puntoRegistroTipo === 'medico' || patient.centroAcopioNombre || patient.registroLat != null) && (
+              {/* Seccion 2: Captura y Centro de Acopio */}
+              {(patient.puntoRegistroTipo === 'medico' || patient.centroAcopioNombre) && (
                 <div className="space-y-3 pt-2">
                   <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5 pb-1.5 border-b border-slate-200">
                     {patient.puntoRegistroTipo === 'medico' ? (
@@ -402,7 +459,7 @@ export default function PatientDetails({
                     ) : (
                       <Warehouse className="w-3.5 h-3.5" />
                     )}
-                    Punto de triaje del paciente
+                    {CAPTURE_POINT_LABEL} del paciente
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-3 gap-x-4 text-xs">
                     <div className="sm:col-span-3">
@@ -413,63 +470,22 @@ export default function PatientDetails({
                         {puntoRegistroEtiqueta(patient) || 'No especificado'}
                       </span>
                     </div>
-                    {patient.registroLat != null && patient.registroLng != null && (
-                      <div className="sm:col-span-3">
-                        <span className="text-slate-400 block mb-0.5">Ubicación aproximada</span>
-                        <span className="font-mono text-[10px] font-semibold text-slate-600">
-                          {patient.registroLat.toFixed(3)}, {patient.registroLng.toFixed(3)}
-                        </span>
-                        {patient.puntoRegistroTipo === 'centro' &&
-                          patient.centroAcopioLat != null &&
-                          patient.centroAcopioLng != null && (
-                          <span className="block mt-1 text-[10px] font-medium text-teal-700">
-                            Distancia al centro:{' '}
-                            {formatDistance(
-                              haversineMeters(
-                                patient.registroLat,
-                                patient.registroLng,
-                                patient.centroAcopioLat,
-                                patient.centroAcopioLng
-                              )
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    )}
                   </div>
-                  {patient.registroLat != null && patient.registroLng != null && (
-                    <GeoMapPicker
-                      lat={patient.registroLat}
-                      lng={patient.registroLng}
-                      readOnly
-                      centers={
-                        patient.puntoRegistroTipo === 'centro' &&
-                        patient.centroAcopioLat != null &&
-                        patient.centroAcopioLng != null
-                          ? [{
-                              id: patient.centroAcopioId || 'center',
-                              name: patient.centroAcopioNombre || 'Centro',
-                              lat: patient.centroAcopioLat,
-                              lng: patient.centroAcopioLng,
-                            }]
-                          : []
-                      }
-                      height="200px"
-                    />
-                  )}
                 </div>
               )}
 
               {/* Seccion 3: Vivienda y Ubicacion */}
               <div className="space-y-3 pt-2">
                 <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5 pb-1.5 border-b border-slate-200">
-                  <MapPin className="w-3.5 h-3.5" /> 2. Información de Vivienda y Ubicación
+                  <MapPin className="w-3.5 h-3.5" /> Información de vivienda
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-3 gap-x-4 text-xs">
+                  {canViewResidence && (
                   <div className="sm:col-span-3">
                     <span className="text-slate-400 block mb-0.5">Dirección de Residencia Actual</span>
                     <span className="font-semibold text-slate-700">{patient.direccion}</span>
                   </div>
+                  )}
                   <div>
                     <span className="text-slate-400 block mb-0.5">Ciudad / Municipio</span>
                     <span className="font-semibold text-slate-700">{patient.ciudadMunicipio}</span>
@@ -478,10 +494,12 @@ export default function PatientDetails({
                     <span className="text-slate-400 block mb-0.5">Estado / Provincia</span>
                     <span className="font-semibold text-slate-700">{patient.estadoProvincia}</span>
                   </div>
+                  {canViewResidence && (
                   <div>
                     <span className="text-slate-400 block mb-0.5">Punto de Referencia</span>
                     <span className="font-semibold text-slate-700">{patient.puntoReferencia || "Ninguno especificado"}</span>
                   </div>
+                  )}
                 </div>
               </div>
 
@@ -500,6 +518,8 @@ export default function PatientDetails({
                     <span className="text-slate-400 block mb-0.5">Parentesco</span>
                     <span className="font-semibold text-slate-700 bg-slate-100 px-2.5 py-0.5 rounded-full inline-block font-mono text-[10px]">{patient.parentesco}</span>
                   </div>
+                  {canViewContactPii && (
+                  <>
                   <div>
                     <span className="text-slate-400 block mb-0.5">Documento Identidad</span>
                     <span className="font-semibold text-slate-700 font-mono">{patient.documentoRepresentante || '—'}</span>
@@ -520,15 +540,59 @@ export default function PatientDetails({
                     <span className="text-slate-400 block mb-0.5">Correo Electrónico</span>
                     <span className="font-semibold text-slate-700 font-mono">{patient.correo || "No asignado"}</span>
                   </div>
+                  </>
+                  )}
                 </div>
               </div>
               )}
 
-              {/* Seccion 4: Salud, Nutricion y Patologias */}
+              {/* Parámetros básicos (asistentes) */}
+              {!canViewClinical && (
               <div className="space-y-3 pt-2">
                 <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5 pb-1.5 border-b border-slate-200">
-                  <Heart className="w-3.5 h-3.5" /> 4. Salud, Nutrición y Antecedentes
+                  <Activity className="w-3.5 h-3.5" /> Parámetros de captura
                 </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <span className="text-slate-400 block text-[10px] uppercase tracking-wider">Estatura</span>
+                    <span className="font-bold font-mono text-slate-800">{patient.estatura > 0 ? `${patient.estatura} cm` : '—'}</span>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <span className="text-slate-400 block text-[10px] uppercase tracking-wider">Peso</span>
+                    <span className="font-bold font-mono text-slate-800">{patient.peso > 0 ? `${patient.peso} kg` : '—'}</span>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <span className="text-slate-400 block text-[10px] uppercase tracking-wider">Vacunación</span>
+                    <span className="font-bold text-slate-800">Esquema {patient.esquemaVacunacion}</span>
+                  </div>
+                </div>
+              </div>
+              )}
+
+              {/* Salud, nutrición y antecedentes (personal clínico) */}
+              {canViewClinical && (
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5 pb-1.5 border-b border-slate-200">
+                  <Heart className="w-3.5 h-3.5" /> Salud, nutrición y antecedentes
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs mb-1">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <span className="text-slate-400 block text-[10px] uppercase tracking-wider">Estatura</span>
+                    <span className="font-bold font-mono text-slate-800">{patient.estatura > 0 ? `${patient.estatura} cm` : '—'}</span>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <span className="text-slate-400 block text-[10px] uppercase tracking-wider">Peso</span>
+                    <span className="font-bold font-mono text-slate-800">{patient.peso > 0 ? `${patient.peso} kg` : '—'}</span>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <span className="text-slate-400 block text-[10px] uppercase tracking-wider">Vacunación</span>
+                    <span className="font-bold text-slate-800">Esquema {patient.esquemaVacunacion}</span>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <span className="text-slate-400 block text-[10px] uppercase tracking-wider">Grupo sanguíneo</span>
+                    <span className="font-bold font-mono text-slate-800">{patient.grupoSanguineo || '—'}</span>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div className="p-3 rounded-xl border border-rose-100 bg-rose-50/20 col-span-1 sm:col-span-2 space-y-2">
                     <div className="flex items-center gap-2">
@@ -567,11 +631,101 @@ export default function PatientDetails({
                   </div>
                 </div>
               </div>
+              )}
+
+              {/* Datos educativos (personal clínico) */}
+              {canViewClinical && (
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5 pb-1.5 border-b border-slate-200">
+                  <GraduationCap className="w-3.5 h-3.5" /> Datos educativos
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4 text-xs">
+                  <div>
+                    <span className="text-slate-400 block mb-0.5">Asiste a escuela</span>
+                    <span className="font-semibold text-slate-700">{patient.asisteEscuela ? 'Sí' : 'No'}</span>
+                  </div>
+                  {patient.asisteEscuela && (
+                    <>
+                      <div>
+                        <span className="text-slate-400 block mb-0.5">Nivel educativo</span>
+                        <span className="font-semibold text-slate-700">{patient.nivelEducativo || '—'}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block mb-0.5">Grado / año</span>
+                        <span className="font-semibold text-slate-700 font-mono">{patient.gradoAnio || '—'}</span>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <span className="text-slate-400 block mb-0.5">Institución</span>
+                        <span className="font-semibold text-slate-700">{patient.nombreInstitucion || '—'}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+              )}
+
+              {canViewAudit && (
+              <div className="space-y-3 pt-2 border-t border-dashed border-slate-200">
+                <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5 pb-1.5">
+                  <Shield className="w-3.5 h-3.5" /> Auditoría de captura
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4 text-xs">
+                  <div>
+                    <span className="text-slate-400 block mb-0.5">Registrado por</span>
+                    <span className="font-semibold text-slate-700">
+                      {patient.registradoPorId
+                        ? staffDisplayName(staffNameMap, patient.registradoPorId) || 'Usuario del sistema'
+                        : 'No registrado'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block mb-0.5">Fecha de registro</span>
+                    <span className="font-semibold text-slate-700 font-mono">{patient.fechaRegistro}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block mb-0.5">ID interno</span>
+                    <span className="font-mono text-[10px] font-semibold text-slate-600 break-all">{patient.id}</span>
+                  </div>
+                  {patient.centroAcopioId && (
+                  <div>
+                    <span className="text-slate-400 block mb-0.5">ID centro de acopio</span>
+                    <span className="font-mono text-[10px] font-semibold text-slate-600 break-all">{patient.centroAcopioId}</span>
+                  </div>
+                  )}
+                  {canViewAuditGeo && (
+                    <>
+                      <div>
+                        <span className="text-slate-400 block mb-0.5">Coord. paciente</span>
+                        <span className="font-mono text-[10px] font-semibold text-slate-600">
+                          {formatAuditCoords(patient.registroLat, patient.registroLng)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block mb-0.5">Coord. centro</span>
+                        <span className="font-mono text-[10px] font-semibold text-slate-600">
+                          {formatAuditCoords(patient.centroAcopioLat, patient.centroAcopioLng)}
+                        </span>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <span className="text-slate-400 block mb-0.5">Coord. capturista</span>
+                        <span className="font-mono text-[10px] font-semibold text-slate-600">
+                          {formatAuditCoords(patient.registrantLat, patient.registrantLng)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+              )}
 
             </div>
           </div>
 
-          {/* HISTORIAL CLÍNICO - EVOLUCIÓN (CRITICAL FOR CLINICAL RECORD TRACKING) */}
+          {canAddClinicalNotes && (
+            <ClinicalTriagePanel patient={patient} canManage={canAddClinicalNotes} />
+          )}
+
+          {canAddClinicalNotes && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden print:hidden">
             <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
@@ -775,6 +929,7 @@ export default function PatientDetails({
               )}
             </div>
           </div>
+          )}
 
         </div>
       </div>

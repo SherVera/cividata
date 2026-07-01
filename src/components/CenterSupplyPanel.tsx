@@ -25,6 +25,8 @@ import {
 } from '../lib/centerSupplyApi';
 import SelectField from './SelectField';
 import QuickSupplyRegisterModal from './QuickSupplyRegisterModal';
+import { supabase } from '../lib/supabaseClient';
+import { staffDisplayName, useStaffNameMap } from '../lib/usersApi';
 
 interface CenterSupplyPanelProps {
   center: CollectionCenter;
@@ -38,6 +40,8 @@ function formatDateLabel(iso: string): string {
 }
 
 export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelProps) {
+  const [accessToken, setAccessToken] = useState<string | undefined>();
+  const staffNameMap = useStaffNameMap(accessToken);
   const [entries, setEntries] = useState<CenterSupplyEntry[]>([]);
   const [categories, setCategories] = useState<SupplyCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +50,12 @@ export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelP
   const [presetNeedKey, setPresetNeedKey] = useState<string | null>(null);
 
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    supabase?.auth.getSession().then(({ data }) => {
+      setAccessToken(data.session?.access_token || undefined);
+    });
+  }, []);
 
   const loadCategories = async () => {
     try {
@@ -324,6 +334,12 @@ export default function CenterSupplyPanel({ center, onBack }: CenterSupplyPanelP
                             {backdated && (
                               <p className="text-[11px] text-slate-400">
                                 Anotado en sistema: {formatSupplyRegisteredAt(entry.createdAt)}
+                              </p>
+                            )}
+                            {entry.createdBy && (
+                              <p className="text-[11px] text-slate-400">
+                                Registrado por:{' '}
+                                {staffDisplayName(staffNameMap, entry.createdBy) || 'Personal del sistema'}
                               </p>
                             )}
                           </div>

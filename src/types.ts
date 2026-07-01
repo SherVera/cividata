@@ -60,6 +60,8 @@ export interface Paciente {
   // Notas e historial médico adicional
   notasClinicas: NotaClinica[];
   fechaRegistro: string;
+  /** UUID del usuario que registró la captura (auditoría interna). */
+  registradoPorId: string | null;
 
   // Punto de captura / centro de acopio
   /** 'centro' = centro de salud o acopio; 'medico' = atención en calle u otro sitio sin centro */
@@ -254,4 +256,5 @@ export interface StaffSignupRequest {
   created_at: string;
   reviewed_at: string | null;
   reviewed_by: string | null;
+  approved_user_id?: string | null;
 }

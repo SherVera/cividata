@@ -11,7 +11,7 @@ interface BottomNavProps {
 
 const listadoItem = { key: 'listado' as const, label: 'Listado', icon: ClipboardList };
 const statsItem = { key: 'estadisticas' as const, label: 'Estadísticas', icon: BarChart3 };
-const createItem = { key: 'create' as const, label: 'Triaje', icon: Plus };
+const createItem = { key: 'create' as const, label: 'Captura', icon: Plus };
 const adminItem = { key: 'admin' as const, label: 'Admin', icon: ShieldCheck };
 
 export default function BottomNav({ active, onSelect, showAdmin = false }: BottomNavProps) {

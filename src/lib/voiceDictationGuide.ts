@@ -44,7 +44,7 @@ export const VOICE_DICTATION_FIELDS: VoiceDictationField[] = [
 ];
 
 export const VOICE_DICTATION_FORMAT_HINT =
-  'Use «Etiqueta: valor», un dato por línea. * = obligatorio para guardar. + = muy importante (centro de triaje).';
+  'Use «Etiqueta: valor», un dato por línea. * = obligatorio para guardar. + = muy importante (centro de captura).';
 
 export const VOICE_DICTATION_PLACEHOLDER =
   'Nombres: María. Apellidos: García. Edad años: 5. Centro: Centro Salud Chacao. Género: femenino.';
