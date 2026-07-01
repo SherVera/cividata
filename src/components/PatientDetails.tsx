@@ -14,7 +14,7 @@ import { motion } from 'motion/react';
 import { fetchCatalogs } from '../lib/catalogsApi';
 import { parseMultiValue } from '../lib/multiValue';
 import { parseFormNumber, validateClinicalNote } from '../lib/patientValidation';
-import { CAPTURE_POINT_LABEL, PATIENT_FILE_LABEL } from '../brand';
+import { CAPTURE_POINT_LABEL, COLLECTION_CENTER_LABEL, PATIENT_FILE_LABEL } from '../brand';
 import type { AppRole, PatientExportTier } from '../lib/authRoles';
 import {
   canViewClinicalRecord,
@@ -464,7 +464,7 @@ export default function PatientDetails({
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-3 gap-x-4 text-xs">
                     <div className="sm:col-span-3">
                       <span className="text-slate-400 block mb-0.5">
-                        {patient.puntoRegistroTipo === 'medico' ? 'Tipo de atención' : 'Centro de acopio'}
+                        {patient.puntoRegistroTipo === 'medico' ? 'Tipo de atención' : COLLECTION_CENTER_LABEL}
                       </span>
                       <span className={`font-semibold ${patient.puntoRegistroTipo === 'medico' ? 'text-indigo-700' : 'text-slate-700'}`}>
                         {puntoRegistroEtiqueta(patient) || 'No especificado'}
@@ -688,7 +688,7 @@ export default function PatientDetails({
                   </div>
                   {patient.centroAcopioId && (
                   <div>
-                    <span className="text-slate-400 block mb-0.5">ID centro de acopio</span>
+                    <span className="text-slate-400 block mb-0.5">ID {COLLECTION_CENTER_LABEL.toLowerCase()}</span>
                     <span className="font-mono text-[10px] font-semibold text-slate-600 break-all">{patient.centroAcopioId}</span>
                   </div>
                   )}

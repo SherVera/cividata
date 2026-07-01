@@ -61,7 +61,7 @@ import { listCollectionCenters, isAcopioCenter } from './lib/collectionCentersAp
 import { computeSupplyDashboardStats, listCenterSupplyEntries, type SupplyDashboardStats } from './lib/centerSupplyApi';
 import type { SupplyEntryType } from './lib/centerSupplyApi';
 import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin, canManageClinicalData, isRegistrador, resolvePatientExportTier } from './lib/authRoles';
-import { APP_NAME, APP_TAGLINE, CAPTURE_FULL_LABEL, CAPTURE_LABEL, CAPTURE_QUICK_LABEL, COLLECTION_CENTER_LABEL_PLURAL } from './brand';
+import { APP_NAME, APP_TAGLINE, CAPTURE_FULL_LABEL, CAPTURE_LABEL, CAPTURE_QUICK_LABEL, COLLECTION_CENTER_LABEL, COLLECTION_CENTER_LABEL_PLURAL } from './brand';
 
 export default function App() {
   // Authentication via Supabase
@@ -1226,7 +1226,7 @@ export default function App() {
 
                         {/* Collection center filter */}
                         <div className="space-y-1">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Centro de acopio</span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{COLLECTION_CENTER_LABEL}</span>
                           <SelectField
                             value={filterCentro}
                             onChange={setFilterCentro}

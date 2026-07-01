@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { Paciente, CensoStats, grupoEtarioLabel, pacienteTieneEdad, resolveGrupoEtario } from '../types';
-import { APP_NAME, CAPTURE_LABEL } from '../brand';
+import { APP_NAME, CAPTURE_LABEL, COLLECTION_CENTER_LABEL, COLLECTION_CENTER_LABEL_PLURAL } from '../brand';
 import type { AppRole } from '../lib/authRoles';
 import { isPersonalMedico, isRegistrador } from '../lib/authRoles';
 import type { MetricDrillDown } from '../lib/metricDrillDown';
@@ -740,11 +740,11 @@ export default function DashboardStats({
       {supplyStats && (
         <RoleSection
           badge="Insumos"
-          title="Necesidades por centro de acopio"
+          title={`Necesidades por ${COLLECTION_CENTER_LABEL.toLowerCase()}`}
           description="Resumen de ítems pendientes y recepciones en todos los centros."
           badgeClass="border-amber-100 bg-amber-50 text-amber-800"
           moduleLink={{
-            label: 'Ir a centros de acopio',
+            label: `Ir a ${COLLECTION_CENTER_LABEL_PLURAL.toLowerCase()}`,
             onClick: onDrillDown ? () => drill({ target: 'centros' }) : undefined,
           }}
         >
@@ -874,7 +874,7 @@ export default function DashboardStats({
 
           {supplyStats.openItems === 0 && (
             <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-              No hay necesidades abiertas en los centros de acopio.
+              No hay necesidades abiertas en los {COLLECTION_CENTER_LABEL_PLURAL.toLowerCase()}.
             </div>
           )}
         </RoleSection>

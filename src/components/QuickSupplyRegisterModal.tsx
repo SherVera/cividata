@@ -19,6 +19,7 @@ import {
   supplyItemKey,
   todayIsoDate,
 } from '../lib/centerSupplyApi';
+import { COLLECTION_CENTER_LABEL } from '../brand';
 import CenterPicker from './CenterPicker';
 import SelectField from './SelectField';
 import SupplyCategoryField from './SupplyCategoryField';
@@ -210,7 +211,7 @@ export default function QuickSupplyRegisterModal({
     e.preventDefault();
     const centerId = activeCenterId;
     if (!centerId) {
-      setError('Seleccione un centro de acopio.');
+      setError(`Seleccione un ${COLLECTION_CENTER_LABEL.toLowerCase()}.`);
       return;
     }
     if (entryType === 'recepcion' && !isManualReception && !selectedNeedKey) {
@@ -361,7 +362,7 @@ export default function QuickSupplyRegisterModal({
               {!presetCenter && (
                 <div>
                   <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Centro de acopio
+                    {COLLECTION_CENTER_LABEL}
                   </label>
                   <CenterPicker
                     collectionCenters={centers}
@@ -462,7 +463,7 @@ export default function QuickSupplyRegisterModal({
 
               {!isNeed && !activeCenterId && (
                 <p className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                  Seleccione primero el centro de acopio para ver las necesidades abiertas.
+                  Seleccione primero el {COLLECTION_CENTER_LABEL.toLowerCase()} para ver las necesidades abiertas.
                 </p>
               )}
 

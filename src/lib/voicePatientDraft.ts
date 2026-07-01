@@ -248,7 +248,7 @@ export function normalizeEsquemaVacunacion(raw: unknown): Paciente['esquemaVacun
 
 export function normalizePuntoRegistroTipo(raw: unknown): Paciente['puntoRegistroTipo'] | null {
   const value = String(raw ?? '').trim().toLowerCase();
-  if (value === 'centro' || value === 'centro de acopio') return 'centro';
+  if (value === 'centro' || value === 'centro de acopio' || value === 'centro de apoyo') return 'centro';
   if (value === 'medico' || value === 'médico' || value === 'atencion en calle') return 'medico';
   if (raw === 'centro' || raw === 'medico') return raw;
   return null;

@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { CollectionCenter, saveCollectionCenter } from '../lib/collectionCentersApi';
 import { GeocodeResult, searchPlaces } from '../lib/geocodeApi';
 import { DEFAULT_MAP_CENTER } from '../lib/geo';
+import { COLLECTION_CENTER_LABEL } from '../brand';
 import GeoMapPicker from './GeoMapPicker';
 
 interface QuickCenterRegisterProps {
@@ -56,7 +57,7 @@ export default function QuickCenterRegister({ onSaved, onCancel }: QuickCenterRe
 
   const handleSave = async () => {
     if (!name.trim()) {
-      setError('Escriba un nombre para el centro de acopio.');
+      setError(`Escriba un nombre para el ${COLLECTION_CENTER_LABEL.toLowerCase()}.`);
       return;
     }
     if (!locationConfirmed) {
@@ -102,7 +103,7 @@ export default function QuickCenterRegister({ onSaved, onCancel }: QuickCenterRe
         <div className="flex items-start justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
           <div>
             <h3 id="quick-center-title" className="text-base font-bold text-slate-900">
-              Nuevo centro de acopio
+              Nuevo {COLLECTION_CENTER_LABEL.toLowerCase()}
             </h3>
             <p className="mt-1 text-xs text-slate-500">
               Busque el lugar, confirme en el mapa y asigne un nombre. Al guardar quedará seleccionado.

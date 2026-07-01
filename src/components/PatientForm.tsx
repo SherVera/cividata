@@ -293,7 +293,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       centroAcopioLng: null,
     }));
     setCenterFilter('');
-    setGeoHint('Marque en el mapa dónde se atendió al paciente (calle, comunidad u otro sitio sin centro de acopio).');
+    setGeoHint(`Marque en el mapa dónde se atendió al paciente (calle, comunidad u otro sitio sin ${COLLECTION_CENTER_LABEL.toLowerCase()}).`);
     if (formErrors.centroAcopioId) {
       setFormErrors((prev) => {
         const copy = { ...prev };
@@ -347,7 +347,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
       })
       .catch(() => {
         if (!cancelled) {
-          setGeoHint('Seleccione el centro de acopio y ajuste el punto en el mapa.');
+          setGeoHint(`Seleccione el ${COLLECTION_CENTER_LABEL.toLowerCase()} y ajuste el punto en el mapa.`);
         }
       });
     return () => {
@@ -359,7 +359,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
   const handleCenterOnMap = () => {
     const center = collectionCenters.find((c) => c.id === formData.centroAcopioId);
     if (!center) {
-      setGeoHint('Seleccione primero un centro de acopio.');
+      setGeoHint(`Seleccione primero un ${COLLECTION_CENTER_LABEL.toLowerCase()}.`);
       return;
     }
     setFormData((prev) => ({
@@ -908,7 +908,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                   type="button"
                   onClick={() => {
                     setFormData((prev) => ({ ...prev, puntoRegistroTipo: 'centro' }));
-                    setGeoHint('Elija un centro de acopio y ajuste el punto del paciente en el mapa.');
+                    setGeoHint(`Elija un ${COLLECTION_CENTER_LABEL.toLowerCase()} y ajuste el punto del paciente en el mapa.`);
                   }}
                   className={`flex items-center gap-2 rounded-xl border px-3 py-3 text-left text-xs font-bold transition-all ${
                     formData.puntoRegistroTipo === 'centro'
@@ -939,7 +939,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 </p>
               ) : (
                 <p className="text-xs font-medium text-indigo-800 leading-relaxed">
-                  No se asignará un centro de acopio. La captura quedará como atención médica en campo; marque el punto en el mapa.
+                  No se asignará un {COLLECTION_CENTER_LABEL.toLowerCase()}. La captura quedará como atención médica en campo; marque el punto en el mapa.
                 </p>
               )}
 
@@ -953,7 +953,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-teal-300 bg-white px-3 py-2 text-xs font-bold text-teal-700 hover:bg-teal-50"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Registrar nuevo centro de acopio
+                Registrar nuevo {COLLECTION_CENTER_LABEL.toLowerCase()}
               </button>
               )}
 
@@ -1018,7 +1018,7 @@ export default function PatientForm({ initialPatient, onSave, onCancel }: Patien
                 </div>
               ) : (
                 <div className="flex h-[240px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-100/80 px-4 text-center text-xs font-medium text-slate-400">
-                  Mapa del paciente pausado mientras registra el centro de acopio
+                  Mapa del paciente pausado mientras registra el {COLLECTION_CENTER_LABEL.toLowerCase()}
                 </div>
               )}
             </div>
