@@ -17,7 +17,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { hasSupabaseConfig, supabase } from '../lib/supabaseClient';
 import AppLogo from './AppLogo';
-import { APP_NAME, APP_TAGLINE, APP_VERSION, CAPTURE_LABEL } from '../brand';
+import { APP_NAME, APP_TAGLINE, APP_VERSION, CAPTURE_LABEL, COLLECTION_CENTER_LABEL, COLLECTION_CENTER_LABEL_PLURAL } from '../brand';
 import { fetchLandingStats, roundLandingPatientTotal, type LandingStats } from '../lib/landingStatsApi';
 import { formatQty } from '../lib/centerSupplyApi';
 import LandingPublicNeeds from './LandingPublicNeeds';
@@ -214,7 +214,7 @@ export default function AuthScreen() {
           >
             <h1 className="font-sans text-[2.5rem] sm:text-5xl md:text-6xl lg:text-[3.5rem] font-bold tracking-tight text-slate-900 leading-[1.05]">
               Censo de pacientes y necesidades por{' '}
-              <span className="text-blue-600">centro</span>
+              <span className="text-blue-600">{COLLECTION_CENTER_LABEL.toLowerCase()}</span>
             </h1>
             <p className="text-lg md:text-xl font-medium text-slate-600 max-w-2xl leading-relaxed">
               {APP_TAGLINE}. Consulte insumos faltantes en puntos de acopio y solicite acceso para
@@ -249,7 +249,7 @@ export default function AuthScreen() {
                       {numberFormatter.format(collectionCenters)}
                     </p>
                   )}
-                  <p className="mt-1 text-xs font-medium text-slate-500">centros de acopio</p>
+                  <p className="mt-1 text-xs font-medium text-slate-500">{COLLECTION_CENTER_LABEL_PLURAL.toLowerCase()}</p>
                 </div>
                 <div>
                   {usageStatsLoading ? (
@@ -591,7 +591,7 @@ export default function AuthScreen() {
 
                 {isAssistantSignup && (
                   <p className="rounded-xl border border-teal-100 bg-teal-50 px-3 py-2.5 text-xs leading-relaxed text-teal-900">
-                    Como asistente podrá registrar capturas en censo y apoyar en centros de acopio. El seguimiento clínico lo realiza el personal médico.
+                    Como asistente podrá registrar capturas en censo y apoyar en {COLLECTION_CENTER_LABEL_PLURAL.toLowerCase()}. El seguimiento clínico lo realiza el personal médico.
                   </p>
                 )}
 

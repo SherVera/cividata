@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Loader2, Search } from 'lucide-react';
 import type { LandingOpenNeed } from '../lib/landingStatsApi';
 import { formatQty } from '../lib/centerSupplyApi';
+import { COLLECTION_CENTER_LABEL } from '../brand';
 import SelectField from './SelectField';
 import ListPagination from './ListPagination';
 import { paginate, useListPageSize } from '../lib/pagination';
@@ -87,7 +88,7 @@ export default function LandingPublicNeeds({ id, needs, loading, loadError = fal
             Necesidades abiertas
           </h2>
           <p className="mt-1 text-sm text-slate-500">
-            Consulte qué insumos faltan por centro de acopio. Inicie sesión para registrar entregas.
+            Consulte qué insumos faltan por {COLLECTION_CENTER_LABEL.toLowerCase()}. Inicie sesión para registrar entregas.
           </p>
         </div>
         {!loading && needs.length > 0 && (

@@ -25,7 +25,7 @@ import GeoMapPicker from './GeoMapPicker';
 import ListPagination from './ListPagination';
 import ListViewToggle from './ListViewToggle';
 import CollectionCentersTable from './CollectionCentersTable';
-import { CAPTURE_POINT_LABEL, COLLECTION_CENTER_LABEL, FACILITY_TYPE_LABELS, type FacilityType } from '../brand';
+import { CAPTURE_POINT_LABEL, COLLECTION_CENTER_LABEL, COLLECTION_CENTER_LABEL_PLURAL, FACILITY_TYPE_LABELS, type FacilityType } from '../brand';
 import { paginate, useListPageSize } from '../lib/pagination';
 import { useListViewMode } from '../lib/listViewMode';
 
@@ -281,7 +281,7 @@ export default function CollectionCentersPanel({
         message: created
           ? editingId
             ? 'Centro actualizado correctamente.'
-            : 'Centro de acopio registrado.'
+            : `${COLLECTION_CENTER_LABEL} registrado.`
           : `Ya existe un centro con el nombre "${center.name}"; no se creó un duplicado.`,
       });
       await loadCenters();
@@ -354,7 +354,7 @@ export default function CollectionCentersPanel({
       <div className="flex flex-col justify-between gap-4 rounded-3xl border border-slate-200 bg-slate-900 p-6 text-white shadow-xl md:flex-row md:items-center">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/10 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-teal-100">
-            <Warehouse className="h-3.5 w-3.5" /> Centros de acopio
+            <Warehouse className="h-3.5 w-3.5" /> {COLLECTION_CENTER_LABEL_PLURAL}
           </span>
           <h2 className="mt-3 text-xl font-bold tracking-tight">{CAPTURE_POINT_LABEL}s</h2>
           <p className="mt-1 max-w-xl text-sm text-slate-300">
@@ -753,7 +753,7 @@ export default function CollectionCentersPanel({
                   className="mt-0.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                 />
                 <span>
-                  Confirmo que el marcador azul indica el punto correcto para este {form.facility_type === 'hospital' ? 'hospital' : 'centro de acopio'}.
+                  Confirmo que el marcador azul indica el punto correcto para este {form.facility_type === 'hospital' ? 'hospital' : COLLECTION_CENTER_LABEL.toLowerCase()}.
                   Puede arrastrarlo en el mapa antes de confirmar.
                 </span>
               </label>

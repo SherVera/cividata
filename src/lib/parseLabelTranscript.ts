@@ -23,6 +23,7 @@ const LABEL_ALIASES: Record<string, VoicePatientFieldKey> = {
   'grupo etario': 'grupoEtario',
   centro: 'centroAcopioNombre',
   'centro de acopio': 'centroAcopioNombre',
+  'centro de apoyo': 'centroAcopioNombre',
   genero: 'genero',
   género: 'genero',
   representante: 'nombreRepresentante',

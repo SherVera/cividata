@@ -21,7 +21,7 @@ export const PATIENT_FILE_LABEL = 'Ficha';
 /** Evaluación clínica de urgencia por visita (care_pathway). */
 export const CLINICAL_TRIAGE_LABEL = 'Triaje clínico';
 
-/** Punto físico de captura e insumos (centro de apoyo = mismo concepto). */
+/** Punto físico de captura e insumos en brigada / jornada de campo. */
 export const COLLECTION_CENTER_LABEL = 'Centro de acopio';
 export const COLLECTION_CENTER_LABEL_PLURAL = 'Centros de acopio';
 
