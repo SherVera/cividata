@@ -54,6 +54,15 @@ export function canManageClinicalData(role: AppRole): boolean {
   return isPersonalMedico(role) || isAppAdmin(role);
 }
 
+/** Nivel de detalle al exportar la ficha individual en PDF. */
+export type PatientExportTier = 'asistente' | 'clinico' | 'admin';
+
+export function resolvePatientExportTier(role: AppRole): PatientExportTier {
+  if (isAppAdmin(role)) return 'admin';
+  if (isPersonalMedico(role)) return 'clinico';
+  return 'asistente';
+}
+
 export function defaultHomeTab(role: AppRole): 'listado' | 'estadisticas' {
   if (isRegistrador(role)) return 'listado';
   return 'estadisticas';

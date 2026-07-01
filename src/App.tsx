@@ -23,6 +23,7 @@ import AdminPanel from './components/AdminPanel';
 import TeamPanel from './components/TeamPanel';
 import CollectionCentersPanel from './components/CollectionCentersPanel';
 import QuickSupplyRegisterModal from './components/QuickSupplyRegisterModal';
+import ExportFormatModal from './components/ExportFormatModal';
 import BottomNav, { BottomNavKey } from './components/BottomNav';
 import MobileOptionsDrawer, { MobileDrawerItem } from './components/MobileOptionsDrawer';
 import AppLogo from './components/AppLogo';
@@ -59,7 +60,7 @@ import { useStaffNameMap } from './lib/usersApi';
 import { listCollectionCenters } from './lib/collectionCentersApi';
 import { computeSupplyDashboardStats, listCenterSupplyEntries, type SupplyDashboardStats } from './lib/centerSupplyApi';
 import type { SupplyEntryType } from './lib/centerSupplyApi';
-import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin, canManageClinicalData, isRegistrador } from './lib/authRoles';
+import { defaultHomeTab, isAppAdmin, resolveAppRole, isSuperAdmin, canManageClinicalData, isRegistrador, resolvePatientExportTier } from './lib/authRoles';
 import { APP_NAME, APP_TAGLINE, CAPTURE_FULL_LABEL, CAPTURE_LABEL, CAPTURE_QUICK_LABEL, COLLECTION_CENTER_LABEL_PLURAL } from './brand';
 
 export default function App() {
@@ -122,6 +123,7 @@ export default function App() {
   const [newPasswordInput, setNewPasswordInput] = useState<string>('');
   const [settingsSuccess, setSettingsSuccess] = useState<string>('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Paciente | null>(null);
+  const [showListExportModal, setShowListExportModal] = useState(false);
   const [notification, setNotification] = useState<{ type: 'success' | 'info' | 'error', message: string } | null>(null);
 
   // Hidden file input ref for JSON restore
@@ -1167,6 +1169,17 @@ export default function App() {
 
                         <ListViewToggle value={patientListView} onChange={setPatientListView} />
 
+                        <button
+                          type="button"
+                          onClick={() => setShowListExportModal(true)}
+                          disabled={filteredPatients.length === 0}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Exportar listado filtrado"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span className="hidden sm:inline">Exportar</span>
+                        </button>
+
                         {/* Mobile filters toggle button */}
                         <button
                           onClick={() => setShowFiltersMobile(!showFiltersMobile)}
@@ -1414,11 +1427,13 @@ export default function App() {
                             </div>
 
                             {/* Key credentials indicators */}
-                            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 pt-2 border-t border-slate-50">
+                            <div className={`grid gap-2 text-[11px] text-slate-500 pt-2 border-t border-slate-50 ${canEditPatients ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                              {canEditPatients && (
                               <div>
                                 <span className="text-slate-400 block text-[9px] uppercase tracking-wider">Documento</span>
                                 <span className="font-semibold text-slate-700 font-mono truncate block">{p.documentoIdentidad || 'Sin Cédula'}</span>
                               </div>
+                              )}
                               <div>
                                 <span className="text-slate-400 block text-[9px] uppercase tracking-wider">Representante</span>
                                 <span className="font-semibold text-slate-700 truncate block">
@@ -1583,8 +1598,10 @@ export default function App() {
             >
               <PatientDetails 
                 patient={selectedPatient}
+                userRole={userRole}
                 canEdit={canEditPatients}
                 canAddClinicalNotes={canEditPatients}
+                exportTier={resolvePatientExportTier(userRole)}
                 staffNameMap={staffNameMap}
                 onEdit={(p) => { setSelectedPatient(p); setCurrentView('edit'); }}
                 onBack={() => setCurrentView('list')}
@@ -1789,6 +1806,24 @@ export default function App() {
         onSaved={() => {
           refreshPendingSupplyCount();
           showNotification('success', 'Registro de insumo guardado.');
+        }}
+      />
+
+      <ExportFormatModal
+        open={showListExportModal}
+        title="Exportar listado"
+        description="Incluye todos los pacientes que coinciden con la búsqueda y los filtros actuales."
+        itemCount={filteredPatients.length}
+        onClose={() => setShowListExportModal(false)}
+        onExport={async (format) => {
+          const { exportPatientList } = await import('./lib/documentExport');
+          await exportPatientList(filteredPatients, format, {
+            title: isRegistrador(userRole) ? 'Censo de pacientes' : 'Listado de pacientes',
+          });
+          showNotification(
+            'success',
+            format === 'pdf' ? 'Documento PDF generado.' : 'Archivo CSV descargado.'
+          );
         }}
       />
 

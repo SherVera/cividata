@@ -5,6 +5,7 @@ import {
   defaultHomeTab,
   isRegistrador,
   resolveAppRole,
+  resolvePatientExportTier,
 } from './authRoles';
 
 describe('resolveAppRole', () => {
@@ -37,5 +38,14 @@ describe('registrador permissions', () => {
   it('opens on listado tab by default', () => {
     expect(defaultHomeTab('registrador')).toBe('listado');
     expect(defaultHomeTab('personal_medico')).toBe('estadisticas');
+  });
+});
+
+describe('resolvePatientExportTier', () => {
+  it('asigna niveles según permisos', () => {
+    expect(resolvePatientExportTier('registrador')).toBe('asistente');
+    expect(resolvePatientExportTier('personal_medico')).toBe('clinico');
+    expect(resolvePatientExportTier('admin')).toBe('admin');
+    expect(resolvePatientExportTier('super_admin')).toBe('admin');
   });
 });

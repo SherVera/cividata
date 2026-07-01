@@ -15,6 +15,9 @@ export const CAPTURE_QUICK_LABEL = 'Captura rápida';
 export const CAPTURE_FULL_LABEL = 'Captura completa';
 export const CAPTURE_POINT_LABEL = 'Punto de captura';
 
+/** Vista de ficha del paciente (asistentes / registradores, sin historial clínico). */
+export const PATIENT_FILE_LABEL = 'Ficha';
+
 /** Evaluación clínica de urgencia por visita (care_pathway). */
 export const CLINICAL_TRIAGE_LABEL = 'Triaje clínico';
 
